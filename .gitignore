@@ -4,6 +4,7 @@ build/
 !**/src/test/**/build/
 
 ### STS ###
+.gradle/
 executionHistory.bin
 executionHistory.lock
 fileHashes.bin
