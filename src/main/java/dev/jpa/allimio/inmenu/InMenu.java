@@ -1,5 +1,6 @@
 package dev.jpa.allimio.inmenu;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,7 +28,12 @@ public class InMenu {
   private String purl;
   private String tname;
   private String mname;
+
+  // 실제 컬럼명이 USEYN(언더스코어 없음)이라 Hibernate 기본 네이밍전략(use_yn)과
+  // 어긋나서 명시적으로 매핑해줘야 함
+  @Column(name = "USEYN")
   private String useYn;
+
   private String cdate;
 
   public InMenu() {
