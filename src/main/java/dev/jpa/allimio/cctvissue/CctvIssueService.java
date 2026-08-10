@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import dev.jpa.allimio.tool.Tool;
@@ -28,6 +30,14 @@ public class CctvIssueService {
     List<CctvIssue> list = cctvIssueRepository.findAll();
 
     return list;
+  }
+
+  /**
+   * 관리자 목록 검색 - 조건은 전부 선택 사항
+   */
+  public Page<CctvIssue> search(Long cno, String code, Integer state, String noticeyn,
+      String keyword, String cdateFrom, String cdateTo, Pageable pageable) {
+    return cctvIssueRepository.search(cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
   }
 
   public CctvIssue findById(long pk) {

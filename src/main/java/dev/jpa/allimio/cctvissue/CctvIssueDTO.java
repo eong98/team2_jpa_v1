@@ -11,7 +11,7 @@ public class CctvIssueDTO {
 
   private long no;
   private long cno;
-  private long mno;
+  private Long mno; // 처리담당자, nullable
   private String code;
   private int state;
   private String comnet;
@@ -24,7 +24,7 @@ public class CctvIssueDTO {
 
   }
 
-  public CctvIssueDTO(long no, long cno, long mno, String code, int state, String comnet,
+  public CctvIssueDTO(long no, long cno, Long mno, String code, int state, String comnet,
       String reliability, String pdate, String noticeyn, String cdate) {
     this.no = no;
     this.cno = cno;

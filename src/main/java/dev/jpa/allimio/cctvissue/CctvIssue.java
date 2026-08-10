@@ -22,7 +22,7 @@ public class CctvIssue {
   private long no;
 
   private long cno;
-  private long mno;
+  private Long mno; // 처리담당자, DB에서 nullable이라 Long(래퍼)로 매핑 - long이면 NULL일 때 NPE 발생
   private String code;
   private int state;
 
@@ -38,7 +38,7 @@ public class CctvIssue {
 
   }
 
-  public CctvIssue(long no, long cno, long mno, String code, int state, String comnet,
+  public CctvIssue(long no, long cno, Long mno, String code, int state, String comnet,
       String reliability, String pdate, String noticeyn, String cdate) {
     this.no = no;
     this.cno = cno;
