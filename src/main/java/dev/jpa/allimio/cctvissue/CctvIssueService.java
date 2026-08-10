@@ -1,0 +1,69 @@
+package dev.jpa.allimio.cctvissue;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import dev.jpa.allimio.tool.Tool;
+
+@Service
+public class CctvIssueService {
+  @Autowired
+  CctvIssueRepository cctvIssueRepository;
+
+  public CctvIssueService() {
+
+  }
+
+  public CctvIssue save(CctvIssueDTO cctvIssueDTO) {
+    cctvIssueDTO.setCdate(Tool.getDate());
+    CctvIssue cctvIssue = cctvIssueRepository.save(cctvIssueDTO.toEntity());
+
+    return cctvIssue;
+  }
+
+  public List<CctvIssue> findAll() {
+    List<CctvIssue> list = cctvIssueRepository.findAll();
+
+    return list;
+  }
+
+  public CctvIssue findById(long pk) {
+    Optional<CctvIssue> optional = cctvIssueRepository.findById(pk);
+
+    if (optional.isPresent()) {
+      CctvIssue cctvIssue = optional.get();
+      return cctvIssue;
+    }
+    return null;
+  }
+
+  public CctvIssue update(CctvIssueDTO cctvIssueDTO) {
+    CctvIssue cctvIssue = cctvIssueRepository.findById(cctvIssueDTO.getNo()).get();
+    cctvIssue.setCno(cctvIssueDTO.getCno());
+    cctvIssue.setMno(cctvIssueDTO.getMno());
+    cctvIssue.setCode(cctvIssueDTO.getCode());
+    cctvIssue.setState(cctvIssueDTO.getState());
+    cctvIssue.setComnet(cctvIssueDTO.getComnet());
+    cctvIssue.setReliability(cctvIssueDTO.getReliability());
+    cctvIssue.setPdate(cctvIssueDTO.getPdate());
+    cctvIssue.setNoticeyn(cctvIssueDTO.getNoticeyn());
+
+    CctvIssue savedEntity = cctvIssueRepository.save(cctvIssue);
+
+    return savedEntity;
+  }
+
+  public boolean deleteById(long pk) {
+    Optional<CctvIssue> optional = cctvIssueRepository.findById(pk);
+
+    if (optional.isPresent()) {
+      cctvIssueRepository.deleteById(pk);
+      return true;
+    }
+    return false;
+  }
+
+}
