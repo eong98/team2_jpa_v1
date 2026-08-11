@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -104,9 +105,19 @@ public class QaCont {
    * @return
    */
   @GetMapping("/{no}")
-  public ResponseEntity<QaDTO.QaResponse> getQaDetail(@PathVariable("no") Long no,
-      @RequestParam(name = "mno", required = false) Long mno,
-      @RequestParam(name = "ano", required = false) Long ano) {
+  public ResponseEntity<QaDTO.QaResponse> getQaDetail
+      (@PathVariable("no") Long no,
+      @RequestHeader(name = "accessNo", required = false) Long accessNo,
+      @RequestHeader(name = "grade", required = false) Integer grade) {
+
+    // grade 숫자값으로 관리자 여부 판단 (예: 1 = 관리자)
+    boolean isAdmin = grade != null && grade == 1;
+    Long mno = isAdmin ? null : accessNo;
+    Long ano = isAdmin ? accessNo : null;
+    
+    System.out.println("mno ---> " + mno);
+    System.out.println("grade ---> " + grade);
+    
     // 1. Service에서 엔티티 조회
     Qa qa = qaService.getQa(no, mno, ano);
     

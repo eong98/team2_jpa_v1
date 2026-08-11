@@ -65,19 +65,19 @@ public class QaService {
    * @param ano 조회하려는 관리자 번호 (nullable)
    * @return Qa
    */
-  @Transactional // 💡 관리자 열람 시 상태 업데이트(Dirty Checking)를 위해 readOnly 해제 적용
+  @Transactional
   public Qa getQa(Long no, Long mno, Long ano) {
     // 1. 게시글 존재 및 미삭제 여부 확인
     Qa qa = qaRepository.findById(no)
         .filter(q -> "N".equals(q.getIsdel()))
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
-    // FAQ 글("Y")은 권한 제한 없이 모두 열람 가능
+    // isfaq === N (문의글)
     if ("N".equals(qa.getIsfaq())) {
       boolean isAdmin = (ano != null && ano > 0);
 
-      // 2. 관리자가 아닌 경우 작성자 본인 확인
-      if (!isAdmin) {
+      // 2. 관리자가 아니고 비밀글인 경우 경우 작성자 본인 확인
+      if (!isAdmin && "Y".equals(qa.getVmode())) {
         if (mno == null || !mno.equals(qa.getMno())) {
           throw new IllegalArgumentException("본인의 문의글만 조회할 수 있습니다.");
         }
