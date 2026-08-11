@@ -1,6 +1,9 @@
 package dev.jpa.allimio.manager;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -83,16 +86,25 @@ public class ManagerCont {
   * http://10.1.205.120:9102/v1/dbms/login
   * @param id
   * @param password
-  * @return 성공이면 true, 실패면 false
+  * @return 성공이면 관리자DTO+true, 실패면 false
   */
  @PostMapping(path="/login")
  @CrossOrigin(origins = "*")  // 모든 도메인으로부터 요청 허용
-public ResponseEntity<Boolean> login(
+public ResponseEntity<Map<String, Object>> login(
     @RequestParam(name="id", defaultValue="") String id, 
     @RequestParam(name="password", defaultValue="") String password){
-   boolean check = managerService.login(id, password);
+   Optional<ManagerDTO> loginResult = managerService.login(id, password);
    
-   return ResponseEntity.ok(check);
+   Map<String, Object> response = new HashMap<>();
+   
+   if(loginResult.isPresent()) {  
+     response.put("success", true);
+     response.put("user", loginResult.get());
+   } else {
+     response.put("success", false);
+   }
+   
+   return ResponseEntity.ok(response);
  }
 
  /**
@@ -154,25 +166,25 @@ public ResponseEntity<Boolean> login(
  }
  
  // 테스트 X
- /** 
-  * 비밀번호 업데이트
-  * @param managerDTO 관리자정보+새비밀번호
-  * @return 성공하면 true
-  */
- @PostMapping(path = "/update/password")
- public ResponseEntity<Boolean> updatePassword(
-     @RequestBody ManagerDTO managerDTO) {
-   String id = managerDTO.getId();
-   String password = managerDTO.getPassword();
-   
-   
-   boolean check = managerService.login(id, password);
-   
-   if(check) {
-     managerService.updatePassword(id, managerDTO.getNewPassword());
-   }
-   
-   return ResponseEntity.ok(check);
- }
+// /** 
+//  * 비밀번호 업데이트
+//  * @param managerDTO 관리자정보+새비밀번호
+//  * @return 성공하면 true
+//  */
+// @PostMapping(path = "/update/password")
+// public ResponseEntity<Boolean> updatePassword(
+//     @RequestBody ManagerDTO managerDTO) {
+//   String id = managerDTO.getId();
+//   String password = managerDTO.getPassword();
+//   
+//   
+//   boolean check = managerService.login(id, password);
+//   
+//   if(check) {
+//     managerService.updatePassword(id, managerDTO.getNewPassword());
+//   }
+//   
+//   return ResponseEntity.ok(check);
+// }
 }
 

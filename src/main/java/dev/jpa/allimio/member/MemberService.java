@@ -2,6 +2,7 @@ package dev.jpa.allimio.member;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,12 +42,18 @@ public class MemberService {
    * 로그인
    * @param id 
    * @param password
-   * @return 성공이면 true, 실패면 false
+   * @return 성공이면 DTO, 실패면 빈 DTO
    */
-  public boolean login(String id, String password) {
+  public Optional<MemberDTO> login(String id, String password) {
     boolean check = memberRepository.existsByIdAndPassword(id, password);
     
-    return check;
+    if(check) {
+      Optional<MemberDTO> memberDTO = memberRepository.longinDTO(id, password);
+      
+      return memberDTO;
+    } else {
+      return Optional.empty();
+    }
   }
   
   

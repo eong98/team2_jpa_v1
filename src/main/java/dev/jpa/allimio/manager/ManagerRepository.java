@@ -35,4 +35,10 @@ public interface ManagerRepository extends JpaRepository<Manager, Long> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(value="UPDATE MANAGER SET password=:password WHERE id = :id", nativeQuery = true)
   public int updatePassword(@Param("id") String id, @Param("password") String password);
+  
+  /** 로그인 성공시 넘겨줄 정보 */
+  @Query("SELECT new dev.jpa.allimio.manager.ManagerDTO(u.no, u.id, u.mname, u.email, u.phone, u.grade, u.status, u.udate, u.cdate) " +
+      "FROM Manager u " +
+      "WHERE u.id = :id AND u.password = :password")  
+  public Optional<ManagerDTO> longinDTO(@Param("id") String id, @Param("password") String password);
 }
