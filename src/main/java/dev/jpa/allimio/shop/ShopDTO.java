@@ -18,19 +18,18 @@ public class ShopDTO {
   private String tel;
   private String coment;
   private String phone;
-  private String paystate;
-  private String qrimg;
   private String snum;
   private String udate;
   private String cdate;
+
+  // 2026-08-11 PAYSTATE(결제상태)/QRIMG(QR이미지) 컬럼은 테이블에서 제거됨.
 
   public ShopDTO() {
 
   }
 
   public ShopDTO(long no, long mno, String title, String zip, String address, String address2,
-      String tel, String coment, String phone, String paystate, String qrimg, String snum,
-      String udate, String cdate) {
+      String tel, String coment, String phone, String snum, String udate, String cdate) {
     this.no = no;
     this.mno = mno;
     this.title = title;
@@ -40,16 +39,13 @@ public class ShopDTO {
     this.tel = tel;
     this.coment = coment;
     this.phone = phone;
-    this.paystate = paystate;
-    this.qrimg = qrimg;
     this.snum = snum;
     this.udate = udate;
     this.cdate = cdate;
   }
 
   public Shop toEntity() {
-    return new Shop(no, mno, title, zip, address, address2, tel, coment, phone, paystate,
-        qrimg, snum, udate, cdate);
+    return new Shop(no, mno, title, zip, address, address2, tel, coment, phone, snum, udate, cdate);
   }
 
 }

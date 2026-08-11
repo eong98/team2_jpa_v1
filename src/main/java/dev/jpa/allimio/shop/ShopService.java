@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import dev.jpa.allimio.tool.Tool;
@@ -15,6 +17,13 @@ public class ShopService {
 
   public ShopService() {
 
+  }
+
+  /**
+   * 매장 목록 검색 (/user/shop) - mno(로그인 회원) 소유 매장만 대상
+   */
+  public Page<Shop> search(long mno, String keyword, Pageable pageable) {
+    return shopRepository.search(mno, keyword, pageable);
   }
 
   /**
@@ -60,8 +69,6 @@ public class ShopService {
     shop.setTel(shopDTO.getTel());
     shop.setComent(shopDTO.getComent());
     shop.setPhone(shopDTO.getPhone());
-    shop.setPaystate(shopDTO.getPaystate());
-    shop.setQrimg(shopDTO.getQrimg());
     shop.setSnum(shopDTO.getSnum());
     shop.setUdate(Tool.getDate());
 

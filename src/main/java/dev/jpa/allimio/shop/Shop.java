@@ -32,19 +32,19 @@ public class Shop {
   private String coment;
 
   private String phone;
-  private String paystate;
-  private String qrimg;
   private String snum;
   private String udate;
   private String cdate;
+
+  // 2026-08-11 PAYSTATE(결제상태)/QRIMG(QR이미지) 컬럼은 테이블에서 제거됨.
+  // QR이미지는 "고객의소리" 쪽에서 받는 것으로 방향이 바뀌었고, 결제상태도 이 테이블 책임이 아닌 것으로 정리됨.
 
   public Shop() {
 
   }
 
   public Shop(long no, long mno, String title, String zip, String address, String address2,
-      String tel, String coment, String phone, String paystate, String qrimg, String snum,
-      String udate, String cdate) {
+      String tel, String coment, String phone, String snum, String udate, String cdate) {
     this.no = no;
     this.mno = mno;
     this.title = title;
@@ -54,8 +54,6 @@ public class Shop {
     this.tel = tel;
     this.coment = coment;
     this.phone = phone;
-    this.paystate = paystate;
-    this.qrimg = qrimg;
     this.snum = snum;
     this.udate = udate;
     this.cdate = cdate;

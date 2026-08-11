@@ -1,8 +1,14 @@
 package dev.jpa.allimio.shop;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -44,6 +51,35 @@ public class ShopCont {
     List<Shop> list = shopService.findAll();
 
     return list;
+  }
+
+  /**
+   * 매장 목록 검색 + 페이징 (/user/shop), http://localhost:9100/shop/search
+   * mno(로그인 회원)는 필수, keyword는 선택 사항. 기본 정렬: no 내림차순(최신순)
+   * @param mno 회원번호 (필수, 세션의 로그인 회원)
+   * @param keyword 매장명/주소/상세주소 포함 검색
+   * @param page 0부터 시작하는 페이지 번호 (기본 0)
+   * @param size 페이지당 개수 (기본 6)
+   * @return content/totalElements/totalPages/page/size 를 담은 Map
+   */
+  @GetMapping(path = "/search")
+  public Map<String, Object> search(
+      @RequestParam(value = "mno") long mno,
+      @RequestParam(value = "keyword", required = false) String keyword,
+      @RequestParam(value = "page", defaultValue = "0") int page,
+      @RequestParam(value = "size", defaultValue = "6") int size
+  ) {
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Page<Shop> result = shopService.search(mno, keyword, pageable);
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("content", result.getContent());
+    body.put("totalElements", result.getTotalElements());
+    body.put("totalPages", result.getTotalPages());
+    body.put("page", result.getNumber());
+    body.put("size", result.getSize());
+
+    return body;
   }
 
   /**
