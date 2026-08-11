@@ -42,7 +42,7 @@ public class MemberDTO {
   private String phone;
     
   /** 이름 */
-//  @NotBlank(message = "이름을 입력하지 않았습니다")
+//  @NotBlank(message = "이름을 입력하지 않았습니다") 
   private String mname;
   
   /** 우편번호 */

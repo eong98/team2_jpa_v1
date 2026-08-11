@@ -30,7 +30,7 @@ public class MemberCont {
   }
 
   /**
-   * 아이디 중복 체크 http://localhost/v1/member/check/{id}
+   * 아이디 중복 체크 http://localhost/v1/user/check/{id}
    * 
    * @param id
    * @return 중복된 아이디 없음 true, 중복된 아이디 있음 false
@@ -57,7 +57,7 @@ public class MemberCont {
 
   /**
    * 모든 회원의 비밀번호를 제외한 정보 조회
-   * http://10.1.205.120:9102/v1/member/find
+   * http://10.1.205.120:9102/v1/user/find
    * @return 비밀번호를 제외한 정보
    */
   @GetMapping(path = "/find")
@@ -69,7 +69,7 @@ public class MemberCont {
   
   /**
    * 특정 회원의 정보 조회
-   * http://10.1.205.120:9102/v1/member/find/{no}
+   * http://10.1.205.120:9102/v1/user/find/{no}
    * @param memberno 조회할 회원의 회원번호
    * @return 특정 회원의 정보
    */

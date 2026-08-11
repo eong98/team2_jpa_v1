@@ -89,7 +89,6 @@ public class ManagerCont {
   * @return 성공이면 관리자DTO+true, 실패면 false
   */
  @PostMapping(path="/login")
- @CrossOrigin(origins = "*")  // 모든 도메인으로부터 요청 허용
 public ResponseEntity<Map<String, Object>> login(
     @RequestParam(name="id", defaultValue="") String id, 
     @RequestParam(name="password", defaultValue="") String password){
@@ -99,7 +98,8 @@ public ResponseEntity<Map<String, Object>> login(
    
    if(loginResult.isPresent()) {  
      response.put("success", true);
-     response.put("user", loginResult.get());
+     response.put("dbms", loginResult.get());
+     System.out.println("success추가");
    } else {
      response.put("success", false);
    }
