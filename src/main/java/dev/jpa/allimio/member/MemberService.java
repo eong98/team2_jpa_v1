@@ -42,7 +42,7 @@ public class MemberService {
    * 로그인
    * @param id 
    * @param password
-   * @return 성공이면 true, 실패면 false
+   * @return 성공이면 DTO, 실패면 빈 DTO
    */
   public Optional<MemberDTO> login(String id, String password) {
     boolean check = memberRepository.existsByIdAndPassword(id, password);
