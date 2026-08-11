@@ -159,6 +159,14 @@ public class Qa {
     this.adate = adate;
     this.status = 2; // 답변 작성 시 상태값을 '답변완료(2)'로 자동 변경!
   }
+  
+  /**
+   * 관리자가 회원 문의글을 확인하면 답변상태 확인중으로 변경
+   * @param status
+   */
+  public void setStatus(int status) {
+      this.status = status;
+  }
 
   // ==========================================
   // ⭐ 문의글 소프트 삭제 메서드

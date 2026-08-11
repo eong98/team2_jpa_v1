@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface QaRepository extends JpaRepository<Qa, Long> {
   //==========================================
-  // [작성자] 1:1 문의 내역 조회
+  // [작성자] 내 문의 내역 조회
   // ==========================================
   /***
    * 내 문의내역 전체조회 + 검색조회
@@ -23,14 +23,21 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
    * @return
    */
   @Query("SELECT q FROM Qa q WHERE q.mno = :mno AND q.isdel = 'N' AND q.isfaq = 'N' "
-      + "AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) "
+      + "AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) " +
+      "AND (:type IS NULL OR q.type = :type) " +
+      "AND (:status IS NULL OR q.status = :status) " +
+      "AND (:mno IS NULL OR q.mno = :mno)"
       + "ORDER BY q.cdate DESC")
-  Page<Qa> searchMyQuestions(@Param("mno") Long mno, @Param("word") String word, Pageable pageable);
+  Page<Qa> searchMyQuestions(
+      @Param("word") String word,
+      @Param("type") Integer type,
+      @Param("status") Integer status,
+      @Param("mno") Long mno,
+      Pageable pageable);
 
   //==========================================
-  // [관리자 조회]
+  // 전체 내역 조회
   // ==========================================
-
   /***
    * 회원 문의내역 전체조회 + 검색조회
    * @param keyword
@@ -43,7 +50,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
       "AND (:status IS NULL OR q.status = :status) " +
       "AND (:mno IS NULL OR q.mno = :mno)"
       + "ORDER BY q.cdate DESC")
-  Page<Qa> searchAllQuestionsAdmin(
+  Page<Qa> searchAllQuestions(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
@@ -60,14 +67,12 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
   @Query("SELECT q FROM Qa q WHERE q.isfaq = 'Y' AND q.isdel = 'N' " +
       "AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) " +
       "AND (:type IS NULL OR q.type = :type) " +
-      "AND (:status IS NULL OR q.status = :status) " +
-      "AND (:mno IS NULL OR q.mno = :mno)" 
+      "AND (:status IS NULL OR q.status = :status) " 
       + "ORDER BY q.vseq ASC, q.cdate DESC")
-  Page<Qa> searchFaqsAdmin(
+  Page<Qa> searchFaqsAll(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
-      @Param("mno") Long mno,
       Pageable pageable);
   
 

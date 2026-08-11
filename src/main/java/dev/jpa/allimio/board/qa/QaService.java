@@ -18,7 +18,25 @@ public class QaService {
     System.out.println("-> QaService created");
   }
   
-  
+
+  /**
+   * 전체 회원 1:1 문의내역 전체 + 키워드 검색 (페이징)
+   * @param word
+   * @param pageable
+   * @return
+   */
+  public Page<QaDTO.QaResponse> getAllQuestions(QaDTO.QaSearchRequest req, Pageable pageable) {
+    // Repository로 DTO 안의 필드값들을 전달
+    Page<Qa> qaPage = qaRepository.searchAllQuestions(
+        req.getWord(),
+        req.getType(),
+        req.getStatus(),
+        req.getMno(),
+        pageable
+    );
+    return qaPage.map(QaDTO.QaResponse::fromEntity);
+  }
+
   /***
    * 내 문의내역 전체조회 + 검색조회 (페이징)
    * @param mno
@@ -26,16 +44,52 @@ public class QaService {
    * @param pageable
    * @return
    */
-  public Page<QaDTO.QaResponse> getMyQuestions(Long mno, String word, Pageable pageable) {
-    Page<Qa> qaPage = qaRepository.searchMyQuestions(mno, word, pageable);
+  public Page<QaDTO.QaResponse> getMyQuestions(QaDTO.QaSearchRequest req, Pageable pageable) {
+      Page<Qa> qaPage = qaRepository.searchMyQuestions(
+      req.getWord(),
+      req.getType(),
+      req.getStatus(),
+      req.getMno(),
+      pageable
+    );
     return qaPage.map(QaDTO.QaResponse::fromEntity);
   }
+
   
-  
-  public Qa getQa(Long no) {
-    return qaRepository.findById(no)
-            .filter(q -> "N".equals(q.getIsdel()))
-            .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
+  /**
+   * 문의글 상세페이지 조회
+   * - 내 문의글만 조회가능
+   * - 관리자는 전부 조회가능
+   * - 관리자가 조회시 답변대기 -> 확인중으로 status 변경* @param no  게시글 번호
+   * @param mno 조회하려는 회원 번호 (nullable)
+   * @param ano 조회하려는 관리자 번호 (nullable)
+   * @return Qa
+   */
+  @Transactional // 💡 관리자 열람 시 상태 업데이트(Dirty Checking)를 위해 readOnly 해제 적용
+  public Qa getQa(Long no, Long mno, Long ano) {
+    // 1. 게시글 존재 및 미삭제 여부 확인
+    Qa qa = qaRepository.findById(no)
+        .filter(q -> "N".equals(q.getIsdel()))
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
+
+    // FAQ 글("Y")은 권한 제한 없이 모두 열람 가능
+    if ("N".equals(qa.getIsfaq())) {
+      boolean isAdmin = (ano != null && ano > 0);
+
+      // 2. 관리자가 아닌 경우 작성자 본인 확인
+      if (!isAdmin) {
+        if (mno == null || !mno.equals(qa.getMno())) {
+          throw new IllegalArgumentException("본인의 문의글만 조회할 수 있습니다.");
+        }
+      }
+
+      // 3. 관리자 조회 시 상태값 변경 (0: 답변대기 -> 1: 확인중)
+      if (isAdmin && qa.getStatus() == 0) {
+        qa.setStatus(1); // 엔티티 상태 필드 직접 변경 (Dirty Checking 적용)
+      }
+    }
+
+    return qa;
   }
     
   /**
@@ -80,24 +134,6 @@ public class QaService {
   }
   
   /**
-   * 전체 회원 1:1 문의내역 전체 + 키워드 검색 (페이징)
-   * @param word
-   * @param pageable
-   * @return
-   */
-  public Page<QaDTO.QaResponse> getAllQuestionsAdmin(QaDTO.QaSearchRequest req, Pageable pageable) {
-    // Repository로 DTO 안의 필드값들을 전달
-    Page<Qa> qaPage = qaRepository.searchAllQuestionsAdmin(
-        req.getWord(),
-        req.getType(),
-        req.getStatus(),
-        req.getMno(),
-        pageable
-    );
-    return qaPage.map(QaDTO.QaResponse::fromEntity);
-  }
-
-  /**
    * 1:1 문의글 답변 작성/수정
    * @param replyDto
    */
@@ -119,12 +155,11 @@ public class QaService {
    * @param pageable
    * @return
    */
-  public Page<QaDTO.QaResponse> getFaqsAdmin(QaDTO.QaSearchRequest req, Pageable pageable) {
-    Page<Qa> qaPage = qaRepository.searchFaqsAdmin(
+  public Page<QaDTO.QaResponse> getFaqs(QaDTO.QaSearchRequest req, Pageable pageable) {
+    Page<Qa> qaPage = qaRepository.searchFaqsAll(
         req.getWord(),
         req.getType(),
         req.getStatus(),
-        req.getMno(),
         pageable
     );
     return qaPage.map(QaDTO.QaResponse::fromEntity);
