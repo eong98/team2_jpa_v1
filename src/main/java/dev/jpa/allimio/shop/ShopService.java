@@ -27,6 +27,14 @@ public class ShopService {
   }
 
   /**
+   * 관리자 매장 목록 검색 (/dbms/shop) - mno 상관없이 전체 매장 대상.
+   * mno가 null이면 전체, 값이 있으면 해당 회원 소유 매장만.
+   */
+  public Page<Shop> searchAdmin(Long mno, String keyword, Pageable pageable) {
+    return shopRepository.searchAdmin(mno, keyword, pageable);
+  }
+
+  /**
    * 등록
    * @param shopDTO
    * @return

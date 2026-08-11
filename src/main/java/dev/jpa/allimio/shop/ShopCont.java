@@ -83,6 +83,35 @@ public class ShopCont {
   }
 
   /**
+   * 관리자 매장 목록 검색 + 페이징 (/dbms/shop), http://localhost:9100/shop/admin/search
+   * mno 상관없이 전체 매장 대상. mno를 넘기면 해당 회원 소유 매장만 조회.
+   * @param mno 회원번호 (선택 사항)
+   * @param keyword 매장명/주소/상세주소 포함 검색
+   * @param page 0부터 시작하는 페이지 번호 (기본 0)
+   * @param size 페이지당 개수 (기본 10)
+   * @return content/totalElements/totalPages/page/size 를 담은 Map
+   */
+  @GetMapping(path = "/admin/search")
+  public Map<String, Object> adminSearch(
+      @RequestParam(value = "mno", required = false) Long mno,
+      @RequestParam(value = "keyword", required = false) String keyword,
+      @RequestParam(value = "page", defaultValue = "0") int page,
+      @RequestParam(value = "size", defaultValue = "10") int size
+  ) {
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Page<Shop> result = shopService.searchAdmin(mno, keyword, pageable);
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("content", result.getContent());
+    body.put("totalElements", result.getTotalElements());
+    body.put("totalPages", result.getTotalPages());
+    body.put("page", result.getNumber());
+    body.put("size", result.getSize());
+
+    return body;
+  }
+
+  /**
    * 조회, Primary Key를 이용한 조회
    * http://localhost:9100/shop/9
    * @return
