@@ -39,7 +39,7 @@ public class QaDTO {
     private String isfaq = "N";
 
     public Qa toEntity() {
-      return Qa.builder().mno(this.mno != null ? this.mno : 1L).type(this.type).title(this.title).content(this.content)
+      return Qa.builder().mno(this.mno).type(this.type).title(this.title).content(this.content)
           .cdate(this.cdate).pw(this.pw).vmode(this.vmode != null ? this.vmode : "N").status(0) // 답변 대기
           .isdel("N").isfaq("N").build();
     }
@@ -104,7 +104,7 @@ public class QaDTO {
       return Qa.builder().ano(this.ano).mno(null)
           .title(this.title).content(this.content).answer(this.answer).cdate(this.cdate).pw(this.pw).vseq(this.vseq).type(this.type)
           .status(2) // 등록과 동시에 답변완료
-          .isdel("N").vmode("Y").isfaq("Y").build();
+          .isdel("N").vmode("N").isfaq("Y").build();
     }
     
     // ⭐ 수정 시: DTO 내용을 기존 엔티티에 반영하는 편의 메서드 추가
@@ -188,6 +188,9 @@ public class QaDTO {
 
     /** 문의 회원 번호 (FK -> MEMBER.NO) */
     private Long mno;
+    
+    /** 관리자 번호 (FK -> MANAGER.NO) */
+    private Long ano;
   }
 
 }

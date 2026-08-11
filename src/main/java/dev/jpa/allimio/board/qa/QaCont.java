@@ -39,46 +39,86 @@ public class QaCont {
    * 권한 설정(비밀글, 관리자 게시 허용글 등
    * 관리자 답변 알림?
    * 첨부파일 연동
+   * 작성자 정보 노출?
+   * 잠긴글 상세 다른 회원 접근불가처리
    */
   
   
 
   /**
-   * 1:1 문의글 / FAQ 단건 상세 조회 
-   * http://localhost:9101/qa/22
-   * @param no
-   * @return
+   * 전체 회원 1:1 문의내역 전체/검색 조회 (페이징)
+   * GET /qa/list?word=관제&page=0&size=10
+   * http://localhost:9102/qa/list
    */
-  @GetMapping("/{no}")
-  public ResponseEntity<QaDTO.QaResponse> getQaDetail(@PathVariable("no") Long no) {
-    // 1. Service에서 엔티티 조회
-    Qa qa = qaService.getQa(no);
-    
-    // 2. DTO 변환 후 200 OK 응답 반환
-    return ResponseEntity.ok(QaDTO.QaResponse.fromEntity(qa));
+  @GetMapping(path="/list")
+  public ResponseEntity<PageResponse<QaDTO.QaResponse>> getAllQuestions(
+      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
+      @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
+
+    // Service로 searchCondition 전달
+    Page<QaDTO.QaResponse> pageResult = qaService.getAllQuestions(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
   }
   
   /**
-   * 내 1:1 문의 내역 전체/검색 조회 (페이징)
-   * GET /api/qa/my/1?word=장비&page=0&size=10
-   * http://localhost:9101/qa/my/1
+   * FAQ 목록 전체/검색 조회 (페이징)
+   * GET /qa/faq?word=비밀번호&page=0&size=10
+   * http://localhost:9102/qa/faq
+   */
+  @GetMapping(path="/faq")
+  public ResponseEntity<PageResponse<QaDTO.QaResponse>> getAllFaqs(
+      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
+      @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
+
+    // Service로 searchCondition 전달
+    Page<QaDTO.QaResponse> pageResult = qaService.getFaqs(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
+
+  /**
+   * 내 문의 내역 전체/검색 조회 (페이징)
+   * GET /qa/my/1?word=장비&page=0&size=10
+   * http://localhost:9102/qa/my/1
    */
   @GetMapping(path="/my/{mno}")
   public ResponseEntity<PageResponse<QaDTO.QaResponse>> getMyQuestions(
-      @PathVariable("mno") Long mno,
-      @RequestParam(value = "word", required = false) String word,
+      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
       @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    Page<QaDTO.QaResponse> pageResult = qaService.getMyQuestions(mno, word, pageable);
+    // Service로 searchCondition 전달
+    Page<QaDTO.QaResponse> pageResult = qaService.getMyQuestions(searchCondition, pageable);
     
     // PageResponse.of()를 통해 생성자 호출 코드 중복 없이 깔끔하게 반환
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
 
+  
+  /**
+   * 문의글 상세 조회 
+   * GET /qa/22?mno=1 (회원 조회 시)
+   * GET /qa/22?ano=1 (관리자 조회 시)
+   * 
+   * @param no 게시글 번호
+   * @param mno 요청 회원 번호 (optional)
+   * @param ano 요청 관리자 번호 (optional)
+   * @return
+   */
+  @GetMapping("/{no}")
+  public ResponseEntity<QaDTO.QaResponse> getQaDetail(@PathVariable("no") Long no,
+      @RequestParam(name = "mno", required = false) Long mno,
+      @RequestParam(name = "ano", required = false) Long ano) {
+    // 1. Service에서 엔티티 조회
+    Qa qa = qaService.getQa(no, mno, ano);
+    
+    // 2. DTO 변환 후 200 OK 응답 반환
+    return ResponseEntity.ok(QaDTO.QaResponse.fromEntity(qa));
+  }
+  
+  
   /**
    * 1:1 문의글 작성 (등록)
-   * POST /api/qa
-   * http://localhost:9101/qa
+   * POST /qa
+   * http://localhost:9102/qa
    */
   @PostMapping
   public ResponseEntity<Long> createQuestion(@RequestBody QaDTO.QCRequest dto) {
@@ -102,36 +142,11 @@ public class QaCont {
     return ResponseEntity.ok("문의글이 성공적으로 수정되었습니다.");
   }
 
-  /**
-   * 1:1 문의글/FAQ 삭제
-   * DELETE /api/qa
-   * http://localhost:9101/qa
-   */
-  @DeleteMapping
-  public ResponseEntity<String> deleteQuestion(
-      @RequestBody QaDTO.DeleteRequest deleteDto) {
-    qaService.deleteQuestion(deleteDto);
-    return ResponseEntity.ok("성공적으로 삭제되었습니다.");
-  }
-
 
   // ==========================================
   // [관리자 / FAQ] Endpoints
   // ==========================================
 
-  /**
-   * 5. [관리자] 전체 회원 1:1 문의내역 전체/검색 조회 (페이징)
-   * GET /api/qa/admin/list?word=관제&page=0&size=10
-   */
-  @GetMapping(path="/admin/list")
-  public ResponseEntity<PageResponse<QaDTO.QaResponse>> getAllQuestionsAdmin(
-      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
-      @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
-
-    // Service로 searchCondition 전달
-    Page<QaDTO.QaResponse> pageResult = qaService.getAllQuestionsAdmin(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));
-  }
 
   /**
    * 6. [관리자] 1:1 문의글 답변 작성/수정
@@ -148,24 +163,9 @@ public class QaCont {
   }
 
   /**
-   * 7. FAQ 목록 전체/검색 조회 (페이징)
-   * GET /api/qa/faq?word=비밀번호&page=0&size=10
-   * http://localhost:9101/qa/faq
-   */
-  @GetMapping(path="/faq")
-  public ResponseEntity<PageResponse<QaDTO.QaResponse>> getFaqsAdmin(
-      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
-      @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
-
-    // Service로 searchCondition 전달
-    Page<QaDTO.QaResponse> pageResult = qaService.getFaqsAdmin(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));
-  }
-
-  /**
    * 8. FAQ 작성 (등록)
-   * POST /api/qa/faq
-   * http://localhost:9101/qa/faq
+   * POST /qa/faq
+   * http://localhost:9102/qa/faq
    */
   @PostMapping(path="/faq")
   public ResponseEntity<Long> createFAQ(@RequestBody QaDTO.FaqCRequest dto) {
@@ -175,8 +175,8 @@ public class QaCont {
 
   /**
    * 9. FAQ 수정
-   * PUT /api/qa/faq/10
-   * http://localhost:9101/qa/faq/25
+   * PUT /qa/faq/10
+   * http://localhost:9102/qa/faq/25
    */
   @PutMapping(path="/faq/{no}")
   public ResponseEntity<String> updateFAQ(
@@ -185,6 +185,22 @@ public class QaCont {
 
     qaService.updateFAQ(no, updateDto);
     return ResponseEntity.ok("FAQ가 성공적으로 수정되었습니다.");
+  }
+
+  
+  
+  
+
+  /**
+   * 문의글/FAQ 삭제
+   * DELETE /qa
+   * http://localhost:9102/qa
+   */
+  @DeleteMapping
+  public ResponseEntity<String> deleteQuestion(
+      @RequestBody QaDTO.DeleteRequest deleteDto) {
+    qaService.deleteQuestion(deleteDto);
+    return ResponseEntity.ok("성공적으로 삭제되었습니다.");
   }
 
 }

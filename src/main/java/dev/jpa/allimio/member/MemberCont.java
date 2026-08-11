@@ -84,10 +84,10 @@ public class MemberCont {
    * 로그인
    * @param id
    * @param password
-   * @return 성공이면 true, 실패면 false
+   * @return 성공이면 DTO+true, 실패면 false
    */
   @PostMapping(path="/login")
- public ResponseEntity<?> login(
+ public ResponseEntity<Map<String, Object>> login(
      @RequestParam(name="id", defaultValue="") String id, 
      @RequestParam(name="password", defaultValue="") String password){
     Optional<MemberDTO> loginResult = memberService.login(id, password);
