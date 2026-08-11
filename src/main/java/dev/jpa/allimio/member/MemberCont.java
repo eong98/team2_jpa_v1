@@ -1,6 +1,9 @@
 package dev.jpa.allimio.member;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -84,12 +87,21 @@ public class MemberCont {
    * @return 성공이면 true, 실패면 false
    */
   @PostMapping(path="/login")
- public ResponseEntity<Boolean> login(
+ public ResponseEntity<?> login(
      @RequestParam(name="id", defaultValue="") String id, 
      @RequestParam(name="password", defaultValue="") String password){
-    boolean check = memberService.login(id, password);
+    Optional<MemberDTO> loginResult = memberService.login(id, password);
     
-    return ResponseEntity.ok(check);
+    Map<String, Object> response = new HashMap<>();
+    
+    if(loginResult.isPresent()) {  
+      response.put("success", true);
+      response.put("user", loginResult.get());
+    } else {
+      response.put("success", false);
+    }
+    
+    return ResponseEntity.ok(response);
   }
 
   /**
@@ -149,24 +161,24 @@ public class MemberCont {
   }
   
  // 테스트 X
-  /** 
-   * 비밀번호 업데이트
-   * @param memberDTO 회원정보+새비밀번호
-   * @return  성공하면 true
-   */
-  @PostMapping(path = "/update/password")
-  public ResponseEntity<Boolean> updatePassword(
-      @RequestBody MemberDTO memberDTO) {
-    String id = memberDTO.getId();
-    String password = memberDTO.getPassword();
-    
-    
-    boolean check = memberService.login(id, password);
-    
-    if(check) {
-      memberService.updatePassword(id, memberDTO.getNewPassword());
-    }
-    
-    return ResponseEntity.ok(check);
-  }
+//  /** 
+//   * 비밀번호 업데이트
+//   * @param memberDTO 회원정보+새비밀번호
+//   * @return  성공하면 true
+//   */
+//  @PostMapping(path = "/update/password")
+//  public ResponseEntity<Boolean> updatePassword(
+//      @RequestBody MemberDTO memberDTO) {
+//    String id = memberDTO.getId();
+//    String password = memberDTO.getPassword();
+//    
+//    
+//    boolean check = memberService.login(id, password);
+//    
+//    if(check) {
+//      memberService.updatePassword(id, memberDTO.getNewPassword());
+//    }
+//    
+//    return ResponseEntity.ok(check);
+//  }
 }

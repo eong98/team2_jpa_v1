@@ -36,5 +36,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
          "FROM Member u " +
          "WHERE u.no = :no") 
   public Optional<MemberDTO> findWithNoWithoutPassword(@Param("no") Long no);
+  
+  /** 특정 회원의 정보 조회 */
+  @Query("SELECT new dev.jpa.allimio.member.MemberDTO(u.no, u.id, u.email, u.phone, u.mname, u.zipcode, u.addr, u.addrDetail, u.grade, u.status, u.udate, u.cdate, u.nation) " +
+         "FROM Member u " +
+         "WHERE u.id = :id AND u.password = :password") 
+  public Optional<MemberDTO> longinDTO(@Param("id") String id, @Param("password") String password);
 
 }
