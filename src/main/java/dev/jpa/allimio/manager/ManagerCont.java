@@ -20,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/dbms")
-@CrossOrigin(origins = "*", allowedHeaders = "*") // 모든 도메인으로 부터 요청 허용
 public class ManagerCont {
   private final ManagerService managerService;
 
@@ -29,7 +28,7 @@ public class ManagerCont {
  }
 
  /**
-  * 아이디 중복 체크 http://10.1.205.120:9200/v1/dbms/check/{id}
+  * 아이디 중복 체크 http://10.1.205.120:9102/v1/dbms/check/{id}
   * 
   * @param id
   * @return 중복된 아이디 없음 true, 중복된 아이디 있음 false
@@ -43,7 +42,7 @@ public class ManagerCont {
 
  /**
   * 회원가입 
-  * http://localhost:9200/v1/dbms/save
+  * http://localhost:9102/v1/dbms/save
   * @param managerDTO
   * @return 가입정보
   */
@@ -56,7 +55,7 @@ public class ManagerCont {
 
  /**
   * 비밀번호를 제외한 정보 조회
-  * http://10.1.205.120:9200/v1/dbms/find
+  * http://10.1.205.120:9102/v1/dbms/find
   * @return 비밀번호를 제외한 정보
   */
  @GetMapping(path = "/find")
@@ -68,7 +67,7 @@ public class ManagerCont {
  
  /**
   * 특정 관리자의 정보 조회
-  * http://10.1.205.120:9200/v1/dbms/find
+  * http://10.1.205.120:9102/v1/dbms/find
   * @param memberno 조회할 회원의 회원번호
   * @return 특정 회원의 정보
   */
@@ -81,7 +80,7 @@ public class ManagerCont {
 
  /**
   * 로그인
-  * http://10.1.205.120:9200/v1/dbms/login
+  * http://10.1.205.120:9102/v1/dbms/login
   * @param id
   * @param password
   * @return 성공이면 true, 실패면 false
@@ -98,7 +97,7 @@ public ResponseEntity<Boolean> login(
 
  /**
   * 관리자가 자신을 수정한 경우
-  * http://localhost:9200/v1/dbms/update/self/managerno
+  * http://localhost:9102/v1/dbms/update/self/managerno
   * @param managerno 관리자번호
   * @param managerDTO 변경한 값
   * @return 성공시 200 OK 
@@ -114,7 +113,7 @@ public ResponseEntity<Boolean> login(
  
  /**
   * 관리자가 관리자를 수정한 경우
-  * http://localhost:9200/v1/dbms/update/manager/managerno
+  * http://localhost:9102/v1/dbms/update/manager/managerno
   * @param targetno 회원번호
   * @param managerDTO 변경한 값
   * @param managerno 관리자번호
@@ -130,6 +129,7 @@ public ResponseEntity<Boolean> login(
    return ResponseEntity.ok().build();
  }
  
+ //  테스트 X
  /**
   * 회원 강제 탈퇴, 실제 데이터를 삭제하지 않고 상태만 정지로 변경.
   * @param targetno 탈퇴시킬 관리자 번호
@@ -153,6 +153,7 @@ public ResponseEntity<Boolean> login(
    return ResponseEntity.ok().build();
  }
  
+ // 테스트 X
  /** 
   * 비밀번호 업데이트
   * @param managerDTO 관리자정보+새비밀번호

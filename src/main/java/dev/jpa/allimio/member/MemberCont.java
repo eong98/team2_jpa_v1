@@ -19,8 +19,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/user")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
-
 public class MemberCont {
   private final MemberService memberService;
 
@@ -42,7 +40,7 @@ public class MemberCont {
   }
 
   /**
-   * 회원가입 http://10.1.205.120:9200/v1/user/save
+   * 회원가입 http://10.1.205.120:9102/v1/user/save
    * 
    * @param memberDTO
    * @return 가입정보
@@ -56,7 +54,7 @@ public class MemberCont {
 
   /**
    * 모든 회원의 비밀번호를 제외한 정보 조회
-   * http://10.1.205.120:9200/v1/member/find
+   * http://10.1.205.120:9102/v1/member/find
    * @return 비밀번호를 제외한 정보
    */
   @GetMapping(path = "/find")
@@ -68,7 +66,7 @@ public class MemberCont {
   
   /**
    * 특정 회원의 정보 조회
-   * http://10.1.205.120:9200/v1/member/find/{no}
+   * http://10.1.205.120:9102/v1/member/find/{no}
    * @param memberno 조회할 회원의 회원번호
    * @return 특정 회원의 정보
    */
@@ -126,6 +124,7 @@ public class MemberCont {
     return ResponseEntity.ok().build();
   }
   
+  // 테스트 X
   /**
    * 회원 강제 탈퇴, 실제 데이터를 삭제하지 않고 상태만 정지로 변경.
    * @param memberno 탈퇴시킬 회원 번호
@@ -149,6 +148,7 @@ public class MemberCont {
     return ResponseEntity.ok().build();
   }
   
+ // 테스트 X
   /** 
    * 비밀번호 업데이트
    * @param memberDTO 회원정보+새비밀번호
