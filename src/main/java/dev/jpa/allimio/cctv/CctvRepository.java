@@ -52,4 +52,10 @@ public interface CctvRepository extends JpaRepository<Cctv, Long> {
       Pageable pageable
   );
 
+  /**
+   * 매장(sno)에 등록된 CCTV 대수. /user/shop 매장 카드에 "등록 CCTV 몇 대"를 보여주기 위한 용도.
+   * @param sno 매장 번호
+   */
+  long countBySno(long sno);
+
 }
