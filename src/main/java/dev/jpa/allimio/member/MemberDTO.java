@@ -61,7 +61,7 @@ public class MemberDTO {
   private String cdate;
   
   /** 등급 */
-  private int grade;
+  private Integer grade;
   
   /** 상태 */
   private String status;
@@ -105,7 +105,7 @@ public class MemberDTO {
   }
 
   public MemberDTO(long no, String id, String email, String phone, String mname, String zipcode, String addr,
-      String addrDetail, String cdate, int grade, String status, String udate, String termsAgreeYn,
+      String addrDetail, String cdate, Integer grade, String status, String udate, String termsAgreeYn,
       String privacyAgreeYn, String nation) {
     this.no = no;
     this.id = id;
@@ -125,7 +125,7 @@ public class MemberDTO {
   }
 
   public MemberDTO(long no, String id, String email, String phone, String mname, String zipcode, String addr,
-      String addrDetail, int grade, String status, String udate, String cdate, String nation) {
+      String addrDetail, Integer grade, String status, String udate, String cdate, String nation) {
     this.no = no;
     this.id = id;
     this.email = email;

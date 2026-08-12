@@ -42,7 +42,7 @@ public class Manager {
   private String phone;
   
   /** 관리자 등급 */
-  private int grade;
+  private Integer grade;
   
   /**관리자 상태 */
   private String status;
@@ -53,7 +53,7 @@ public class Manager {
   /** 계정 정보 수정일 */
   private String udate;
 
-  public void updateByManager(String mname, String email, String phone, int grade, String status, String udate) {
+  public void updateByManager(String mname, String email, String phone, Integer grade, String status, String udate) {
     this.mname = mname;
     this.email = email;
     this.phone = phone;
