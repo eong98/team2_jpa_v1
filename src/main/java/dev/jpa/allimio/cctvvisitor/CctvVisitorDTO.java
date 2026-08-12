@@ -14,7 +14,7 @@ public class CctvVisitorDTO {
   private String trackId;
   private String intime;
   private String outtime;
-  private int staytime;
+  private Integer staytime;
   private int state;
   private String cdate;
 
@@ -23,7 +23,7 @@ public class CctvVisitorDTO {
   }
 
   public CctvVisitorDTO(long no, long cno, String trackId, String intime, String outtime,
-      int staytime, int state, String cdate) {
+      Integer staytime, int state, String cdate) {
     this.no = no;
     this.cno = cno;
     this.trackId = trackId;

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import dev.jpa.allimio.tool.Tool;
@@ -28,6 +30,23 @@ public class CctvVisitorService {
     List<CctvVisitor> list = cctvVisitorRepository.findAll();
 
     return list;
+  }
+
+  /**
+   * 관리자 손님(방문객) 목록 검색 (/dbms/cctvvisitor) - sno 상관없이 전체 대상.
+   * sno를 넘기면 해당 매장 소유 CCTV로 찍힌 손님만 필터링.
+   */
+  public Page<CctvVisitor> searchAdmin(Long sno, Long cno, Integer state, String keyword,
+      String intimeFrom, String intimeTo, Pageable pageable) {
+    return cctvVisitorRepository.searchAdmin(sno, cno, state, keyword, intimeFrom, intimeTo, pageable);
+  }
+
+  /**
+   * 매장(사용자) 손님 목록 검색 (/user/cctvvisitor) - sno(입장한 매장) 소유 CCTV로 찍힌 손님만 대상.
+   */
+  public Page<CctvVisitor> searchByShop(long sno, Long cno, Integer state, String keyword,
+      String intimeFrom, String intimeTo, Pageable pageable) {
+    return cctvVisitorRepository.searchByShop(sno, cno, state, keyword, intimeFrom, intimeTo, pageable);
   }
 
   public CctvVisitor findById(long pk) {
