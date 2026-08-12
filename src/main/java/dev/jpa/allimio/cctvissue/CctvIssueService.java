@@ -40,6 +40,14 @@ public class CctvIssueService {
     return cctvIssueRepository.search(cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
   }
 
+  /**
+   * 사용자(매장) 화면용 검색 - sno(매장 번호)로 소유 CCTV의 이슈만 조회
+   */
+  public Page<CctvIssue> searchByShop(long sno, Long cno, String code, Integer state, String noticeyn,
+      String keyword, String cdateFrom, String cdateTo, Pageable pageable) {
+    return cctvIssueRepository.searchByShop(sno, cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
+  }
+
   public CctvIssue findById(long pk) {
     Optional<CctvIssue> optional = cctvIssueRepository.findById(pk);
 

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import dev.jpa.allimio.tool.Tool;
@@ -22,6 +24,21 @@ public class CctvService {
     Cctv cctv = cctvRepository.save(cctvDTO.toEntity());
 
     return cctv;
+  }
+
+  /**
+   * 매장 CCTV 목록 검색 (/user/shop/cctv) - sno(입장한 매장) 소유 CCTV만 대상
+   */
+  public Page<Cctv> search(long sno, String keyword, Pageable pageable) {
+    return cctvRepository.search(sno, keyword, pageable);
+  }
+
+  /**
+   * 관리자 CCTV 목록 검색 (/dbms/cctv) - sno 상관없이 전체 CCTV 대상.
+   * sno가 null이면 전체, 값이 있으면 해당 매장 소유 CCTV만.
+   */
+  public Page<Cctv> searchAdmin(Long sno, Integer state, String keyword, Pageable pageable) {
+    return cctvRepository.searchAdmin(sno, state, keyword, pageable);
   }
 
   public List<Cctv> findAll() {
