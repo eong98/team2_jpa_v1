@@ -122,16 +122,17 @@ public class MemberCont {
   
   /**
    * 관리자가 회원을 수정한 경우
+   * http://10.1.205.120:9102/v1/user/update/manager/
    * @param memberno 회원번호
    * @param memberDTO 변경한 값
    * @param managerno 관리자번호
    * @return 성공시 200 OK
    */
-  @PutMapping(path="/update/manager/{memberno}")
+  @PutMapping(path="/update/manager/{memberno}/{managerno}")
   public ResponseEntity<Void> updateMemberByManager(
       @PathVariable("memberno") Long memberno,
       @RequestBody MemberDTO memberDTO,
-      @RequestParam("managerno") Long managerno) {
+      @PathVariable("managerno") Long managerno) {
     memberService.updateMemberByManager(memberno, memberDTO, managerno);
     
     return ResponseEntity.ok().build();
