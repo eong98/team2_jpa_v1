@@ -106,6 +106,7 @@ public class MemberCont {
 
   /**
    * 회원이 자신을 수정한 경우
+   * http://10.1.205.120:9102/v1/user/update/self/
    * @param memberno 회원번호
    * @param memberDTO 변경한 값
    * @return 성공시 200 OK 

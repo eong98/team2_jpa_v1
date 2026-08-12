@@ -109,7 +109,7 @@ public ResponseEntity<Map<String, Object>> login(
 
  /**
   * 관리자가 자신을 수정한 경우
-  * http://localhost:9102/v1/dbms/update/self/managerno
+  * http://10.1.205.120:9102:9102/v1/dbms/update/self/managerno
   * @param managerno 관리자번호
   * @param managerDTO 변경한 값
   * @return 성공시 200 OK 
