@@ -7,16 +7,16 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.history.update.UpdateHistoryDTO;
+import dev.jpa.allimio.history.update.UpdateHistoryRepository;
 import dev.jpa.allimio.tool.Tool;
-import dev.jpa.allimio.manager.updatelog.ManagerUpdatelogDTO;
-import dev.jpa.allimio.manager.updatelog.ManagerUpdatelogRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor    // final 붙은 필드들을 파라미터로 가지는 생성자가 자동생성
 public class ManagerService {
   private final ManagerRepository managerRepository;
-  private final ManagerUpdatelogRepository managerUpdatelogRepository;
+  private final UpdateHistoryRepository updatehistoryRepository;
   
   /**
    * 아이디 중복 체크
@@ -89,7 +89,7 @@ public class ManagerService {
     String now = Tool.getDate();
     Manager manager = managerRepository.findById(managerno).orElseThrow();
     
-    saveUpdateLogs(manager, managerDTO, managerno , now);
+    saveUpdateLogs(manager, managerDTO, 0, managerno, now);
     
     manager.updateBySelf(managerDTO.getMname(), managerDTO.getEmail(), managerDTO.getPhone(), now);
   }
@@ -106,7 +106,7 @@ public class ManagerService {
     String now = Tool.getDate();
     Manager manager = managerRepository.findById(targetno).orElseThrow();
     
-    saveUpdateLogs(manager, managerDTO, managerno , now);
+    saveUpdateLogs(manager, managerDTO, 1, managerno, now);
     
     manager.updateByManager(managerDTO.getMname(), managerDTO.getEmail(), managerDTO.getPhone(), managerDTO.getGrade(),  managerDTO.getStatus(), now);
   }
@@ -118,7 +118,7 @@ public class ManagerService {
    * @param managerno 변경한 관리자 번호
    * @param now 변경한 시간
    */
-  private void saveUpdateLogs(Manager manager, ManagerDTO managerDTO, Long managerno, String now) {
+  private void saveUpdateLogs(Manager manager, ManagerDTO managerDTO, int changedBy, Long managerno, String now) {
     String [] columsToCompare = {"mname", "phone", "email", "grade", "status"};
     
     try {
@@ -146,16 +146,18 @@ public class ManagerService {
         
         // oldValue와 newValue의 값이 다를경우 log를 생성 후 저장.
         if(!oldValue.equals(newValue)) {
-          ManagerUpdatelogDTO log = ManagerUpdatelogDTO.builder()
+          UpdateHistoryDTO log = UpdateHistoryDTO.builder()
+              .mno(null)
               .mnno(manager.getNo())
               .changedColumn(fieldName.toUpperCase())
               .oldValue(oldValue)
               .newValue(newValue)
               .changeDate(now)
+              .changedBy(changedBy)
               .updtMnno(managerno)
               .build();
           
-          managerUpdatelogRepository.save(log.toEntity());
+          updatehistoryRepository.save(log.toEntity());
         }
       }
     } catch(Exception e) {

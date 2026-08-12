@@ -1,22 +1,23 @@
 package dev.jpa.allimio.member;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.history.update.UpdateHistoryDTO;
+import dev.jpa.allimio.history.update.UpdateHistoryRepository;
 import dev.jpa.allimio.tool.Tool;
-import dev.jpa.allimio.member.updatelog.MemberUpdatelogDTO;
-import dev.jpa.allimio.member.updatelog.MemberUpdatelogRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor    // final 붙은 필드들을 파라미터로 가지는 생성자가 자동생성
 public class MemberService {
   private final MemberRepository memberRepository;
-  private final MemberUpdatelogRepository memberUpdatelogRepository;
+  private final UpdateHistoryRepository updateHistoryRepository;
   
   /**
    * 아이디 중복 체크
@@ -78,7 +79,7 @@ public class MemberService {
     String now = Tool.getDate();
     Member member = memberRepository.findById(memberno).orElseThrow();
     
-    saveUpdateLogs(member, memberDTO, 1, null , now);
+    saveUpdateLogs(member, memberDTO, 0, null , now);
     
     member.updateBySelf(memberDTO.getMname(), memberDTO.getPhone(), memberDTO.getEmail(), memberDTO.getZipcode(), memberDTO.getAddr(), memberDTO.getAddrDetail(), now);
   }
@@ -95,7 +96,7 @@ public class MemberService {
     String now = Tool.getDate();
     Member member = memberRepository.findById(memberno).orElseThrow();
     
-    saveUpdateLogs(member, memberDTO, 0, managerno , now);
+    saveUpdateLogs(member, memberDTO, 1, managerno , now);
     
     member.updateByManager(memberDTO.getMname(), memberDTO.getGrade(), memberDTO.getPhone(), memberDTO.getEmail(), memberDTO.getZipcode(), memberDTO.getAddr(), memberDTO.getAddrDetail(), memberDTO.getStatus(), now);
   }
@@ -112,47 +113,67 @@ public class MemberService {
     String [] columsToCompare = {"mname", "phone", "email", "zipcode", "addr", "addrDetail", "grade", "status"};
     
     try {
+      // 변경 내역을 모아둘 리스트 생성
+      List<String> changedColumns = new ArrayList<>();
+      List<String> oldValues = new ArrayList<>();
+      List<String> newValues = new ArrayList<>();
+
       for (String fieldName : columsToCompare) {
-        // 키 : 값 형태로 가져오기 위해 필드 정보 세팅 
-        Field entityField = Member.class.getDeclaredField(fieldName);
-        Field dtoField = MemberDTO.class.getDeclaredField(fieldName);
-        
-        // 필드 수정 권한 
-        entityField.setAccessible(true);
-        dtoField.setAccessible(true);
-        
-        // 필드 안의 값의 형태가 다르므로 오브젝트로 값을 저장.
-        Object oldValueObj = entityField.get(member);
-        Object newValueObj = dtoField.get(memberDTO);
-        
-        // 바뀐 값이 null 이면 수정하지 않은 값으로 판단하고 스킵
-        if (newValueObj == null) {
-          continue;
-        }
-        
-        // 값이 null인 경우 ""으로 변환
-        String oldValue = (oldValueObj != null) ? oldValueObj.toString() : "";
-        String newValue = newValueObj.toString();
-        
-        // oldValue와 newValue의 값이 다를경우 log를 생성 후 저장.
-        if(!oldValue.equals(newValue)) {
-          MemberUpdatelogDTO log = MemberUpdatelogDTO.builder()
+          // 키 : 값 형태로 가져오기 위해 필드 정보 세팅
+          Field entityField = Member.class.getDeclaredField(fieldName);
+          Field dtoField = MemberDTO.class.getDeclaredField(fieldName);
+          
+          // 필드 수정 권한
+          entityField.setAccessible(true);
+          dtoField.setAccessible(true);
+
+          // 필드 안의 값의 형태가 다르므로 오브젝트로 값을 저장.
+          Object oldValueObj = entityField.get(member);
+          Object newValueObj = dtoField.get(memberDTO);
+          
+          // 바뀐 값이 null 이면 수정하지 않은 값으로 판단하고 스킵  
+          if (newValueObj == null) {
+              continue;
+          }
+          
+          // 값이 null인 경우 ""으로 변환
+          String oldValue = (oldValueObj != null) ? oldValueObj.toString() : "";
+          String newValue = newValueObj.toString();
+
+          // 값이 다를 경우
+          if (!oldValue.equals(newValue)) {
+              changedColumns.add(fieldName.toUpperCase());
+
+              // password 필드인 경우 지정한 문자열로 저장
+              if (fieldName.equals("password")) {
+                  oldValues.add("changed_password");
+                  newValues.add("changed_password");
+              } else {
+                  oldValues.add(oldValue);
+                  newValues.add(newValue);
+              }
+          }
+      }
+
+      // 변경된 컬럼이 있을 때만 1개의 통합 로그 저장
+      if (!changedColumns.isEmpty()) {
+          UpdateHistoryDTO log = UpdateHistoryDTO.builder()
               .mno(member.getNo())
-              .changedColumn(fieldName.toUpperCase())
-              .oldValue(oldValue)
-              .newValue(newValue)
+              .mnno(null)
+              .changedColumn(String.join("/", changedColumns))
+              .oldValue(String.join("/", oldValues))
+              .newValue(String.join("/", newValues))
               .changeDate(now)
               .changedBy(changedBy)
               .updtMnno(managerno)
               .build();
-          
-          memberUpdatelogRepository.save(log.toEntity());
-        }
+
+          updateHistoryRepository.save(log.toEntity());
       }
-    } catch(Exception e) {
+  } catch (Exception e) {
       throw new RuntimeException("로그 생성 중 오류 발생", e);
-    }
   }
+}
   
   /**
    * 비밀번호 수정

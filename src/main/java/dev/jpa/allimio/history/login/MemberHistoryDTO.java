@@ -1,4 +1,4 @@
-package dev.jpa.allimio.member.history;
+package dev.jpa.allimio.history.login;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

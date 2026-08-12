@@ -1,5 +1,6 @@
-package dev.jpa.allimio.member.updatelog;
+package dev.jpa.allimio.history.update;
 
+import dev.jpa.allimio.manager.Manager;
 import dev.jpa.allimio.member.Member;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -25,7 +26,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "MEMBER_UPDATELOG")
-public class MemberUpdatelog {
+public class UpdateHistory {
   /** 업데이트 로그 번호 */
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "member_updatelog_seq_use")
@@ -36,6 +37,11 @@ public class MemberUpdatelog {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "mno")
   private Member mno;
+  
+  /** 관리자 번호*/
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "mnno")
+  private Manager mnno;
 
   /** 변경한 항목 */
   private String changedColumn;
@@ -55,6 +61,6 @@ public class MemberUpdatelog {
   /** 변경한 관리자 번호 */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "updt_mnno")
-  private Member updtMnno;
+  private Manager updtMnno;
 
 }
