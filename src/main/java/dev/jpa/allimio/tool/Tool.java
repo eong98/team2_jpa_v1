@@ -49,7 +49,7 @@ public class Tool {
    * @return
    */
   public static String getDate() {
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     String now = sdf.format(new Date());
     
     return now;

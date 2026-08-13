@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import dev.jpa.allimio.member.MemberDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -91,7 +92,8 @@ public class ManagerCont {
  @PostMapping(path="/login")
 public ResponseEntity<Map<String, Object>> login(
     @RequestParam(name="id", defaultValue="") String id, 
-    @RequestParam(name="password", defaultValue="") String password){
+    @RequestParam(name="password", defaultValue="") String password,
+    HttpServletRequest request){
    Optional<ManagerDTO> loginResult = managerService.login(id, password);
    
    Map<String, Object> response = new HashMap<>();

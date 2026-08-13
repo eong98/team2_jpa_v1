@@ -2,12 +2,16 @@ package dev.jpa.allimio.member;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.history.login.LoginHistory;
+import dev.jpa.allimio.history.login.LoginHistoryRepository;
 import dev.jpa.allimio.history.update.UpdateHistoryDTO;
 import dev.jpa.allimio.history.update.UpdateHistoryRepository;
 import dev.jpa.allimio.tool.Tool;
@@ -18,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberService {
   private final MemberRepository memberRepository;
   private final UpdateHistoryRepository updateHistoryRepository;
+  private final LoginHistoryRepository loginHistroyRepository;
   
   /**
    * 아이디 중복 체크
@@ -45,16 +50,68 @@ public class MemberService {
    * @param password
    * @return 성공이면 DTO, 실패면 빈 DTO
    */
-  public Optional<MemberDTO> login(String id, String password) {
-    boolean check = memberRepository.existsByIdAndPassword(id, password);
+  public Map<String, Object> login(String id, String password, String ipAddr) {
+    Map<String, Object> result = new HashMap<>();
+    String now = Tool.getDate();
+    String tag = "[회원]";
     
-    if(check) {
-      Optional<MemberDTO> memberDTO = memberRepository.longinDTO(id, password);
-      
-      return memberDTO;
-    } else {
-      return Optional.empty();
+    Optional<Member> memberOpt = memberRepository.findById(id);
+    
+ // [실패 1] 존재하지 않는 계정
+    if (memberOpt.isEmpty()) {
+        saveLoginLogs(id, 0, "USER_NOT_FOUND", tag+"존재하지 않는 아이디입니다.", now, ipAddr, null);
+        result.put("success", false);
+        result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+        return result;
     }
+
+    Member member = memberOpt.get();
+
+    // [실패 2] 회원 상태 체크 (state: 0=탈퇴, 2=정지 예시)
+    if (member.getStatus() == "0") {
+        saveLoginLogs(id, 0, "ACCOUNT_DELETED", tag+"탈퇴한 회원입니다.", now, ipAddr, member);
+        result.put("success", false);
+        result.put("message", "탈퇴한 회원입니다.");
+        return result;
+    }
+    
+    // [실패 2] 2::사유 로 저장됨으로 상태가 2로 시작되면 작동
+    if (member.getStatus() != null && member.getStatus().startsWith("2")) {
+        saveLoginLogs(id, 0, "ACCOUNT_SUSPENDED", tag+"정지된 회원입니다.", now, ipAddr, member);
+        result.put("success", false);
+        result.put("message", "정지된 회원입니다.");
+        return result;
+    }
+
+    // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
+    if (!member.getPassword().equals(password)) {
+        saveLoginLogs(id, 0, "INVALID_PASSWORD", tag+"비밀번호가 맞지 않습니다.", now, ipAddr, member);
+        result.put("success", false);
+        result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+        return result;
+    }
+
+    // [성공] 모든 검증 통과
+    saveLoginLogs(id, 1, null, null, now, ipAddr, member);
+    result.put("success", true);
+    result.put("user", MemberDTO.from(member)); // Member 엔티티를 DTO로 변환
+    return result;
+}
+  
+  public void saveLoginLogs(String loginId, int loginResult, String failCode, String failReason, String now, String ipAddr, Member member) {
+    
+    LoginHistory history = LoginHistory.builder()
+        .loginId(loginId)         // 시도한 아이디
+        .loginResult(loginResult) // "SUCCESS" 또는 "FAIL"
+        .failCode(failCode)       // "INVALID_PASSWORD", "ACCOUNT_SUSPENDED", "USER_NOT_FOUND" 등
+        .failReason(failReason)   // 상세 실패 사유 (DB 내부 확인용)
+        .loginDate(now)     // 시도 일시 (Tool.getDate() 값)
+        .ipAddr(ipAddr)           // IP 주소
+        .mno(member)              // Member 엔티티 (존재하지 않는 계정이면 null)
+        .mnno(null)
+        .build();
+
+    loginHistroyRepository.save(history);
   }
   
   

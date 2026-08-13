@@ -103,6 +103,31 @@ public class MemberDTO {
         .nation(this.nation)
         .build();
   }
+  
+  public static MemberDTO from(Member member) {
+    if (member == null) {
+        return null;
+    }
+
+    MemberDTO dto = new MemberDTO();
+    dto.setNo(member.getNo());
+    dto.setId(member.getId());
+    dto.setEmail(member.getEmail());
+    dto.setPhone(member.getPhone());
+    dto.setMname(member.getMname());
+    dto.setZipcode(member.getZipcode());
+    dto.setAddr(member.getAddr());
+    dto.setAddrDetail(member.getAddrDetail());
+    dto.setCdate(member.getCdate());
+    dto.setGrade(member.getGrade());
+    dto.setStatus(member.getStatus());
+    dto.setUdate(member.getUdate());
+    dto.setTermsAgreeYn(member.getTermsAgreeYn());
+    dto.setPrivacyAgreeYn(member.getPrivacyAgreeYn());
+    dto.setNation(member.getNation());
+
+    return dto;
+}
 
   public MemberDTO(long no, String id, String email, String phone, String mname, String zipcode, String addr,
       String addrDetail, String cdate, Integer grade, String status, String udate, String termsAgreeYn,

@@ -74,6 +74,26 @@ public class ManagerDTO {
         .udate(this.udate)
         .build();
   }
+  
+  public static ManagerDTO from(Manager manager) {
+    if (manager == null) {
+      return null;
+    }
+    
+    ManagerDTO dto = new ManagerDTO();
+    dto.setNo(manager.getNo());
+    dto.setId(manager.getId());
+    dto.setMname(manager.getMname());
+    dto.setEmail(manager.getEmail());
+    dto.setPhone(manager.getPhone());
+    dto.setGrade(manager.getGrade());
+    dto.setStatus(manager.getStatus());
+    dto.setCdate(manager.getCdate());
+    dto.setUdate(manager.getUdate());
+    
+    return dto;
+    
+  }
 
   public ManagerDTO(Long no, String id, String mname, String email, String phone, Integer grade, String status, String udate, String cdate) {
     this.no = no;
