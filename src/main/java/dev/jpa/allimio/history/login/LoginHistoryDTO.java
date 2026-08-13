@@ -23,6 +23,9 @@ public class LoginHistoryDTO {
   /** 로그인 시도 결과 */
   private int loginResult;
   
+  /** 로그인 시도 유형 */
+  private int loginType;
+  
   /** 회원 번호 */
   private Long mno;
   
@@ -46,6 +49,7 @@ public class LoginHistoryDTO {
             .loginId(this.loginId)
             .loginDate(this.loginDate)
             .loginResult(this.loginResult)
+            .loginType(this.loginType)
             .mno(this.mno != null ? Member.builder().no(this.mno).build() : null)
             .mnno(this.mnno != null ? Manager.builder().no(this.mnno).build() : null)
             .failCode(this.failCode)

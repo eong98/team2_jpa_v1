@@ -53,13 +53,12 @@ public class MemberService {
   public Map<String, Object> login(String id, String password, String ipAddr) {
     Map<String, Object> result = new HashMap<>();
     String now = Tool.getDate();
-    String tag = "[회원]";
     
     Optional<Member> memberOpt = memberRepository.findById(id);
     
  // [실패 1] 존재하지 않는 계정
     if (memberOpt.isEmpty()) {
-        saveLoginLogs(id, 0, "USER_NOT_FOUND", tag+"존재하지 않는 아이디입니다.", now, ipAddr, null);
+        saveLoginLogs(id, 0, "USER_NOT_FOUND", "존재하지 않는 아이디입니다.", now, ipAddr, null);
         result.put("success", false);
         result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
         return result;
@@ -69,15 +68,15 @@ public class MemberService {
 
     // [실패 2] 회원 상태 체크 (state: 0=탈퇴, 2=정지 예시)
     if (member.getStatus() == "0") {
-        saveLoginLogs(id, 0, "ACCOUNT_DELETED", tag+"탈퇴한 회원입니다.", now, ipAddr, member);
+        saveLoginLogs(id, 0, "ACCOUNT_DELETED", "탈퇴한 회원입니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "탈퇴한 회원입니다.");
         return result;
     }
     
-    // [실패 2] 2::사유 로 저장됨으로 상태가 2로 시작되면 작동
-    if (member.getStatus() != null && member.getStatus().startsWith("2")) {
-        saveLoginLogs(id, 0, "ACCOUNT_SUSPENDED", tag+"정지된 회원입니다.", now, ipAddr, member);
+    // [실패 2] 2로 저장됨으로 상태가 2로 시작되면 작동
+    if (member.getStatus().startsWith("2")) {
+        saveLoginLogs(id, 0, "ACCOUNT_SUSPENDED", "정지된 회원입니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "정지된 회원입니다.");
         return result;
@@ -85,7 +84,7 @@ public class MemberService {
 
     // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
     if (!member.getPassword().equals(password)) {
-        saveLoginLogs(id, 0, "INVALID_PASSWORD", tag+"비밀번호가 맞지 않습니다.", now, ipAddr, member);
+        saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
         return result;
@@ -106,6 +105,7 @@ public class MemberService {
         .failCode(failCode)       // "INVALID_PASSWORD", "ACCOUNT_SUSPENDED", "USER_NOT_FOUND" 등
         .failReason(failReason)   // 상세 실패 사유 (DB 내부 확인용)
         .loginDate(now)     // 시도 일시 (Tool.getDate() 값)
+        .loginType(1)       // 시도 유형
         .ipAddr(ipAddr)           // IP 주소
         .mno(member)              // Member 엔티티 (존재하지 않는 계정이면 null)
         .mnno(null)

@@ -9,10 +9,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.member.Member;
+
 
 public interface ManagerRepository extends JpaRepository<Manager, Long> {
   /** 아이디 중복 검사 */
   public boolean existsById(String id);
+  
+  /** id로 관리자 조회 */
+  public Optional<Manager> findById(String id);
   
   /** 회원가입 (자동지원, 선언x) */
   

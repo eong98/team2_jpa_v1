@@ -37,6 +37,9 @@ public class LoginHistory {
   /** 로그인 시도 결과 */
   private int loginResult;
   
+  /** 로그인 시도 유형 */
+  private int loginType;
+  
   /** 회원번호 */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "mno")

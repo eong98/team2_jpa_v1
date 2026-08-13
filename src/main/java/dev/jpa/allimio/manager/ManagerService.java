@@ -2,14 +2,20 @@ package dev.jpa.allimio.manager;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.history.login.LoginHistory;
+import dev.jpa.allimio.history.login.LoginHistoryRepository;
 import dev.jpa.allimio.history.update.UpdateHistoryDTO;
 import dev.jpa.allimio.history.update.UpdateHistoryRepository;
+import dev.jpa.allimio.member.Member;
+import dev.jpa.allimio.member.MemberDTO;
 import dev.jpa.allimio.tool.Tool;
 import lombok.RequiredArgsConstructor;
 
@@ -18,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ManagerService {
   private final ManagerRepository managerRepository;
   private final UpdateHistoryRepository updateHistoryRepository;
+  private final LoginHistoryRepository loginHistoryRepository;
   
   /**
    * 아이디 중복 체크
@@ -45,16 +52,60 @@ public class ManagerService {
    * @param password
    * @return 성공이면 관리자의 DTO, 실패면 빈 DTO
    */
-  public Optional<ManagerDTO> login(String id, String password) {
-    boolean check = managerRepository.existsByIdAndPassword(id, password);
+  public Map<String, Object> login(String id, String password, String ipAddr) {
+    Map<String, Object> result = new HashMap<>();
+    String now = Tool.getDate();
     
-    if(check ) {
-      Optional<ManagerDTO> managerDTO = managerRepository.longinDTO(id, password);
-      
-      return managerDTO;
-    } else {
-      return Optional.empty();
-    }
+    Optional<Manager> managerOpt = managerRepository.findById(id);
+    
+    // [실패 1] 존재하지 않는 계정
+    if (managerOpt.isEmpty()) {
+      saveLoginLogs(id, 0, "USER_NOT_FOUND", "존재하지 않는 아이디입니다.", now, ipAddr, null);
+      result.put("success", false);
+      result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+      return result;
+  }
+
+  Manager manager = managerOpt.get();
+
+  // [실패 2] 관리자 상태 체크 (state: 0=탈퇴)
+  if (manager.getStatus() == "0") {
+      saveLoginLogs(id, 0, "ACCOUNT_DELETED", "탈퇴한 회원입니다.", now, ipAddr, manager);
+      result.put("success", false);
+      result.put("message", "탈퇴한 회원입니다.");
+      return result;
+  }
+
+  // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
+  if (!manager.getPassword().equals(password)) {
+      saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, manager);
+      result.put("success", false);
+      result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+      return result;
+  }
+
+  // [성공] 모든 검증 통과
+  saveLoginLogs(id, 1, null, null, now, ipAddr, manager);
+  result.put("success", true);
+  result.put("dbms", ManagerDTO.from(manager)); // manager 엔티티를 DTO로 변환
+  return result;
+  }
+  
+public void saveLoginLogs(String loginId, int loginResult, String failCode, String failReason, String now, String ipAddr, Manager manager) {
+    
+    LoginHistory history = LoginHistory.builder()
+        .loginId(loginId)         // 시도한 아이디
+        .loginResult(loginResult) // "SUCCESS" 또는 "FAIL"
+        .failCode(failCode)       // "INVALID_PASSWORD", "ACCOUNT_SUSPENDED", "USER_NOT_FOUND" 등
+        .failReason(failReason)   // 상세 실패 사유 (DB 내부 확인용)
+        .loginDate(now)     // 시도 일시 (Tool.getDate() 값)
+        .loginType(0)       // 시도 유형
+        .ipAddr(ipAddr)           // IP 주소
+        .mnno(manager)              // Member 엔티티 (존재하지 않는 계정이면 null)
+        .mno(null)
+        .build();
+
+    loginHistoryRepository.save(history);
   }
   
   
