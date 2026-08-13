@@ -20,13 +20,13 @@ public class UpdateHistoryService {
               .toList(); 
   }
 
-  /**
-   * 특정 이력 단건 조회 (필요 시)
-   */
-  public UpdateHistoryDTO findById(Long no) {
-      return updateHistoryRepository.findById(no)
-              .map(UpdateHistoryDTO::from)
-              .orElseThrow(() -> new IllegalArgumentException("해당 변경 이력이 존재하지 않습니다. id=" + no));
-  }
+//  /**
+//   * 특정 이력 단건 조회 (필요 시)
+//   */
+//  public UpdateHistoryDTO findById(Long no) {
+//      return updateHistoryRepository.findById(no)
+//              .map(UpdateHistoryDTO::from)
+//              .orElseThrow(() -> new IllegalArgumentException("해당 변경 이력이 존재하지 않습니다. id=" + no));
+//  }
 
 }

@@ -42,8 +42,6 @@ public class LoginHistoryDTO {
   private String ipAddr;
   
   public LoginHistory toEntity() {
- 
-
     return LoginHistory.builder()
             .no(this.no)
             .loginId(this.loginId)
@@ -56,5 +54,22 @@ public class LoginHistoryDTO {
             .failReason(this.failReason)
             .ipAddr(this.ipAddr)
             .build();
+  }
+  
+  public static LoginHistoryDTO from(LoginHistory entity) {
+    if (entity == null) return null;
+    
+    return LoginHistoryDTO.builder()
+        .no(entity.getNo())
+        .mno(entity.getMno() != null ? entity.getMno().getNo() : null)
+        .mnno(entity.getMnno() != null ? entity.getMnno().getNo() : null)
+        .loginId(entity.getLoginId())
+        .loginDate(entity.getLoginDate())
+        .loginResult(entity.getLoginResult())
+        .loginType(entity.getLoginType())
+        .failCode(entity.getFailCode())
+        .failReason(entity.getFailReason())
+        .ipAddr(entity.getIpAddr())
+        .build();
   }
 }

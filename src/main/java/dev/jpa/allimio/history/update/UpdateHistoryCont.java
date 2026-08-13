@@ -27,14 +27,14 @@ public class UpdateHistoryCont {
       return ResponseEntity.ok(histories); 
   }
   
-  /**
-   * 특정 변경 이력 단건 조회
-   * http://10.1.205.120:9102/history/update/list
-   * @return 단건이력
-   */
-  @GetMapping("/{no}")
-  public ResponseEntity<UpdateHistoryDTO> getUpdateHistoryById(@PathVariable("no") Long no) {
-      UpdateHistoryDTO history = updateHistoryService.findById(no);
-      return ResponseEntity.ok(history);
-  }
+//  /**
+//   * 특정 변경 이력 단건 조회
+//   * http://10.1.205.120:9102/history/update/list
+//   * @return 단건이력
+//   */
+//  @GetMapping("/{no}")
+//  public ResponseEntity<UpdateHistoryDTO> getUpdateHistoryById(@PathVariable("no") Long no) {
+//      UpdateHistoryDTO history = updateHistoryService.findById(no);
+//      return ResponseEntity.ok(history);
+//  }
 }

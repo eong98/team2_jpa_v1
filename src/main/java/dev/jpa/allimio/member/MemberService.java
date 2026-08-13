@@ -67,7 +67,7 @@ public class MemberService {
     Member member = memberOpt.get();
 
     // [실패 2] 회원 상태 체크 (state: 0=탈퇴, 2=정지 예시)
-    if (member.getStatus() == "0") {
+    if ("0".equals(member.getStatus().trim())) {
         saveLoginLogs(id, 0, "ACCOUNT_DELETED", "탈퇴한 회원입니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "탈퇴한 회원입니다.");
@@ -83,7 +83,7 @@ public class MemberService {
     }
 
     // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
-    if (!member.getPassword().equals(password)) {
+    if (!password.equals(member.getPassword())) {
         saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
@@ -217,9 +217,9 @@ public class MemberService {
           UpdateHistoryDTO log = UpdateHistoryDTO.builder()
               .mno(member.getNo())
               .mnno(null)
-              .changedColumn(String.join("/", changedColumns))
-              .oldValue(String.join("/", oldValues))
-              .newValue(String.join("/", newValues))
+              .changedColumn(String.join(":::", changedColumns))
+              .oldValue(String.join(":::", oldValues))
+              .newValue(String.join(":::", newValues))
               .changeDate(now)
               .changedBy(changedBy)
               .updtMnno(managerno)

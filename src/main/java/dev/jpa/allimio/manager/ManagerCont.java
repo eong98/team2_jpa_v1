@@ -1,12 +1,9 @@
 package dev.jpa.allimio.manager;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import dev.jpa.allimio.member.MemberDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -144,7 +140,7 @@ public class ManagerCont {
   * @param managerno 관리자번호
   * @return 성공시 200 OK
   */
- @PutMapping(path="/update/manager/{managerno}")
+ @PutMapping(path="/update/manager/{targetno}/{managerno}")
  public ResponseEntity<Void> updateManagerByManager(
      @PathVariable("targetno") Long targetno,
      @RequestBody ManagerDTO managerDTO,
