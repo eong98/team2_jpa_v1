@@ -1,5 +1,6 @@
 package dev.jpa.allimio.shop;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,12 +9,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import dev.jpa.allimio.cctv.CctvRepository;
 import dev.jpa.allimio.tool.Tool;
 
 @Service
 public class ShopService {
   @Autowired
   ShopRepository shopRepository;
+
+  @Autowired
+  CctvRepository cctvRepository;
 
   public ShopService() {
 
@@ -24,6 +29,21 @@ public class ShopService {
    */
   public Page<Shop> search(long mno, String keyword, Pageable pageable) {
     return shopRepository.search(mno, keyword, pageable);
+  }
+
+  /**
+   * 매장 목록에 CCTV 등록 대수(cctvCount)를 붙여서 반환 (/user/shop 카드에 표시용).
+   * 매장(sno)마다 CCTV 테이블에서 COUNT(SNO)로 계산합니다.
+   */
+  public List<ShopWithCctvCount> attachCctvCount(List<Shop> shops) {
+    List<ShopWithCctvCount> list = new ArrayList<>();
+
+    for (Shop shop : shops) {
+      long cctvCount = cctvRepository.countBySno(shop.getNo());
+      list.add(new ShopWithCctvCount(shop, cctvCount));
+    }
+
+    return list;
   }
 
   /**

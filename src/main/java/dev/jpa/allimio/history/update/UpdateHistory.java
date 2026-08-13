@@ -25,12 +25,12 @@ import lombok.ToString;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "MEMBER_UPDATELOG")
+@Table(name = "UPDATE_HISTORY")
 public class UpdateHistory {
   /** 업데이트 로그 번호 */
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "member_updatelog_seq_use")
-  @SequenceGenerator(name = "member_updatelog_seq_use", sequenceName = "MEMBER_UPDATELOG_SEQ", allocationSize = 1)
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "update_history_seq_use")
+  @SequenceGenerator(name = "update_history_seq_use", sequenceName = "UPDATE_HISTORY_SEQ", allocationSize = 1)
   private Long no;
 
   /** 회원 번호 */

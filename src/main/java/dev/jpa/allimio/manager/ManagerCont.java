@@ -135,7 +135,7 @@ public ResponseEntity<Map<String, Object>> login(
  public ResponseEntity<Void> updateManagerByManager(
      @PathVariable("targetno") Long targetno,
      @RequestBody ManagerDTO managerDTO,
-     @RequestParam("managerno") Long managerno) {
+     @PathVariable("managerno") Long managerno) {
    managerService.updateManagerByManager(targetno, managerDTO, managerno);
    
    return ResponseEntity.ok().build();

@@ -54,7 +54,7 @@ public class Member {
   private String cdate;
 
   /** 등급 */
-  private int grade;
+  private Integer grade;
 
   /** 상태 */
   private String status;
@@ -71,7 +71,7 @@ public class Member {
   /** 국적 */
   private String nation;
 
-  public void updateByManager(String mname, int grade, String phone, String email, String zipcode, String addr,
+  public void updateByManager(String mname, Integer grade, String phone, String email, String zipcode, String addr,
       String addrDetail, String status, String udate) {
     this.mname = mname;
     this.grade = grade;
@@ -96,7 +96,7 @@ public class Member {
   }
 
   public Member(long no, String id, String email, String phone, String mname, String zipcode, String addr,
-      String addrDetail, String cdate, int grade, String status, String udate, String termsAgreeYn,
+      String addrDetail, String cdate, Integer grade, String status, String udate, String termsAgreeYn,
       String privacyAgreeYn, String nation) {
     this.no = no;
     this.id = id;
