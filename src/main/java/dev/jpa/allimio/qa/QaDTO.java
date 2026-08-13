@@ -1,4 +1,4 @@
-package dev.jpa.allimio.board.qa;
+package dev.jpa.allimio.qa;
 
 import dev.jpa.allimio.tool.Tool;
 import lombok.AllArgsConstructor;
