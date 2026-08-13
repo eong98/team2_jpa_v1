@@ -90,12 +90,20 @@ public class NoticeDTO {
     private String isdel;
     /** 삭제 일시 */
     private String ddate;
+    // ⭐ 이전글 / 다음글 (없으면 null)
+    private NoticeNav prev;
+    private NoticeNav next;
     
     public static NoticeResponse fromEntity(Notice entity) {
+      return fromEntity(entity, null, null);
+    }
+    
+    public static NoticeResponse fromEntity(Notice entity, NoticeNav prev, NoticeNav next) {
       return NoticeResponse.builder().no(entity.getNo()).ano(entity.getAno()).type(entity.getType())
           .title(entity.getTitle()).content(entity.getContent()).cdate(entity.getCdate())
           .vcnt(entity.getVcnt()).fixyn(entity.getFixyn()).fileyn(entity.getFileyn())
-          .vmode(entity.getVmode()).vseq(entity.getVseq()).isdel(entity.getIsdel()).build();
+          .vmode(entity.getVmode()).vseq(entity.getVseq()).isdel(entity.getIsdel())
+          .prev(prev).next(next).build();
     }
   }
   
@@ -127,6 +135,22 @@ public class NoticeDTO {
 
     /** 상단고정 여부 (Y/N) */
     private String fixyn;
+    
+    /** 공개 여부 (Y/N) */
+    private String vmode;
+  }
+  
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  /**
+   * 이전글 / 다음글
+   */
+  public static class NoticeNav {
+    private Long no;
+    private String title;
+    private String fileyn;
+    private String cdate;
   }
   
   

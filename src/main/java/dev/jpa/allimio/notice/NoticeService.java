@@ -24,7 +24,6 @@ public class NoticeService {
     Page<Notice> noticePage = noticeRepository.searchAllNotice(
         req.getWord(),
         req.getType(),
-        req.getFixyn(),
         pageable
     );
     return noticePage.map(NoticeDTO.NoticeResponse::fromEntity);
@@ -37,9 +36,11 @@ public class NoticeService {
     Page<Notice> noticePage = noticeRepository.searchAdminNotice(
         req.getWord(),
         req.getType(),
-        req.getFixyn(),
+        req.getVmode(),
         pageable
     );
+
+    System.out.println(req.getVmode());
     return noticePage.map(NoticeDTO.NoticeResponse::fromEntity);
   }
 
@@ -56,8 +57,19 @@ public class NoticeService {
     // 2. 조회수 증가
     notice.increaseVcnt();
 
-    // 3. DTO 변환 후 반환
-    return NoticeDTO.NoticeResponse.fromEntity(notice);
+    // 3. 이전글 / 다음글 조회 (공개글 & 미삭제만 대상)
+    NoticeDTO.NoticeNav prev = noticeRepository
+        .findFirstByNoLessThanAndIsdelAndVmodeOrderByNoDesc(no, "N", "Y")
+        .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
+        .orElse(null);
+
+    NoticeDTO.NoticeNav next = noticeRepository
+        .findFirstByNoGreaterThanAndIsdelAndVmodeOrderByNoAsc(no, "N", "Y")
+        .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
+        .orElse(null);
+
+    // 4. DTO 변환 후 반환
+    return NoticeDTO.NoticeResponse.fromEntity(notice, prev, next);
   }
 
   /**

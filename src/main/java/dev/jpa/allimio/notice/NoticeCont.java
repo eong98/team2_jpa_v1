@@ -61,6 +61,7 @@ public class NoticeCont {
     if (!isAdmin) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자 권한이 없습니다.");
     }
+    
 
     // 3. 관리자인 경우에만 DB 조회 실행
     Page<NoticeDTO.NoticeResponse> pageResult = noticeService.getAllNoticesAdmin(searchCondition, pageable);
