@@ -1,7 +1,5 @@
 package dev.jpa.allimio.survey;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,7 +26,7 @@ import dev.jpa.allimio.surveyresponse.SurveyResponseRepository;
  * 설문조사 전체 비즈니스 로직.
  *
  * <p>설문·문항 등록, 점주 답변 제출, 관리자 확인,
- * AI 평가점수 저장과 DTO 변환을 담당한다.</p>
+ *  관리자 확인과 DTO 변환을 담당한다.</p>
  */
 @Service
 @Transactional
@@ -247,7 +245,6 @@ public class SurveyService {
             SurveyAnswer answer = new SurveyAnswer();
             answer.setQuestion(question);
             answer.setAtext(normalizeText(answerDTO.getAtext()));
-            answer.setEvalScore(null);
             answer.setCdate(now());
 
             response.addAnswer(answer);
@@ -312,44 +309,6 @@ public class SurveyService {
         return toResponseDTO(responseRepository.save(response));
     }
 
-    /**
-     * AI가 분석한 문항별 평가점수를 저장한다.
-     *
-     * @param answerNo 문항별 실제답변 번호
-     * @param evalScore 1~5 평가점수
-     */
-    public SurveyAnswerDTO updateEvaluation(
-            Long answerNo,
-            BigDecimal evalScore) {
-
-        if (evalScore == null) {
-            throw new IllegalArgumentException(
-                    "AI 평가점수는 필수입니다.");
-        }
-
-        /*
-         * DB 컬럼이 NUMBER(2,1)이므로 소수점 첫째 자리까지 반올림한다.
-         * 예: 4.84 -> 4.8, 4.85 -> 4.9
-         */
-        BigDecimal roundedScore =
-                evalScore.setScale(1, RoundingMode.HALF_UP);
-
-        if (roundedScore.compareTo(new BigDecimal("1.0")) < 0
-                || roundedScore.compareTo(new BigDecimal("5.0")) > 0) {
-            throw new IllegalArgumentException(
-                    "AI 평가점수는 1.0부터 5.0까지 입력해야 합니다.");
-        }
-
-        SurveyAnswer answer = answerRepository.findById(answerNo)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "문항별 답변을 찾을 수 없습니다: "
-                                        + answerNo));
-
-        answer.setEvalScore(roundedScore);
-
-        return toAnswerDTO(answerRepository.save(answer));
-    }
 
     /** 설문 엔티티 조회 공통 메서드. */
     private Survey findSurveyWithQuestions(Long surveyNo) {
@@ -765,7 +724,6 @@ public class SurveyService {
         dto.setQtype(
                 answer.getQuestion().getQtype());
         dto.setAtext(answer.getAtext());
-        dto.setEvalScore(answer.getEvalScore());
         dto.setCdate(answer.getCdate());
 
         return dto;

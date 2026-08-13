@@ -13,7 +13,6 @@ public class SurveyAnswerDTO {
     private String qtext;
     private String qtype;
     private String atext;
-    private BigDecimal evalScore;
     private String cdate;
 
     public SurveyAnswerDTO() {
@@ -65,14 +64,6 @@ public class SurveyAnswerDTO {
 
     public void setAtext(String atext) {
         this.atext = atext;
-    }
-
-    public BigDecimal getEvalScore() {
-        return evalScore;
-    }
-
-    public void setEvalScore(BigDecimal evalScore) {
-        this.evalScore = evalScore;
     }
 
     public String getCdate() {

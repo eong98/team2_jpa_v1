@@ -120,14 +120,14 @@ public class Tool {
     String path = "";
 
     if (osName.contains("win")) { // Windows, Local
-      path = "C:\\kd\\deploy\\climb\\" + dir + "\\storage\\";
+      path = "C:\\kd\\deploy\\allimio\\" + dir + "\\storage\\";
       // C:\\kd\\deploy\\resort\\contents\\storage\\
       // System.out.println("Windows: " + path);
     } else if (osName.contains("mac")) { // MacOS
-      path = "/Users/yourusername/deploy/climb/"+dir+"/storage/";
+      path = "/Users/yourusername/deploy/allimio/"+dir+"/storage/";
       // System.out.println("MacOS: " + path);
     } else { // Linux, 가비아
-      path = "/home/ubuntu/deploy/climb/" + dir + "/storage/";
+      path = "/home/ubuntu/deploy/allimio/" + dir + "/storage/";
       // System.out.println("Linux: " + path);
     }
 

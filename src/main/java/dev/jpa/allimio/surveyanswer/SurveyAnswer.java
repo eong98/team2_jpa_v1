@@ -1,6 +1,5 @@
 package dev.jpa.allimio.surveyanswer;
 
-import java.math.BigDecimal;
 
 import dev.jpa.allimio.surveyquestion.SurveyQuestion;
 import dev.jpa.allimio.surveyresponse.SurveyResponse;
@@ -54,13 +53,6 @@ public class SurveyAnswer {
     @Column(name = "ATEXT")
     private String atext;
 
-    /**
-     * AI 분석 평가점수.
-     * 1 매우 부정, 2 부정, 3 중립, 4 긍정, 5 매우 긍정.
-     */
-    @Column(name = "EVALSCORE", precision = 2, scale = 1)
-    private BigDecimal evalScore;
-
     /** 등록일. */
     @Column(name = "CDATE", nullable = false, length = 30)
     private String cdate;
@@ -100,13 +92,6 @@ public class SurveyAnswer {
         this.atext = atext;
     }
 
-    public BigDecimal getEvalScore() {
-        return evalScore;
-    }
-
-    public void setEvalScore(BigDecimal evalScore) {
-        this.evalScore = evalScore;
-    }
 
     public String getCdate() {
         return cdate;

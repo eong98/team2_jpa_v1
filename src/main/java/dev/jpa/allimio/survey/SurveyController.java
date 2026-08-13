@@ -1,12 +1,9 @@
 package dev.jpa.allimio.survey;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import dev.jpa.allimio.surveyanswer.SurveyAnswerDTO;
 import dev.jpa.allimio.surveyresponse.SurveyResponseDTO;
 
 
@@ -174,23 +170,4 @@ public class SurveyController {
                         responseNo));
     }
 
-    /**
-     * AI 또는 관리자:
-     * 문항별 AI 평가점수를 저장한다.
-     *
-     * 요청 예시:
-     * {
-     *   "evalScore": 4
-     * }
-     */
-    @PatchMapping("/answers/{answerNo}/evaluation")
-    public ResponseEntity<SurveyAnswerDTO> updateEvaluation(
-            @PathVariable("answerNo") Long answerNo,
-            @RequestBody Map<String, BigDecimal> request) {
-
-        return ResponseEntity.ok(
-                surveyService.updateEvaluation(
-                        answerNo,
-                        request.get("evalScore")));
-    }
 }
