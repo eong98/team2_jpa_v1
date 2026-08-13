@@ -1,4 +1,4 @@
-package dev.jpa.allimio.board.qa;
+package dev.jpa.allimio.qa;
 
 import java.util.List;
 import java.util.Optional;

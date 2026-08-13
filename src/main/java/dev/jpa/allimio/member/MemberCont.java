@@ -1,12 +1,9 @@
 package dev.jpa.allimio.member;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -86,22 +84,33 @@ public class MemberCont {
    * @param password
    * @return 성공이면 DTO+true, 실패면 false
    */
+//  @PostMapping(path="/login")
+// public ResponseEntity<Map<String, Object>> login(
+//     @RequestParam(name="id", defaultValue="") String id, 
+//     @RequestParam(name="password", defaultValue="") String password){
+//    Optional<MemberDTO> loginResult = memberService.login(id, password);
+//    
+//    Map<String, Object> response = new HashMap<>();
+//    
+//    if(loginResult.isPresent()) {  
+//      response.put("success", true);
+//      response.put("user", loginResult.get());
+//    } else {
+//      response.put("success", false);
+//    }
+//    
+//    return ResponseEntity.ok(response);
+//  }
   @PostMapping(path="/login")
- public ResponseEntity<Map<String, Object>> login(
-     @RequestParam(name="id", defaultValue="") String id, 
-     @RequestParam(name="password", defaultValue="") String password){
-    Optional<MemberDTO> loginResult = memberService.login(id, password);
+  public ResponseEntity<Map<String, Object>> login(
+      @RequestParam(name="id", defaultValue="") String id, 
+      @RequestParam(name="password", defaultValue="") String password,
+      HttpServletRequest request){
+      // ip주소 추출
+      String ipAddr = request.getRemoteAddr();
     
-    Map<String, Object> response = new HashMap<>();
-    
-    if(loginResult.isPresent()) {  
-      response.put("success", true);
-      response.put("user", loginResult.get());
-    } else {
-      response.put("success", false);
-    }
-    
-    return ResponseEntity.ok(response);
+     Map<String, Object> loginResult = memberService.login(id, password, ipAddr);
+     return ResponseEntity.ok(loginResult);
   }
 
   /**
@@ -122,16 +131,17 @@ public class MemberCont {
   
   /**
    * 관리자가 회원을 수정한 경우
+   * http://10.1.205.120:9102/v1/user/update/manager/
    * @param memberno 회원번호
    * @param memberDTO 변경한 값
    * @param managerno 관리자번호
    * @return 성공시 200 OK
    */
-  @PutMapping(path="/update/manager/{memberno}")
+  @PutMapping(path="/update/manager/{memberno}/{managerno}")
   public ResponseEntity<Void> updateMemberByManager(
       @PathVariable("memberno") Long memberno,
       @RequestBody MemberDTO memberDTO,
-      @RequestParam("managerno") Long managerno) {
+      @PathVariable("managerno") Long managerno) {
     memberService.updateMemberByManager(memberno, memberDTO, managerno);
     
     return ResponseEntity.ok().build();

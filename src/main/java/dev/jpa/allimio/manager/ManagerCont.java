@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import dev.jpa.allimio.member.MemberDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -88,23 +89,35 @@ public class ManagerCont {
   * @param password
   * @return 성공이면 관리자DTO+true, 실패면 false
   */
+// @PostMapping(path="/login")
+//public ResponseEntity<Map<String, Object>> login(
+//    @RequestParam(name="id", defaultValue="") String id, 
+//    @RequestParam(name="password", defaultValue="") String password,
+//    HttpServletRequest request){
+//   Optional<ManagerDTO> loginResult = managerService.login(id, password);
+//   
+//   Map<String, Object> response = new HashMap<>();
+//   
+//   if(loginResult.isPresent()) {  
+//     response.put("success", true);
+//     response.put("dbms", loginResult.get());
+//     System.out.println("success추가");
+//   } else {
+//     response.put("success", false);
+//   }
+//   
+//   return ResponseEntity.ok(response);
+// }
  @PostMapping(path="/login")
-public ResponseEntity<Map<String, Object>> login(
-    @RequestParam(name="id", defaultValue="") String id, 
-    @RequestParam(name="password", defaultValue="") String password){
-   Optional<ManagerDTO> loginResult = managerService.login(id, password);
+ public ResponseEntity<Map<String, Object>> login(
+     @RequestParam(name="id", defaultValue="") String id, 
+     @RequestParam(name="password", defaultValue="") String password,
+     HttpServletRequest request){
+     // ip주소 추출
+     String ipAddr = request.getRemoteAddr();
    
-   Map<String, Object> response = new HashMap<>();
-   
-   if(loginResult.isPresent()) {  
-     response.put("success", true);
-     response.put("dbms", loginResult.get());
-     System.out.println("success추가");
-   } else {
-     response.put("success", false);
-   }
-   
-   return ResponseEntity.ok(response);
+    Map<String, Object> loginResult = managerService.login(id, password, ipAddr);
+    return ResponseEntity.ok(loginResult);
  }
 
  /**
@@ -135,7 +148,7 @@ public ResponseEntity<Map<String, Object>> login(
  public ResponseEntity<Void> updateManagerByManager(
      @PathVariable("targetno") Long targetno,
      @RequestBody ManagerDTO managerDTO,
-     @RequestParam("managerno") Long managerno) {
+     @PathVariable("managerno") Long managerno) {
    managerService.updateManagerByManager(targetno, managerDTO, managerno);
    
    return ResponseEntity.ok().build();

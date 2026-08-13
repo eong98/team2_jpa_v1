@@ -1,4 +1,4 @@
-package dev.jpa.allimio.board.qa;
+package dev.jpa.allimio.qa;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -41,7 +41,6 @@ public class QaCont {
    * 관리자 답변 알림?
    * 첨부파일 연동
    * 작성자 정보 노출?
-   * 잠긴글 상세 다른 회원 접근불가처리
    */
   
   
@@ -95,7 +94,7 @@ public class QaCont {
 
   
   /**
-   * 문의글 상세 조회 
+   * 단건 상세 조회 
    * GET /qa/22?mno=1 (회원 조회 시)
    * GET /qa/22?ano=1 (관리자 조회 시)
    * 

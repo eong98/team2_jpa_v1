@@ -1,14 +1,21 @@
 package dev.jpa.allimio.manager;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.history.login.LoginHistory;
+import dev.jpa.allimio.history.login.LoginHistoryRepository;
 import dev.jpa.allimio.history.update.UpdateHistoryDTO;
 import dev.jpa.allimio.history.update.UpdateHistoryRepository;
+import dev.jpa.allimio.member.Member;
+import dev.jpa.allimio.member.MemberDTO;
 import dev.jpa.allimio.tool.Tool;
 import lombok.RequiredArgsConstructor;
 
@@ -16,7 +23,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor    // final 붙은 필드들을 파라미터로 가지는 생성자가 자동생성
 public class ManagerService {
   private final ManagerRepository managerRepository;
-  private final UpdateHistoryRepository updatehistoryRepository;
+  private final UpdateHistoryRepository updateHistoryRepository;
+  private final LoginHistoryRepository loginHistoryRepository;
   
   /**
    * 아이디 중복 체크
@@ -44,16 +52,60 @@ public class ManagerService {
    * @param password
    * @return 성공이면 관리자의 DTO, 실패면 빈 DTO
    */
-  public Optional<ManagerDTO> login(String id, String password) {
-    boolean check = managerRepository.existsByIdAndPassword(id, password);
+  public Map<String, Object> login(String id, String password, String ipAddr) {
+    Map<String, Object> result = new HashMap<>();
+    String now = Tool.getDate();
     
-    if(check ) {
-      Optional<ManagerDTO> managerDTO = managerRepository.longinDTO(id, password);
-      
-      return managerDTO;
-    } else {
-      return Optional.empty();
-    }
+    Optional<Manager> managerOpt = managerRepository.findById(id);
+    
+    // [실패 1] 존재하지 않는 계정
+    if (managerOpt.isEmpty()) {
+      saveLoginLogs(id, 0, "USER_NOT_FOUND", "존재하지 않는 아이디입니다.", now, ipAddr, null);
+      result.put("success", false);
+      result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+      return result;
+  }
+
+  Manager manager = managerOpt.get();
+
+  // [실패 2] 관리자 상태 체크 (state: 0=탈퇴)
+  if (manager.getStatus() == "0") {
+      saveLoginLogs(id, 0, "ACCOUNT_DELETED", "탈퇴한 회원입니다.", now, ipAddr, manager);
+      result.put("success", false);
+      result.put("message", "탈퇴한 회원입니다.");
+      return result;
+  }
+
+  // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
+  if (!manager.getPassword().equals(password)) {
+      saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, manager);
+      result.put("success", false);
+      result.put("message", "아이디/비밀번호가 일치하지 않습니다.");
+      return result;
+  }
+
+  // [성공] 모든 검증 통과
+  saveLoginLogs(id, 1, null, null, now, ipAddr, manager);
+  result.put("success", true);
+  result.put("dbms", ManagerDTO.from(manager)); // manager 엔티티를 DTO로 변환
+  return result;
+  }
+  
+public void saveLoginLogs(String loginId, int loginResult, String failCode, String failReason, String now, String ipAddr, Manager manager) {
+    
+    LoginHistory history = LoginHistory.builder()
+        .loginId(loginId)         // 시도한 아이디
+        .loginResult(loginResult) // "SUCCESS" 또는 "FAIL"
+        .failCode(failCode)       // "INVALID_PASSWORD", "ACCOUNT_SUSPENDED", "USER_NOT_FOUND" 등
+        .failReason(failReason)   // 상세 실패 사유 (DB 내부 확인용)
+        .loginDate(now)     // 시도 일시 (Tool.getDate() 값)
+        .loginType(0)       // 시도 유형
+        .ipAddr(ipAddr)           // IP 주소
+        .mnno(manager)              // Member 엔티티 (존재하지 않는 계정이면 null)
+        .mno(null)
+        .build();
+
+    loginHistoryRepository.save(history);
   }
   
   
@@ -119,51 +171,70 @@ public class ManagerService {
    * @param now 변경한 시간
    */
   private void saveUpdateLogs(Manager manager, ManagerDTO managerDTO, int changedBy, Long managerno, String now) {
-    String [] columsToCompare = {"mname", "phone", "email", "grade", "status"};
+    String [] columsToCompare = {"mname", "phone", "email", "grade", "status", "password"};
     
     try {
+      // 변경 내역을 모아둘 리스트 생성
+      List<String> changedColumns = new ArrayList<>();
+      List<String> oldValues = new ArrayList<>();
+      List<String> newValues = new ArrayList<>();
+
       for (String fieldName : columsToCompare) {
-        // 키 : 값 형태로 가져오기 위해 필드 정보 세팅 
-        Field entityField = Manager.class.getDeclaredField(fieldName);
-        Field dtoField = ManagerDTO.class.getDeclaredField(fieldName);
-        
-        // 필드 수정 권한 
-        entityField.setAccessible(true);
-        dtoField.setAccessible(true);
-        
-        // 필드 안의 값의 형태가 다르므로 오브젝트로 값을 저장.
-        Object oldValueObj = entityField.get(manager);
-        Object newValueObj = dtoField.get(managerDTO);
-        
-        // 바뀐 값이 null 이면 수정하지 않은 값으로 판단하고 스킵
-        if (newValueObj == null) {
-          continue;
-        }
-        
-        // 값이 null인 경우 ""으로 변환
-        String oldValue = (oldValueObj != null) ? oldValueObj.toString() : "";
-        String newValue = newValueObj.toString();
-        
-        // oldValue와 newValue의 값이 다를경우 log를 생성 후 저장.
-        if(!oldValue.equals(newValue)) {
+          // 키 : 값 형태로 가져오기 위해 필드 정보 세팅
+          Field entityField = Manager.class.getDeclaredField(fieldName);
+          Field dtoField = ManagerDTO.class.getDeclaredField(fieldName);
+          
+          // 필드 수정 권한
+          entityField.setAccessible(true);
+          dtoField.setAccessible(true);
+
+          // 필드 안의 값의 형태가 다르므로 오브젝트로 값을 저장.
+          Object oldValueObj = entityField.get(manager);
+          Object newValueObj = dtoField.get(managerDTO);
+          
+          // 바뀐 값이 null 이면 수정하지 않은 값으로 판단하고 스킵  
+          if (newValueObj == null) {
+              continue;
+          }
+          
+          // 값이 null인 경우 ""으로 변환
+          String oldValue = (oldValueObj != null) ? oldValueObj.toString() : "";
+          String newValue = newValueObj.toString();
+
+          // 값이 다를 경우
+          if (!oldValue.equals(newValue)) {
+              changedColumns.add(fieldName.toUpperCase());
+
+              // password 필드인 경우 지정한 문자열로 저장
+              if (fieldName.equals("password")) {
+                  oldValues.add("changed_password");
+                  newValues.add("changed_password");
+              } else {
+                  oldValues.add(oldValue);
+                  newValues.add(newValue);
+              }
+          }
+      }
+      
+      // 변경된 컬럼이 있을 때만 1개의 통합 로그 저장
+      if (!changedColumns.isEmpty()) {
           UpdateHistoryDTO log = UpdateHistoryDTO.builder()
               .mno(null)
               .mnno(manager.getNo())
-              .changedColumn(fieldName.toUpperCase())
-              .oldValue(oldValue)
-              .newValue(newValue)
+              .changedColumn(String.join("/", changedColumns))
+              .oldValue(String.join("/", oldValues))
+              .newValue(String.join("/", newValues))
               .changeDate(now)
               .changedBy(changedBy)
               .updtMnno(managerno)
               .build();
-          
-          updatehistoryRepository.save(log.toEntity());
-        }
+
+          updateHistoryRepository.save(log.toEntity());
       }
-    } catch(Exception e) {
+  } catch (Exception e) {
       throw new RuntimeException("로그 생성 중 오류 발생", e);
-    }
   }
+}
   
   /**
    * 비밀번호 수정

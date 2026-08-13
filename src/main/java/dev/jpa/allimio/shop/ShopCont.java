@@ -72,8 +72,11 @@ public class ShopCont {
     Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
     Page<Shop> result = shopService.search(mno, keyword, pageable);
 
+    // 매장 카드에 "등록 CCTV 몇 대"를 보여주기 위해 CCTV 등록 대수를 붙여서 내려줍니다.
+    List<ShopWithCctvCount> contentWithCctvCount = shopService.attachCctvCount(result.getContent());
+
     Map<String, Object> body = new HashMap<>();
-    body.put("content", result.getContent());
+    body.put("content", contentWithCctvCount);
     body.put("totalElements", result.getTotalElements());
     body.put("totalPages", result.getTotalPages());
     body.put("page", result.getNumber());

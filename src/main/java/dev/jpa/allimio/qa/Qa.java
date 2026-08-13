@@ -1,4 +1,4 @@
-package dev.jpa.allimio.board.qa;
+package dev.jpa.allimio.qa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
