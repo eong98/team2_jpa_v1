@@ -120,7 +120,7 @@ public class Tool {
     String path = "";
 
     if (osName.contains("win")) { // Windows, Local
-      path = "C:\\kd\\deploy\\allimio\\" + dir + "\\storage\\";
+      path = "\\10.1.205.118\\allimio\\" + dir + "\\storage\\";
       // C:\\kd\\deploy\\resort\\contents\\storage\\
       // System.out.println("Windows: " + path);
     } else if (osName.contains("mac")) { // MacOS
@@ -130,6 +130,8 @@ public class Tool {
       path = "/home/ubuntu/deploy/allimio/" + dir + "/storage/";
       // System.out.println("Linux: " + path);
     }
+    
+    
 
     return path;
   }
