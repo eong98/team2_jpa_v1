@@ -231,6 +231,16 @@ public class MemberService {
       throw new RuntimeException("로그 생성 중 오류 발생", e);
   }
 }
+  /** 비밀번호 확인 */
+  public boolean check_login(String id, String password) {
+    int res = memberRepository.countByIdAndPassword(id, password);
+    
+    if(res == 1) {
+      return true;
+    } else {
+      return false;
+    }
+  }
   
   /**
    * 비밀번호 수정
@@ -253,6 +263,8 @@ public class MemberService {
    
    return memberRepository.findWithNoWithoutPassword(memberno).orElseThrow();
  }
+ 
+ 
 }
 
 

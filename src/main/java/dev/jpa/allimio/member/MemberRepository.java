@@ -14,8 +14,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   /** 아이디 중복 검사 */
   public boolean existsById(String id);
   
-  /** id로 회원 조회 */
+  /** 아이디로 회원 조회 */
   public Optional<Member> findById(String id);
+  
+  /** 아이디, 비밀번호 일치하는지 확인 */
+  public int countByIdAndPassword(String id, String password);
   
   /** 회원가입 (자동지원, 선언x) */
   

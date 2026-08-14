@@ -236,6 +236,17 @@ public void saveLoginLogs(String loginId, int loginResult, String failCode, Stri
   }
 }
   
+  /** 비밀번호 확인 */
+  public boolean check_login(String id, String password) {
+    int res = managerRepository.countByIdAndPassword(id, password);
+    
+    if(res == 1) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  
   /**
    * 비밀번호 수정
    * @param id 아이디

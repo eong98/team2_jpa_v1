@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.member.profileimage.ProfileImageService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/v1/user")
 public class MemberCont {
   private final MemberService memberService;
+  private final ProfileImageService profileImageService;
 
   // 임시 DTO 생성
   public record IdCheckResponse(boolean available) {
@@ -46,9 +49,12 @@ public class MemberCont {
    * @param memberDTO
    * @return 가입정보
    */
+  @Transactional
   @PostMapping(path = "/save")
   public ResponseEntity<Member> saveMember(@Valid @RequestBody MemberDTO memberDTO) {
     Member savedEntity = memberService.save(memberDTO);
+    
+    profileImageService.create(savedEntity.getNo());
 
     return ResponseEntity.ok(savedEntity);
   }
@@ -171,25 +177,24 @@ public class MemberCont {
     return ResponseEntity.ok().build();
   }
   
- // 테스트 X
-//  /** 
-//   * 비밀번호 업데이트
-//   * @param memberDTO 회원정보+새비밀번호
-//   * @return  성공하면 true
-//   */
-//  @PostMapping(path = "/update/password")
-//  public ResponseEntity<Boolean> updatePassword(
-//      @RequestBody MemberDTO memberDTO) {
-//    String id = memberDTO.getId();
-//    String password = memberDTO.getPassword();
-//    
-//    
-//    boolean check = memberService.login(id, password);
-//    
-//    if(check) {
-//      memberService.updatePassword(id, memberDTO.getNewPassword());
-//    }
-//    
-//    return ResponseEntity.ok(check);
-//  }
+  /** 
+   * 비밀번호 업데이트
+   * @param memberDTO 회원정보+새비밀번호
+   * @return  성공하면 true
+   */
+  @PostMapping(path = "/update/password")
+  public ResponseEntity<Boolean> updatePassword(
+      @RequestBody MemberDTO memberDTO) {
+    String id = memberDTO.getId();
+    String password = memberDTO.getPassword();
+    
+    
+    boolean check = memberService.check_login(id, password);
+    
+    if(check) {
+      memberService.updatePassword(id, memberDTO.getNewPassword());
+    }
+    
+    return ResponseEntity.ok(check);
+  }
 }

@@ -19,6 +19,9 @@ public interface ManagerRepository extends JpaRepository<Manager, Long> {
   /** id로 관리자 조회 */
   public Optional<Manager> findById(String id);
   
+  /** 아이디, 비밀번호 일치하는지 확인 */
+  public int countByIdAndPassword(String id, String password);
+  
   /** 회원가입 (자동지원, 선언x) */
   
   /** 로그인 */
