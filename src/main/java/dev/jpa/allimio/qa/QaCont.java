@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.qa.QaDTO.QaResponse;
 import dev.jpa.allimio.tool.PageResponse;
 
 
@@ -39,7 +40,6 @@ public class QaCont {
    * 입력값 null, 공백 체크 유효성 검증
    * 권한 설정(비밀글, 관리자 게시 허용글 등
    * 관리자 답변 알림?
-   * 첨부파일 연동
    * 작성자 정보 노출?
    */
   
@@ -118,10 +118,10 @@ public class QaCont {
     System.out.println("grade ---> " + grade);
     
     // 1. Service에서 엔티티 조회
-    Qa qa = qaService.getQa(no, mno, ano);
+    QaDTO.QaResponse response = qaService.getQa(no, mno, ano);
     
     // 2. DTO 변환 후 200 OK 응답 반환
-    return ResponseEntity.ok(QaDTO.QaResponse.fromEntity(qa));
+    return ResponseEntity.ok(response);
   }
   
   

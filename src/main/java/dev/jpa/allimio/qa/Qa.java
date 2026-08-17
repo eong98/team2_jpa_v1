@@ -54,6 +54,10 @@ public class Qa {
   @Builder.Default
   /** 자주묻는 질문(FAQ) 여부*/
   private String isfaq = "N";
+  
+  @Builder.Default
+  /** 첨부파일 등록 여부*/
+  private String fileyn = "N";
 
   /** 답변자 고유 번호 */
   private Long ano;
@@ -92,10 +96,11 @@ public class Qa {
    * @param ano
    * @param answer
    * @param adate
+   * @param fileyn
    */
   @Builder
   public Qa(Long no, Long mno, int type, String title, String content, String cdate, String pw, int status,
-      String isdel, String vmode, int vseq, String isfaq, Long ano, String answer, String adate, String ddate) {
+      String isdel, String vmode, int vseq, String isfaq, Long ano, String answer, String adate, String ddate, String fileyn) {
     this.no = no;
     this.mno = mno;
     this.type = type;
@@ -112,6 +117,7 @@ public class Qa {
     this.answer = answer;
     this.adate = adate;
     this.ddate = ddate;
+    this.fileyn = fileyn;
   }
 
   // ==========================================
@@ -120,11 +126,12 @@ public class Qa {
   /**
    * 문의글 작성자가 수정할 때 호출
    */
-  public void updateQuestion(String title, String content, String vmode, int type, String pw) {
+  public void updateQuestion(String title, String content, String vmode, int type, String pw, String fileyn) {
     this.title = title;
     this.content = content;
     this.vmode = vmode;
     this.type = type;
+    this.fileyn = fileyn;
     if (pw != null && !pw.isBlank()) {
       this.pw = pw; // 공백이나 빈값이 아닌 새 비밀번호가 입력되었을 때만 업데이트
     }
@@ -136,7 +143,7 @@ public class Qa {
   /**
    * FAQ 수정할 때 호출
    */
-  public void updateFaq(String title, String content, String answer, String pw, int vseq, int type) {
+  public void updateFaq(String title, String content, String answer, String pw, int vseq, int type, String fileyn) {
     this.title = title;
     this.content = content;
     this.answer = answer;
@@ -145,6 +152,7 @@ public class Qa {
     }
     this.vseq = vseq;
     this.type = type;
+    this.fileyn = fileyn;
   }
 
   // ==========================================

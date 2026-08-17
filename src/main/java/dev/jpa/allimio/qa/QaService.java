@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.notice.NoticeDTO;
 import dev.jpa.allimio.tool.Tool;
 
 @Service
@@ -66,11 +67,13 @@ public class QaService {
    * @return Qa
    */
   @Transactional
-  public Qa getQa(Long no, Long mno, Long ano) {
+  public QaDTO.QaResponse getQa(Long no, Long mno, Long ano) {
     // 1. 게시글 존재 및 미삭제 여부 확인
     Qa qa = qaRepository.findById(no)
         .filter(q -> "N".equals(q.getIsdel()))
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
+    QaDTO.QaNav prev = null;
+    QaDTO.QaNav next = null;
 
     // isfaq === N (문의글)
     if ("N".equals(qa.getIsfaq())) {
@@ -82,14 +85,29 @@ public class QaService {
           throw new IllegalArgumentException("본인의 문의글만 조회할 수 있습니다.");
         }
       }
+      
+
+      // 3. 이전글 / 다음글 조회 (미삭제만 대상)
+      prev = qaRepository
+          .findFirstByNoLessThanAndIsdelAndIsfaqOrderByNoDesc(no, "N", "N")
+          .map(n -> new QaDTO.QaNav (n.getNo(), n.getTitle(), n.getFileyn(), n.getVmode(), n.getCdate()))
+          .orElse(null);
+
+      next = qaRepository
+          .findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByNoAsc(no, "N", "N")
+          .map(n -> new QaDTO.QaNav (n.getNo(), n.getTitle(), n.getFileyn(), n.getVmode(), n.getCdate()))
+          .orElse(null);
+      
 
       // 3. 관리자 조회 시 상태값 변경 (0: 답변대기 -> 1: 확인중)
       if (isAdmin && qa.getStatus() == 0) {
         qa.setStatus(1); // 엔티티 상태 필드 직접 변경 (Dirty Checking 적용)
       }
+      
     }
 
-    return qa;
+    // 4. DTO 변환 후 반환
+    return QaDTO.QaResponse.fromEntity(qa, prev, next);
   }
     
   /**

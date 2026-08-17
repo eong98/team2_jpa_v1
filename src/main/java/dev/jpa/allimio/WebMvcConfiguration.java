@@ -20,7 +20,10 @@ public class WebMvcConfiguration implements WebMvcConfigurer{
         // http://localhost:9100/home/storage/home.jpg 접근 허용
         registry.addResourceHandler("/home/storage/**").addResourceLocations("file:///" +  Tool.getServerDir("home"));
         registry.addResourceHandler("/board/storage/**").addResourceLocations("file:///" +  Tool.getServerDir("board"));
-
+        
+        // http://localhost:9100/attach/storage/notice/images/xxx.jpg 접근 허용
+        // ⭐️ AttachService.java의 purl(/attach/storage/{tname}/images 등)이 이 매핑을 그대로 탑니다.
+        registry.addResourceHandler("/attach/storage/**").addResourceLocations("file:///" +  Tool.getServerDir("attach"));
         
         // C:/kd/deploy/resort/food/storage ->  /food/storage -> http://localhost:9091/food/storage;
         // registry.addResourceHandler("/food/storage/**").addResourceLocations("file:///" +  Food.getUploadDir());
