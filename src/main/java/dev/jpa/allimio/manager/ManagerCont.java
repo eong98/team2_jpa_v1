@@ -174,26 +174,25 @@ public class ManagerCont {
    return ResponseEntity.ok().build();
  }
  
- // 테스트 X
-// /** 
-//  * 비밀번호 업데이트
-//  * @param managerDTO 관리자정보+새비밀번호
-//  * @return 성공하면 true
-//  */
-// @PostMapping(path = "/update/password")
-// public ResponseEntity<Boolean> updatePassword(
-//     @RequestBody ManagerDTO managerDTO) {
-//   String id = managerDTO.getId();
-//   String password = managerDTO.getPassword();
-//   
-//   
-//   boolean check = managerService.login(id, password);
-//   
-//   if(check) {
-//     managerService.updatePassword(id, managerDTO.getNewPassword());
-//   }
-//   
-//   return ResponseEntity.ok(check);
-// }
+ /** 
+  * 비밀번호 업데이트
+  * @param managerDTO 관리자정보+새비밀번호
+  * @return 성공하면 true
+  */
+ @PostMapping(path = "/update/password")
+ public ResponseEntity<Boolean> updatePassword(
+     @RequestBody ManagerDTO managerDTO) {
+   String id = managerDTO.getId();
+   String password = managerDTO.getPassword();
+   
+   
+   boolean check = managerService.check_login(id, password);
+   
+   if(check) {
+     managerService.updatePassword(id, managerDTO.getNewPassword());
+   }
+   
+   return ResponseEntity.ok(check);
+ }
 }
 
