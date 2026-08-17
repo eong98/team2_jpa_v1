@@ -6,7 +6,7 @@ DROP SEQUENCE ATTACH_SEQ;
 
 CREATE TABLE ATTACH (
   NO        NUMBER(19)                  NOT NULL, -- 첨부파일번호 (PK)
-  TNO       NUMBER(7)                       NULL, -- 관리자메뉴(테이블)번호 (FK) /////// 일단 작업중단
+  TNO       NUMBER(7)                       NULL, -- 관리자메뉴(테이블)번호 (FK)
   TNAME     VARCHAR2(30)                NOT NULL, -- TNO로 가져온 테이블이름(영문) (구분되는 폴더명이 됩니다)
   BNO       NUMBER(10)                  NOT NULL, -- 등록 게시글 PK번호
   TYPE      NUMBER(10)                  NOT NULL, -- 파일 종류 구분 (0: IMAGE / 1: FILE)

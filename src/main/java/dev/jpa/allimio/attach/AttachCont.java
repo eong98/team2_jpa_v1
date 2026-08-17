@@ -2,73 +2,46 @@ package dev.jpa.allimio.attach;
 
 import dev.jpa.allimio.tool.Download;
 import dev.jpa.allimio.tool.PageResponse;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/attach")
+@RequiredArgsConstructor // 생성자 주입 자동 생성
 public class AttachCont {
 
+  private final AttachService attachService;
   private final Download download;
-
-  @Autowired
-  private AttachService attachService;
-
-  public AttachCont(Download download) {
-    System.out.println("-> AttachCont created.");
-    this.download = download;
-  }
 
   /**
    * 특정 게시글의 첨부파일 목록 조회
-   * - http://localhost:9102/attach/list/1/10 또는 http://localhost:9102/attach/list/10
-   * 
-   * @param bno 게시글 번호
-   * @return 해당 게시글의 첨부파일 DTO 목록
+   * GET /attach/list/10
    */
-  @GetMapping(path = {"/list/{bno}"})
-  public ResponseEntity<List<AttachDTO>> list(
-      @PathVariable("bno") Long bno) {
-    
+  @GetMapping(path = "/list/{bno}")
+  public ResponseEntity<List<AttachDTO>> list(@PathVariable("bno") Long bno) {
     List<AttachDTO> list = this.attachService.getAttachList(bno);
     return ResponseEntity.ok(list);
   }
 
   /**
-   * 다중 파일 업로드 등록 처리, http://localhost:9102/attach/create
-   * 
-   * @param attachDTO 첨부파일 업로드 폼 데이터
-   * @return 저장된 AttachDTO 리스트
+   * 다중 파일 업로드 등록 처리
+   * POST /attach/create
    */
   @PostMapping(value = "/create")
-  public ResponseEntity<List<AttachDTO>> create(@ModelAttribute("attachDTO") AttachDTO attachDTO) {
-    System.out.println("-> tname: " + attachDTO.getTname());
-    System.out.println("-> bno: " + attachDTO.getBno());
-
-    // ------------------------------------------------------------------------------
-    // 파일 전송 및 DB 저장 (tname으로 tno는 서비스 내부에서 자동 역조회)
-    // ------------------------------------------------------------------------------
+  public ResponseEntity<List<AttachDTO>> create(@ModelAttribute AttachDTO attachDTO) {
     List<MultipartFile> files = attachDTO.getFiles();
-    System.out.println("-> files: " + files);
-    
+
     List<AttachDTO> savedList = this.attachService.saveAttachFiles(
-        attachDTO.getTname(), 
-        attachDTO.getBno(), 
+        attachDTO.getTname(),
+        attachDTO.getBno(),
         files
     );
 
@@ -76,23 +49,24 @@ public class AttachCont {
   }
 
   /**
-   * 단건 첨부파일 상세 조회, http://localhost:9102/attach/read/1
-   * 
-   * @param no 첨부파일 번호(PK)
-   * @return AttachDTO
+   * 단건 첨부파일 상세 조회
+   * GET /attach/read/1
    */
   @GetMapping(path = "/read/{no}")
   public ResponseEntity<AttachDTO> read(@PathVariable("no") Long no) {
-    System.out.println("-> attach no: " + no);
     AttachDTO attachDTO = this.attachService.getAttachWithMenu(no);
+    if (attachDTO == null) {
+      return ResponseEntity.notFound().build();
+    }
     return ResponseEntity.ok(attachDTO);
   }
 
   /**
-   * 페이징 + 검색 목록, http://localhost:9102/attach/list_all_paging_search?word=테스트&page=0&size=10
+   * 관리자/통합 검색 및 페이징 목록 조회
+   * GET /attach/list/admin?word=테스트&page=0&size=10
    */
-  @GetMapping(path = "/list_all_paging_search")
-  public ResponseEntity<PageResponse<AttachDTO>> list_all_paging_search(
+  @GetMapping(path = "/list/admin")
+  public ResponseEntity<PageResponse<AttachDTO>> searchAllAttach(
       @RequestParam(name = "word", defaultValue = "") String word,
       @RequestParam(name = "tno", required = false) Long tno,
       @RequestParam(name = "type", required = false) Integer type,
@@ -107,18 +81,18 @@ public class AttachCont {
   }
 
   /**
-   * 단일 첨부파일 삭제, http://localhost:9102/attach/delete/1
-   * 각각의 첨부파일만 삭제시도시 서버에 저장된 실제 파일도 삭제됩니다.
+   * 단일 첨부파일 삭제 (실물 파일 + DB 삭제)
+   * DELETE /attach/delete/1
    */
   @DeleteMapping(path = "/delete/{no}")
   public ResponseEntity<Integer> delete(@PathVariable("no") Long no) {
-    System.out.println("-> delete attach no: " + no);
     int cnt = this.attachService.deleteAttachFile(no);
     return ResponseEntity.ok(cnt);
   }
 
   /**
-   * 특정 게시글 연관 파일 일괄 삭제, http://localhost:9102/attach/delete_by_bno/10
+   * 특정 게시글 연관 파일 일괄 삭제
+   * DELETE /attach/delete_by_bno/10
    */
   @DeleteMapping(path = "/delete_by_bno/{bno}")
   public ResponseEntity<Integer> deleteByBno(@PathVariable("bno") Long bno) {
