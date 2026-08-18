@@ -177,7 +177,7 @@ public class QaDTO {
     /** 비밀글 여부 (Y/N) */
     private String vmode;
     /** 자주묻는 질문(FAQ) 정렬 순서 */
-    private int vseq;
+    private Integer vseq;
     /** 자주묻는 질문(FAQ) 여부 */
     private String isfaq;
     /** 첨부파일 등록 여부 */

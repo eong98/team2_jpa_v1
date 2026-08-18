@@ -1,9 +1,8 @@
 package dev.jpa.allimio.survey;
 
+import dev.jpa.allimio.surveyquestion.SurveyQuestionDTO;
 import java.util.ArrayList;
 import java.util.List;
-
-import dev.jpa.allimio.surveyquestion.SurveyQuestionDTO;
 
 /**
  * 설문 등록·수정·조회에 사용하는 DTO.
@@ -14,7 +13,7 @@ import dev.jpa.allimio.surveyquestion.SurveyQuestionDTO;
 public class SurveyDTO {
 
     private Long no;
-    private Long memberNo;
+    private Long managerNo;
     private String title;
     private String detail;
     private String startDate;
@@ -33,12 +32,12 @@ public class SurveyDTO {
         this.no = no;
     }
 
-    public Long getMemberNo() {
-        return memberNo;
+    public Long getManagerNo() {
+        return managerNo;
     }
 
-    public void setMemberNo(Long memberNo) {
-        this.memberNo = memberNo;
+    public void setManagerNo(Long managerNo) {
+        this.managerNo = managerNo;
     }
 
     public String getTitle() {

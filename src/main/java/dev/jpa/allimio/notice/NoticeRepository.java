@@ -42,7 +42,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
       "AND (:word IS NULL OR :word = '' OR n.title LIKE %:word% OR n.content LIKE %:word%) " +
       "AND (:type IS NULL OR n.type = :type) " +
       "AND (:vmode IS NULL OR n.vmode = :vmode) "
-      + "ORDER BY n.fixyn DESC, n.type DESC, n.cdate DESC")
+      + "ORDER BY n.fixyn DESC, n.type ASC, n.cdate DESC")
   Page<Notice> searchAdminNotice(
       @Param("word") String word,
       @Param("type") Integer type,
