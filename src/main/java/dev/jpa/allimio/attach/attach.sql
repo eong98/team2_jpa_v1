@@ -6,8 +6,8 @@ DROP SEQUENCE ATTACH_SEQ;
 
 CREATE TABLE ATTACH (
   NO        NUMBER(19)                  NOT NULL, -- 첨부파일번호 (PK)
-  TNO       NUMBER(7)                       NULL, -- 관리자메뉴(테이블)번호 (FK)
-  TNAME     VARCHAR2(30)                NOT NULL, -- TNO로 가져온 테이블이름(영문) (구분되는 폴더명이 됩니다)
+  TNO       NUMBER(7)                       NULL, -- TNAME으로 가져온 관리자메뉴(테이블)번호 (FK)
+  TNAME     VARCHAR2(30)                NOT NULL, -- 테이블이름(영문 대문자) (구분되는 폴더명이 됩니다)
   BNO       NUMBER(10)                  NOT NULL, -- 등록 게시글 PK번호
   TYPE      NUMBER(10)                  NOT NULL, -- 파일 종류 구분 (0: IMAGE / 1: FILE)
   NAME      VARCHAR2(255)               NOT NULL, -- 원본 파일명
@@ -16,15 +16,15 @@ CREATE TABLE ATTACH (
   THUMB     VARCHAR2(255)                   NULL, -- 이미지 썸네일
   PURL      VARCHAR2(500)               NOT NULL, -- 상대 저장 경로
   CDATE     VARCHAR2(30)                NOT NULL, -- 등록일시
-  DDATE     VARCHAR2(30)                    NULL, -- 삭제 예정 일시 (null=정상, 값 있으면 그 시각 이후 배치가 실제 삭제)
+  DDATE     VARCHAR2(30)                    NULL, -- 삭제 예정 일시 (추후 사용)
 
   CONSTRAINT PK_ATTACH PRIMARY KEY (NO)
 );
 
 COMMENT ON TABLE  ATTACH       IS '첨부파일';
 COMMENT ON COLUMN ATTACH.NO    IS '첨부파일번호 (PK)';
-COMMENT ON COLUMN ATTACH.TNO   IS '관리자메뉴(테이블)번호 (FK)';
-COMMENT ON COLUMN ATTACH.TNAME IS 'TNO로 가져온 테이블이름(영문) (구분되는 폴더명이 됩니다)';
+COMMENT ON COLUMN ATTACH.TNO   IS 'TNAME으로 가져온 관리자메뉴(테이블)번호 (FK)';
+COMMENT ON COLUMN ATTACH.TNAME IS '테이블이름(영문 대문자) (구분되는 폴더명이 됩니다)';
 COMMENT ON COLUMN ATTACH.BNO   IS '등록 게시글 PK번호';
 COMMENT ON COLUMN ATTACH.TYPE  IS '파일 종류 구분 (0: IMAGE / 1: FILE)';
 COMMENT ON COLUMN ATTACH.NAME  IS '원본 파일명';
@@ -43,7 +43,7 @@ CREATE SEQUENCE ATTACH_SEQ
   NOCYCLE;
 
 
-
+-----------------------------------------------------------------------------------
 -- SELECT *
 -- FROM ATTACH A 
 -- INNER JOIN IN_MENU M ON A.TNAME = M.TNAME 

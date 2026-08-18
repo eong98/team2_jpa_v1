@@ -49,7 +49,7 @@ public class Qa {
   private String vmode = "N";
 
   /** 자주묻는 질문(FAQ) 정렬 순서 */
-  private int vseq;
+  private Integer vseq;
   
   @Builder.Default
   /** 자주묻는 질문(FAQ) 여부*/
