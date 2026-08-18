@@ -1,6 +1,8 @@
 package dev.jpa.allimio.member.profileimage;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,23 +19,6 @@ import lombok.RequiredArgsConstructor;
 public class ProfileImageCont {
 
     private final ProfileImageService profileImageService;
-
-    /**
-     * 프로필 레코드 생성 (회원가입 시 연동)
-     * POST /profile/img/create
-     */
-    @PostMapping("/create")
-    public ResponseEntity<Void> create(@RequestParam(name = "memberno") Long memberno) {
-      try {
-        // 성공 시 예외 없이 통과됨 (void)
-          profileImageService.create(memberno);
-          return ResponseEntity.ok().build();
-        
-      } catch (Exception e) {
-        // 서비스에서 에러가 발생하여 던져지면 500 에러 반환
-          return ResponseEntity.internalServerError().build();
-      }
-    }
 
     /**
      * 프로필 이미지 수정/업로드
@@ -103,5 +88,21 @@ public class ProfileImageCont {
         int cnt = this.profileImageService.update_file("", "", memberno);
 
         return ResponseEntity.ok(cnt);
+    }
+    
+    /**
+     * 프로필 이미지 정보 조회
+     * GET /profile/img/{memberno}
+     */
+    @GetMapping("/{memberno}")
+    public ResponseEntity<ProfileImageDTO> getProfileImage(@PathVariable("memberno") Long memberno) {
+        ProfileImageDTO dto = this.profileImageService.findByMemberno(memberno);
+
+        // 등록된 이미지가 없으면 null을 담아 200 OK 반환 (프론트가 기본 아바타/첫 글자 출력)
+        if (dto == null) {
+            return ResponseEntity.ok(null);
+        }
+
+        return ResponseEntity.ok(dto);
     }
 }
