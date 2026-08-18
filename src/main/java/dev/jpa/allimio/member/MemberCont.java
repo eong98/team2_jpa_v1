@@ -53,8 +53,6 @@ public class MemberCont {
   @PostMapping(path = "/save")
   public ResponseEntity<Member> saveMember(@Valid @RequestBody MemberDTO memberDTO) {
     Member savedEntity = memberService.save(memberDTO);
-    
-    profileImageService.create(savedEntity.getNo());
 
     return ResponseEntity.ok(savedEntity);
   }
