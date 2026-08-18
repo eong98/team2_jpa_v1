@@ -31,6 +31,12 @@ public class ShopPlan {
   
   /** 구독 이용기간 (6, 12 / 개월) */
   private Integer pmonth;
+  
+  /** 이용기간별 CCTV 최소 갯수 지정 */
+  private Integer mincctv;
+  
+  /** 이용기간별 CCTV 최대 갯수 지정 */
+  private Integer maxcctv;
 
   /** CCTV 1대당 기본단가 */
   private Double bprice;

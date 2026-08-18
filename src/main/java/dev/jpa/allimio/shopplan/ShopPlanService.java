@@ -35,7 +35,7 @@ public class ShopPlanService {
   }
   
   /**
-   * 구독권 조회
+   * 구독권 조회 (관리자 조회용)
    * @return
    */
   public Page<ShopPlanDTO.Response> findAll(ShopPlanDTO.PlanSearchRequest req, Pageable pageable) {
@@ -48,6 +48,14 @@ public class ShopPlanService {
         pageable);
 
     return spPage.map(ShopPlanDTO.Response::from);
+  }
+  
+  /** 사용자 조회용 */
+  public List<ShopPlanDTO.Response> findAllList() {
+    List<ShopPlan> list = shopPlanRepository.findAll();
+    return list.stream()
+        .map(ShopPlanDTO.Response::from)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -79,6 +87,8 @@ public class ShopPlanService {
       shopPlan.setPname(request.getPname());
       shopPlan.setPmonth(request.getPmonth());
       shopPlan.setBprice(request.getBprice());
+      shopPlan.setMaxcctv(request.getMaxcctv());
+      shopPlan.setMincctv(request.getMincctv());
       shopPlan.setDescription(request.getDescription());
       if (request.getIssell() != null) {
         shopPlan.setIssell(request.getIssell());
