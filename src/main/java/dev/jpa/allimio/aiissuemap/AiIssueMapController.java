@@ -44,12 +44,12 @@ public class AiIssueMapController {
    *
    * GET /api/aiissuemaps/1
    */
-  @GetMapping("/{aiissueMapno}")
+  @GetMapping("/{no}")
   public ResponseEntity<AiIssueMapDTO> read(
-      @PathVariable("aiissueMapno") long aiissueMapno) {
+      @PathVariable("no") long no) {
 
     AiIssueMapDTO dto =
-        aiIssueMapService.read(aiissueMapno);
+        aiIssueMapService.read(no);
 
     if (dto == null) {
       return ResponseEntity.notFound().build();
@@ -64,12 +64,12 @@ public class AiIssueMapController {
    *
    * GET /api/aiissuemaps/shopmap/1
    */
-  @GetMapping("/shopmap/{shopmapno}")
+  @GetMapping("/shopmap/{smno}")
   public ResponseEntity<List<AiIssueMapDTO>> listByShopmapno(
-      @PathVariable("shopmapno") long shopmapno) {
+      @PathVariable("smno") long smno) {
 
     return ResponseEntity.ok(
-        aiIssueMapService.listByShopmapno(shopmapno)
+        aiIssueMapService.listBySmno(smno)
     );
   }
 
@@ -97,9 +97,9 @@ public class AiIssueMapController {
    *
    * PATCH /api/aiissuemaps/{번호}/result
    */
-  @PatchMapping("/{aiissueMapno}/result")
+  @PatchMapping("/{no}/result")
   public ResponseEntity<String> updateResult(
-      @PathVariable("aiissueMapno") long aiissueMapno,
+      @PathVariable("no") long no,
       @RequestBody Map<String, Object> body) {
 
     String fsaved =
@@ -117,7 +117,7 @@ public class AiIssueMapController {
 
     boolean result =
         aiIssueMapService.updateResult(
-            aiissueMapno,
+            no,
             fsaved,
             status,
             err
@@ -138,12 +138,12 @@ public class AiIssueMapController {
    *
    * DELETE /api/aiissuemaps/{번호}
    */
-  @DeleteMapping("/{aiissueMapno}")
+  @DeleteMapping("/{no}")
   public ResponseEntity<String> delete(
-      @PathVariable("aiissueMapno") long aiissueMapno) {
+      @PathVariable("no") long no) {
 
     boolean result =
-        aiIssueMapService.delete(aiissueMapno);
+        aiIssueMapService.delete(no);
 
     if (!result) {
       return ResponseEntity.notFound().build();

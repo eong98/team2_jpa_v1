@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+
 /* ---------------------------------------------------------------------
    /shop/search(사용자 매장 목록, /user/shop) 응답 전용 DTO.
 
@@ -31,6 +32,7 @@ public class ShopWithCctvCount {
 
   /** 이 매장(sno) 소유로 등록된 CCTV 대수 */
   private long cctvCount;
+  
 
   public ShopWithCctvCount() {
 

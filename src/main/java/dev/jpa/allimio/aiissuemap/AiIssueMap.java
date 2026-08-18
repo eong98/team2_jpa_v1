@@ -36,7 +36,7 @@ public class AiIssueMap {
       sequenceName = "SEQ_AIISSUEMAP_NO",
       allocationSize = 1
   )
-  private long aiissueMapno;
+  private long no;
 
   /**
    * 회원번호
@@ -46,7 +46,7 @@ public class AiIssueMap {
   /**
    * 원본 매장 도면 번호
    */
-  private long shopmapno;
+  private long smno;
 
   /**
    * 이슈 X 좌표
@@ -91,9 +91,9 @@ public class AiIssueMap {
   }
 
   public AiIssueMap(
-      long aiissueMapno,
+      long no,
       long mno,
-      long shopmapno,
+      long smno,
       Double xpos,
       Double ypos,
       String color,
@@ -102,9 +102,9 @@ public class AiIssueMap {
       String err,
       String cdate) {
 
-    this.aiissueMapno = aiissueMapno;
+    this.no = no;
     this.mno = mno;
-    this.shopmapno = shopmapno;
+    this.smno = smno;
     this.xpos = xpos;
     this.ypos = ypos;
     this.color = color;

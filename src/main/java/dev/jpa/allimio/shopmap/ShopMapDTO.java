@@ -18,7 +18,7 @@ public class ShopMapDTO {
   /**
    * 매장 도면 번호(PK)
    */
-  private long shopmapno;
+  private long no;
 
   /**
    * 매장번호
@@ -26,7 +26,7 @@ public class ShopMapDTO {
    * 외래키로 연결하지 않고
    * 매장번호 값만 저장합니다.
    */
-  private long no;
+  private long sno;
 
   /**
    * 사용자가 업로드한 원본 파일명
@@ -55,11 +55,11 @@ public class ShopMapDTO {
   /**
    * 전체 필드를 받는 생성자
    */
-  public ShopMapDTO(long shopmapno, long no,
+  public ShopMapDTO(long no, long sno,
                     String fname, String fsaved, String cdate) {
 
-    this.shopmapno = shopmapno;
     this.no = no;
+    this.sno = sno;
     this.fname = fname;
     this.fsaved = fsaved;
     this.cdate = cdate;
@@ -74,8 +74,8 @@ public class ShopMapDTO {
   public ShopMap toEntity() {
 
     return new ShopMap(
-        shopmapno,
         no,
+        sno,
         fname,
         fsaved,
         cdate
