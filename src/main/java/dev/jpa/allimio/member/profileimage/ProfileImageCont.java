@@ -1,20 +1,12 @@
 package dev.jpa.allimio.member.profileimage;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import dev.jpa.allimio.history.update.UpdateHistoryService;
 import dev.jpa.allimio.tool.Tool;
 import dev.jpa.allimio.tool.Upload;
 import lombok.RequiredArgsConstructor;
@@ -23,107 +15,93 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @RequestMapping("/profile/img")
 public class ProfileImageCont {
-  private final ProfileImageService profileImageService;
 
-  /**
-   * 등록 처리 http://localhost:9100/contents/create
-   * 
-   * @return
-   */
-  @PostMapping(value = "/create")
-  public ResponseEntity<Void> create(@RequestParam(name="memberno") Long memberno) {
-    boolean check = profileImageService.create(memberno);
-    
-    if(check) {
-      return ResponseEntity.ok().build();
-    }else {
-      return ResponseEntity.internalServerError().build();
-    }
-  }
+    private final ProfileImageService profileImageService;
 
-  /**
-   * 파일 수정, 회원가입시 테이블 1:1 매칭되서 첫 등록도 수정으로 취급.
-   * 
-   * @param file1MF 원본이미지
-   * @param memberno 회원 번호
-   * @return 0: 이미지 수정 실패, 1: 이미지 수정 성공, 2: 전송할 파일이 없음
-   */
-  @PostMapping(path="/update")
-  public ResponseEntity<Integer> update_file(
-      @RequestParam(name="file1MF", defaultValue = "") MultipartFile file1MF,
-      @RequestParam(name="memberno", defaultValue = "0" ) Long memberno) {
-      int sw = 0;
-    
-      String upDir = Tool.getServerDir("profile");
-      
-      // 파일 삭제
-      ProfileImageDTO  profileImageDTO  = this.profileImageService.findByMemberno(memberno);
-      if(profileImageDTO.getStoreFilename() != null && !profileImageDTO.getStoreFilename().equals("")) {
-        Tool.deleteFile(upDir, profileImageDTO.getStoreFilename());
-      }
-  
-      // ------------------------------------------------------------------------------
-      // 파일 전송 코드 시작
-      // ------------------------------------------------------------------------------
-      String uploadFilename = ""; // 원본 파일명 image
-      String storeFilename = ""; // 저장된 파일명, image
-      
-      // 전송 파일이 없어도 file1MF 객체가 생성됨.
-      // <input type='file' class="form-control" name='file1MF' id='file1MF'
-      // value='' placeholder="파일 선택">
-      MultipartFile mf = file1MF;
-
-      if (mf != null) { // 1. 파일 전송 객체가 존재할 때
-        uploadFilename = mf.getOriginalFilename(); 
-        System.out.println("-> 원본 파일명 산출 file1: " + uploadFilename);
+    /**
+     * 프로필 레코드 생성 (회원가입 시 연동)
+     * POST /profile/img/create
+     */
+    @PostMapping("/create")
+    public ResponseEntity<Void> create(@RequestParam(name = "memberno") Long memberno) {
+      try {
+        // 성공 시 예외 없이 통과됨 (void)
+          profileImageService.create(memberno);
+          return ResponseEntity.ok().build();
         
-        if (Tool.checkUploadFile(uploadFilename) == true) { // 2. 업로드 가능한 파일인지 검사
-            // 파일 저장
-            storeFilename = Upload.saveFileSpring(mf, upDir);
+      } catch (Exception e) {
+        // 서비스에서 에러가 발생하여 던져지면 500 에러 반환
+          return ResponseEntity.internalServerError().build();
+      }
+    }
 
-            profileImageDTO.setUploadFilename(uploadFilename); 
-            profileImageDTO.setStoreFilename(storeFilename);          
+    /**
+     * 프로필 이미지 수정/업로드
+     * POST /profile/img/update
+     * @return 0: 이미지 수정 실패(확장자 불일치 등), 1: 수정 성공, 2: 전송할 파일이 없음
+     */
+    @PostMapping("/update")
+    public ResponseEntity<Integer> update_file(
+            @RequestParam(name = "file1MF", required = false) MultipartFile file1MF,
+            @RequestParam(name = "memberno", defaultValue = "0") Long memberno) {
 
-            // 검사 통과 시에만 DB 업데이트 실행
-            int cnt = this.profileImageService.update_file(uploadFilename, storeFilename, memberno);
-            sw = cnt; // 0 or 1
-            
-        } else { // 💡 [추가 권장] 확장자 검사 실패 시 처리
-            sw = 0; // 업로드 불가능한 파일 형식일 때 0 리턴
+        // 1. 파일 전송 여부 확인
+        if (file1MF == null || file1MF.isEmpty()) {
+            return ResponseEntity.ok(2); // 전송할 파일이 없음
         }
-        
-    } else { // 파일 객체 자체가 없을 때
-        sw = 2;
-    }
-      
-    return ResponseEntity.ok(sw);
-  }
 
-  /**
-   * 파일 삭제, http://localhost:9100/contents/delete_file1
-   * @param memberno
-   * @return 0: 이미지 삭제 실패, 1: 이미지 삭제 성공, 2: 기본 이미지 삭제 시도
-   */
-  @PostMapping(path="/delete")
-  public ResponseEntity<Integer> delete_file(
-      @RequestParam(name="memberno", defaultValue = "0" ) Long memberno) {
-    int sw = 0;
-    
-      String dir = Tool.getServerDir("profile");
-      
-      // 삭제할 파일 정보 읽기
-      ProfileImageDTO  profileImageDTO  = this.profileImageService.findByMemberno(memberno);
-      
-      if (!profileImageDTO.getStoreFilename().equals("")) {
-        Tool.deleteFile(dir, profileImageDTO.getStoreFilename());      
+        String uploadFilename = file1MF.getOriginalFilename();
+
+        // 2. 확장자 검사
+        if (!Tool.checkUploadFile(uploadFilename)) {
+            return ResponseEntity.ok(0); // 허용되지 않은 파일 형식
+        }
+
+        String upDir = Tool.getServerDir("profile");
         
-        // 파일을 삭제했음으로 DBMS에서 파일 정보를 삭제함.
-        int cnt = this.profileImageService.update_file("", "",  memberno);
-        sw = cnt; // 0 or 1
-      } else {
-        sw = 2; // 기본 이미지 삭제 시도
-      }
-  
-    return ResponseEntity.ok(sw);
-  }
+        System.out.println("검사 통과");
+
+        // 3. 새 파일 물리적 저장
+        String storeFilename = Upload.saveFileSpring(file1MF, upDir);
+
+        // 4. 기존 파일명 조회 (교체 성공 후 삭제하기 위함)
+        ProfileImageDTO oldImage = this.profileImageService.findByMemberno(memberno);
+        String oldStoreFilename = (oldImage != null) ? oldImage.getStoreFilename() : null;
+
+        // 5. DB 정보 갱신
+        int cnt = this.profileImageService.update_file(uploadFilename, storeFilename, memberno);
+
+        // 6. DB 갱신 성공 시 이전 파일 삭제
+        if (cnt > 0 && oldStoreFilename != null && !oldStoreFilename.trim().isEmpty()) {
+            Tool.deleteFile(upDir, oldStoreFilename);
+        }
+
+        return ResponseEntity.ok(cnt);
+    }
+
+    /**
+     * 프로필 이미지 삭제 (기본 이미지로 초기화)
+     * POST /profile/img/delete
+     * @return 0: 삭제 실패, 1: 삭제 성공, 2: 이미 등록된 파일이 없음
+     */
+    @PostMapping("/delete")
+    public ResponseEntity<Integer> delete_file(
+            @RequestParam(name = "memberno", defaultValue = "0") Long memberno) {
+
+        ProfileImageDTO profileImageDTO = this.profileImageService.findByMemberno(memberno);
+
+        if (profileImageDTO == null || profileImageDTO.getStoreFilename() == null || profileImageDTO.getStoreFilename().trim().isEmpty()) {
+            return ResponseEntity.ok(2); // 삭제할 커스텀 이미지가 없음 (기본 이미지 상태)
+        }
+
+        String dir = Tool.getServerDir("profile");
+
+        // 실제 물리 디스크 파일 삭제
+        Tool.deleteFile(dir, profileImageDTO.getStoreFilename());
+
+        // DB 파일명 정보 빈 문자열로 초기화
+        int cnt = this.profileImageService.update_file("", "", memberno);
+
+        return ResponseEntity.ok(cnt);
+    }
 }
