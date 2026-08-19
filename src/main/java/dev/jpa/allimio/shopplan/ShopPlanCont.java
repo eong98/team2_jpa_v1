@@ -65,9 +65,12 @@ public class ShopPlanCont {
    * GET /shop_plan/list
    */
   @GetMapping(path = "/list")
-  public ResponseEntity<List<ShopPlanDTO.Response>> getList() {
-    List<ShopPlanDTO.Response> list = shopPlanService.findAllList();
+  public ResponseEntity<List<ShopPlan>> getList() {
+    List<ShopPlan> list = shopPlanService.findAllList();
     return ResponseEntity.ok(list);
+//    public ResponseEntity<List<ShopPlanDTO.Response>> getList() {
+//      List<ShopPlanDTO.Response> list = shopPlanService.findAllList();
+//      return ResponseEntity.ok(list);
   }
 
   /**

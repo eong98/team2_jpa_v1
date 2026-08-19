@@ -1,7 +1,9 @@
 package dev.jpa.allimio.shopplan;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -10,12 +12,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+//import dev.jpa.allimio.shoporder.ShopOrderRepository;
 import dev.jpa.allimio.tool.Tool;
 
 @Service
 public class ShopPlanService {
   @Autowired
   ShopPlanRepository shopPlanRepository;
+  
+//  @Autowired
+//  ShopOrderRepository shopOrderRepository;
 
   public ShopPlanService() {
 
@@ -50,12 +56,44 @@ public class ShopPlanService {
     return spPage.map(ShopPlanDTO.Response::from);
   }
   
-  /** 사용자 조회용 */
-  public List<ShopPlanDTO.Response> findAllList() {
-    List<ShopPlan> list = shopPlanRepository.findAll();
-    return list.stream()
-        .map(ShopPlanDTO.Response::from)
-        .collect(Collectors.toList());
+
+  /**
+   * 판매중인 구독권 전체 목록 (사용자 결제화면용).
+   * SHOP_ORDER 집계 결과를 붙여서, 같은 이용기간(pmonth) 그룹 안에서
+   * 주문 건수가 가장 많은 구독권에 popular=true를 표시합니다.
+   */
+//  public List<ShopPlanDTO.Response> findAllList() {
+    public List<ShopPlan> findAllList() {
+    List<ShopPlan> list = shopPlanRepository.findByIssellOrderByMincctv("Y");
+
+    // pno -> 주문건수 맵
+//    Map<Long, Long> countMap = shopOrderRepository.countByPno().stream()
+//        .collect(Collectors.toMap(
+//            ShopOrderRepository.PnoCountProjection::getPno,
+//            ShopOrderRepository.PnoCountProjection::getCnt));
+//
+//    List<ShopPlanDTO.Response> responses = list.stream()
+//        .map(ShopPlan -> {
+//          ShopPlanDTO.Response r = ShopPlanDTO.Response.from(ShopPlan);
+//          r.setOrderCount(countMap.getOrDefault(ShopPlan.getNo(), 0L));
+//          return r;
+//        })
+//        .collect(Collectors.toList());
+//
+//    // pmonth별로 묶어서 그룹 내 최댓값(주문건수 1위)에 popular=true
+//    Map<Integer, Optional<ShopPlanDTO.Response>> topByMonth = responses.stream()
+//        .collect(Collectors.groupingBy(
+//            ShopPlanDTO.Response::getPmonth,
+//            Collectors.maxBy(Comparator.comparingLong(ShopPlanDTO.Response::getOrderCount))));
+//
+//    topByMonth.values().forEach(opt -> opt.ifPresent(top -> {
+//      if (top.getOrderCount() > 0) { // 주문이 아예 없으면 인기 배지 안 붙임
+//        top.setPopular(true);
+//      }
+//    }));
+
+//    return responses;
+    return list;
   }
 
   /**

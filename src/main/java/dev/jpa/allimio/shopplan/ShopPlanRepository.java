@@ -10,8 +10,18 @@ import org.springframework.data.repository.query.Param;
 
 public interface ShopPlanRepository extends JpaRepository<ShopPlan, Long> {
   
-  List<ShopPlan> findByIssell(String issell);
+  List<ShopPlan> findByIssellOrderByMincctv(String issell);
 
+  /**
+   * 요금제 목록 검색
+   * @param word
+   * @param pmonth
+   * @param bprice
+   * @param issell
+   * @param cdate
+   * @param pageable
+   * @return
+   */
   @Query("""
       SELECT sp FROM ShopPlan sp 
       WHERE (:word IS NULL OR :word = '' 
