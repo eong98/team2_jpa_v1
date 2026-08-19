@@ -53,14 +53,11 @@ dependencies {
   // Security  
   // testImplementation 'org.springframework.security:spring-security-test'
   // implementation 'org.springframework.boot:spring-boot-starter-security'
-<<<<<<< HEAD
-=======
 //  testImplementation 'org.springframework.security:spring-security-test'
 //  implementation 'org.springframework.boot:spring-boot-starter-security'
 
 
->>>>>>> dfad101ff587014dce195ab6d0bf41a304910029
-}
+
 
 tasks.named('test') {
   useJUnitPlatform()
