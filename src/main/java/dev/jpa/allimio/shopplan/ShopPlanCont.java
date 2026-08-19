@@ -1,5 +1,7 @@
 package dev.jpa.allimio.shopplan;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Page;
@@ -56,6 +58,16 @@ public class ShopPlanCont {
 
     // PageResponse.of()를 통해 생성자 호출 코드 중복 없이 깔끔하게 반환
     return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
+  
+  /**
+   * 구독권 상품 전체 목록 (페이징 없음, 사용자 결제화면용)
+   * GET /shop_plan/list
+   */
+  @GetMapping(path = "/list")
+  public ResponseEntity<List<ShopPlanDTO.Response>> getList() {
+    List<ShopPlanDTO.Response> list = shopPlanService.findAllList();
+    return ResponseEntity.ok(list);
   }
 
   /**

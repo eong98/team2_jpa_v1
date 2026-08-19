@@ -17,6 +17,10 @@ public class ShopPlanDTO {
     private String pname;
     /** 구독 이용기간 (6, 12 / 개월) */
     private Integer pmonth;
+    /** 이용기간별 CCTV 최소 갯수 지정 */
+    private Integer mincctv;    
+    /** 이용기간별 CCTV 최대 갯수 지정 */
+    private Integer maxcctv;
     /** CCTV 1대당 기본단가 */
     private Double bprice;
     /** 구독권 상세 설명 */
@@ -28,6 +32,8 @@ public class ShopPlanDTO {
       return ShopPlan.builder()
           .pname(this.pname)
           .pmonth(this.pmonth)
+          .mincctv(this.mincctv)
+          .maxcctv(this.maxcctv)
           .bprice(this.bprice)
           .description(this.description)
           .issell(this.issell != null ? this.issell : "N")
@@ -47,6 +53,10 @@ public class ShopPlanDTO {
     private String pname;
     /** 구독 이용기간 (6, 12 / 개월) */
     private Integer pmonth;
+    /** 이용기간별 CCTV 최소 갯수 지정 */
+    private Integer mincctv;    
+    /** 이용기간별 CCTV 최대 갯수 지정 */
+    private Integer maxcctv;
     /** CCTV 1대당 기본단가 */
     private Double bprice;
     /** 구독권 상세 설명 */
@@ -62,6 +72,8 @@ public class ShopPlanDTO {
           .no(entity.getNo())
           .pname(entity.getPname())
           .pmonth(entity.getPmonth())
+          .maxcctv(entity.getMaxcctv())
+          .mincctv(entity.getMincctv())
           .bprice(entity.getBprice())
           .description(entity.getDescription())
           .issell(entity.getIssell())
