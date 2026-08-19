@@ -12,11 +12,11 @@ import lombok.ToString;
 @ToString
 public class AiIssueMapDTO {
 
-  private long aiissueMapno;
+  private long no;
 
   private long mno;
 
-  private long shopmapno;
+  private long smno;
 
   private Double xpos;
 
@@ -36,9 +36,9 @@ public class AiIssueMapDTO {
   }
 
   public AiIssueMapDTO(
-      long aiissueMapno,
+      long no,
       long mno,
-      long shopmapno,
+      long smno,
       Double xpos,
       Double ypos,
       String color,
@@ -47,9 +47,9 @@ public class AiIssueMapDTO {
       String err,
       String cdate) {
 
-    this.aiissueMapno = aiissueMapno;
+    this.no = no;
     this.mno = mno;
-    this.shopmapno = shopmapno;
+    this.smno = smno;
     this.xpos = xpos;
     this.ypos = ypos;
     this.color = color;
@@ -62,9 +62,9 @@ public class AiIssueMapDTO {
   public AiIssueMap toEntity() {
 
     return new AiIssueMap(
-        aiissueMapno,
+        no,
         mno,
-        shopmapno,
+        smno,
         xpos,
         ypos,
         color,

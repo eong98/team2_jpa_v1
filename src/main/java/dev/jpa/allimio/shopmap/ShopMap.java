@@ -15,7 +15,7 @@ import lombok.ToString;
  * 매장 도면 Entity
  *
  * SHOPMAP 테이블과 연결됩니다.
- * 매장번호(NO)는 외래키로 사용하지 않고
+ * 매장번호(sno)는 외래키로 사용하지 않고
  * 일반 숫자 값으로 저장합니다.
  */
 @Entity
@@ -38,12 +38,12 @@ public class ShopMap {
       sequenceName = "SEQ_SHOPMAP_NO",
       allocationSize = 1
   )
-  private long shopmapno;
+  private long no;
 
   /**
    * 매장번호
    */
-  private long no;
+  private long sno;
 
   /**
    * 원본 파일명
@@ -69,11 +69,11 @@ public class ShopMap {
   /**
    * 전체 필드 생성자
    */
-  public ShopMap(long shopmapno, long no,
+  public ShopMap(long no, long sno,
                  String fname, String fsaved, String cdate) {
 
-    this.shopmapno = shopmapno;
     this.no = no;
+    this.sno = sno;
     this.fname = fname;
     this.fsaved = fsaved;
     this.cdate = cdate;

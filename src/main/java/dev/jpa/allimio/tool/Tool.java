@@ -119,6 +119,7 @@ public class Tool {
     String osName = System.getProperty("os.name").toLowerCase();
     String path = "";
 
+
     if (osName.contains("win")) { // Windows, Local
       path = "\\\\10.1.205.118\\allimio\\" + dir + "\\storage\\";
       // C:\\kd\\deploy\\resort\\contents\\storage\\

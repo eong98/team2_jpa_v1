@@ -20,9 +20,9 @@ public interface ShopMapRepository extends JpaRepository<ShopMap, Long> {
    * 매장당 도면은 1개만 관리하기 때문에
    * 하나의 ShopMap을 반환합니다.
    *
-   * @param no 매장번호
+   * @param sno 매장번호
    * @return 해당 매장의 도면
    */
-  Optional<ShopMap> findByNo(long no);
+  Optional<ShopMap> findByNo(long sno);
 
 }

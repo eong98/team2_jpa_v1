@@ -20,7 +20,7 @@ import dev.jpa.allimio.surveyresponse.SurveyResponseDTO;
 /**
  * 설문조사 REST API Controller.
  *
- * 관리자 설문 관리, 점주 설문 응답,
+ * 관리자 설문 관리, 점주 설문 응답
  * 관리자 응답 확인, AI 평가점수 저장 API를 제공한다.
  */
 @RestController

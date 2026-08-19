@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import dev.jpa.allimio.cctv.CctvRepository;
 import dev.jpa.allimio.tool.Tool;
 
+
 @Service
 public class ShopService {
   @Autowired
@@ -53,7 +54,9 @@ public class ShopService {
   public Page<Shop> searchAdmin(Long mno, String keyword, Pageable pageable) {
     return shopRepository.searchAdmin(mno, keyword, pageable);
   }
-
+  
+  
+  
   /**
    * 등록
    * @param shopDTO
@@ -119,5 +122,6 @@ public class ShopService {
     }
     return false;
   }
+  
 
 }

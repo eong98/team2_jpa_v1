@@ -42,7 +42,7 @@ public class SurveyAnalysis {
      * SURVEY.NO를 참조한다.
      * 설문 하나당 분석 결과는 한 건만 저장한다.
      */
-    @Column(name = "SNO", nullable = false, unique = true)
+    @Column(name = "SVNO", nullable = false, unique = true)
     private Long surveyNo;
 
 
