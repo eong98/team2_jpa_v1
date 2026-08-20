@@ -6,6 +6,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -39,7 +40,18 @@ public class Shop {
   // 2026-08-11 PAYSTATE(결제상태)/QRIMG(QR이미지) 컬럼은 테이블에서 제거됨.
   // QR이미지는 "고객의소리" 쪽에서 받는 것으로 방향이 바뀌었고, 결제상태도 이 테이블 책임이 아닌 것으로 정리됨.
 
-  public Shop() {
+  
+//JOIN 조회용 필드
+@Transient
+  private Long shopmapno;
+@Transient
+  private String fname;
+@Transient
+  private String fsaved;
+@Transient
+  private String shopmapCdate;
+ 
+public Shop() {
 
   }
 
@@ -59,4 +71,21 @@ public class Shop {
     this.cdate = cdate;
   }
 
+//shopmap 조인 생성자
+public Shop(long no, long mno, String title,
+   String address, String address2,
+   Long shopmapno, String fname,
+   String fsaved, String shopmapCdate) {
+
+ this.no = no;
+ this.mno = mno;
+ this.title = title;
+ this.address = address;
+ this.address2 = address2;
+
+ this.shopmapno = shopmapno;
+ this.fname = fname;
+ this.fsaved = fsaved;
+ this.shopmapCdate = shopmapCdate;
+}
 }

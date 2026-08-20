@@ -4,6 +4,10 @@ import java.io.File;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import dev.jpa.allimio.shop.Shop;
 import dev.jpa.allimio.tool.Tool;
 import dev.jpa.allimio.tool.Upload;
 
@@ -38,6 +44,7 @@ public class ShopMapController {
    */
   private final String uploadPath = Tool.getServerDir("shopmap");
 
+
   /**
    * 관리자용 전체 매장 도면 조회
    *
@@ -55,6 +62,28 @@ public class ShopMapController {
 
 
   /**
+   * 관리자 매장 + 도면 목록 조회
+   *
+   * 매장명 또는 주소로 매장을 검색하고
+   * 해당 매장의 도면 등록 정보를 함께 조회합니다.
+   *
+   * 검색어가 없으면 전체 매장을 조회합니다.
+   *
+   * GET /api/shopmaps/admin?keyword=강남
+   *
+   * @param keyword 매장명 또는 주소 검색어
+   * @return 매장 + 도면 정보 목록
+   */
+  @GetMapping("/admin")
+  public ResponseEntity<List<Shop>> adminShopMapList(
+      @RequestParam(value = "keyword", required = false) String keyword) {
+
+    List<Shop> list = shopMapService.findShopMapJoin(keyword);
+
+    return ResponseEntity.ok(list);
+  }
+
+  /**
    * 매장번호로 도면 조회
    *
    * GET /api/shopmaps/shop/3
@@ -63,7 +92,8 @@ public class ShopMapController {
    * @return 해당 매장의 도면 정보
    */
   @GetMapping("/shop/{sno}")
-  public ResponseEntity<ShopMapDTO> readByNo(@PathVariable("sno") long sno) {
+  public ResponseEntity<ShopMapDTO> readByNo(
+      @PathVariable("sno") long sno) {
 
     ShopMapDTO dto = shopMapService.readByNo(sno);
 
@@ -80,7 +110,7 @@ public class ShopMapController {
    *
    * POST /api/shopmaps
    *
-   * sno   : 매장번호
+   * sno  : 매장번호
    * file : 등록할 도면 이미지
    */
   @PostMapping
@@ -117,7 +147,7 @@ public class ShopMapController {
     // DB에 저장할 정보
     ShopMapDTO dto = new ShopMapDTO();
 
-    dto.setNo(sno);
+    dto.setSno(sno);
     dto.setFname(fname);
     dto.setFsaved(fsaved);
 
@@ -130,6 +160,7 @@ public class ShopMapController {
 
     return ResponseEntity.ok("매장 도면이 등록되었습니다.");
   }
+
 
   /**
    * 기존 매장 도면 변경
@@ -177,14 +208,8 @@ public class ShopMapController {
     // 수정 성공 후 기존 파일 삭제
     File oldFile = new File(uploadPath + oldDto.getFsaved());
 
-    System.out.println("기존 파일 경로: " + oldFile.getAbsolutePath());
-    System.out.println("기존 파일 존재 여부: " + oldFile.exists());
-
     if (oldFile.exists()) {
-
-      boolean deleted = oldFile.delete();
-
-      System.out.println("기존 파일 삭제 결과: " + deleted);
+      oldFile.delete();
     }
 
     return ResponseEntity.ok("매장 도면이 수정되었습니다.");
@@ -218,17 +243,50 @@ public class ShopMapController {
     // DB 삭제 성공 후 실제 파일 삭제
     File file = new File(uploadPath + dto.getFsaved());
 
-    System.out.println("삭제할 파일 경로: " + file.getAbsolutePath());
-    System.out.println("삭제할 파일 존재 여부: " + file.exists());
-
     if (file.exists()) {
-
-      boolean deleted = file.delete();
-
-      System.out.println("파일 삭제 결과: " + deleted);
+      file.delete();
     }
 
     return ResponseEntity.ok("매장 도면이 삭제되었습니다.");
   }
 
+
+  /**
+   * 관리자 매장 도면 다운로드
+   *
+   * 관리자는 도면을 수정하거나 삭제하지 않고
+   * 등록된 도면 파일만 다운로드할 수 있습니다.
+   *
+   * GET /api/shopmaps/admin/download/{no}
+   *
+   * @param no 매장 도면 번호
+   * @return 도면 파일
+   */
+  @GetMapping("/admin/download/{no}")
+  public ResponseEntity<Resource> download(
+      @PathVariable("no") long no) {
+
+    ShopMapDTO dto = shopMapService.read(no);
+
+    if (dto == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    File file = new File(uploadPath + dto.getFsaved());
+
+    if (!file.exists()) {
+      return ResponseEntity.notFound().build();
+    }
+
+    Resource resource = new FileSystemResource(file);
+
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + dto.getFname() + "\""
+        )
+        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+        .body(resource);
   }
+
+}

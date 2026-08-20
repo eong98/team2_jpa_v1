@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import dev.jpa.allimio.shop.Shop;
 import dev.jpa.allimio.tool.Tool;
 
 /**
@@ -51,6 +52,26 @@ public class ShopMapService {
 
 
   /**
+   * 관리자 매장 + 매장 도면 LEFT JOIN 조회
+   *
+   * 매장명 또는 주소를 기준으로
+   * 매장 목록과 도면 등록 정보를 함께 조회합니다.
+   *
+   * 검색어가 없으면 전체 매장을 조회합니다.
+   *
+   * @param keyword 매장명 또는 주소 검색어
+   * @return 매장 + 도면 정보 목록
+   */
+  public List<Shop> findShopMapJoin(String keyword) {
+
+    if (keyword != null) {
+      keyword = keyword.trim();
+    }
+
+    return shopMapRepository.findShopMapJoin(keyword);
+  }
+
+  /**
    * 매장번호로 도면을 조회합니다.
    *
    * 회원이 본인의 매장을 선택했을 때
@@ -61,7 +82,7 @@ public class ShopMapService {
    */
   public ShopMapDTO readByNo(long sno) {
 
-    Optional<ShopMap> optional = shopMapRepository.findByNo(sno);
+    Optional<ShopMap> optional = shopMapRepository.findBySno(sno);
 
     if (optional.isEmpty()) {
       return null;
@@ -91,7 +112,8 @@ public class ShopMapService {
   public boolean create(ShopMapDTO shopMapDTO) {
 
     // 해당 매장에 이미 도면이 등록되어 있는지 확인
-    Optional<ShopMap> existing = shopMapRepository.findByNo(shopMapDTO.getSno());
+    Optional<ShopMap> existing =
+        shopMapRepository.findBySno(shopMapDTO.getSno());
 
     if (existing.isPresent()) {
       return false;
@@ -158,7 +180,8 @@ public class ShopMapService {
 
     return true;
   }
-  
+
+
   /**
    * 도면번호로 매장 도면을 조회합니다.
    *

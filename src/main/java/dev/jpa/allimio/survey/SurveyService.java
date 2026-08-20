@@ -253,6 +253,77 @@ public class SurveyService {
         SurveyResponse saved = responseRepository.save(response);
         return toResponseDTO(saved);
     }
+    
+ // 점주: 설문 기간 중 본인 응답 수정
+    public SurveyResponseDTO updateResponse(
+            Long surveyNo,
+            Long memberNo,
+            SurveyResponseDTO dto) {
+
+        if (memberNo == null) {
+            throw new IllegalArgumentException("회원번호는 필수입니다.");
+        }
+
+        if (dto == null) {
+            throw new IllegalArgumentException("설문 응답 데이터가 없습니다.");
+        }
+
+        if (dto.getMemberNo() != null && !memberNo.equals(dto.getMemberNo())) {
+            throw new IllegalArgumentException("회원정보가 일치하지 않습니다.");
+        }
+
+        Survey survey = findSurveyWithQuestions(surveyNo);
+
+        // 진행 중인 설문만 수정 가능
+        validateSurveyPeriod(survey);
+
+        SurveyResponse response = responseRepository
+                .findBySurveyNoAndMemberNo(surveyNo, memberNo)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("수정할 설문 응답을 찾을 수 없습니다."));
+
+        List<SurveyAnswerDTO> answerDTOs =
+                dto.getAnswers() == null
+                        ? Collections.emptyList()
+                        : dto.getAnswers();
+
+        validateSubmittedAnswers(survey, answerDTOs);
+
+        // 기존 답변 삭제
+        response.getAnswers().clear();
+        responseRepository.flush();
+
+        // 수정된 답변 저장
+        for (SurveyAnswerDTO answerDTO : answerDTOs) {
+            SurveyQuestion question = questionRepository
+                    .findById(answerDTO.getQuestionNo())
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "설문 문항을 찾을 수 없습니다: "
+                                            + answerDTO.getQuestionNo()));
+
+            if (!question.getSurvey().getNo().equals(surveyNo)) {
+                throw new IllegalArgumentException(
+                        "해당 설문에 포함되지 않은 문항입니다: "
+                                + question.getNo());
+            }
+
+            validateAnswerByQuestionType(question, answerDTO);
+
+            SurveyAnswer answer = new SurveyAnswer();
+            answer.setQuestion(question);
+            answer.setAtext(normalizeText(answerDTO.getAtext()));
+            answer.setCdate(now());
+
+            response.addAnswer(answer);
+        }
+
+        // 수정된 응답은 관리자가 다시 확인하도록 초기화
+        response.setCheckYn("N");
+        response.setCheckDate(null);
+
+        return toResponseDTO(responseRepository.save(response));
+    }
 
     /**
      * 특정 설문의 전체 점주 응답 목록을 조회한다.
