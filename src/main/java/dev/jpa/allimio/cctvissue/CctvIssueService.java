@@ -34,16 +34,18 @@ public class CctvIssueService {
 
   /**
    * 관리자 목록 검색 - 조건은 전부 선택 사항
+   * (첨부파일 유무(hasAttach)를 EXISTS 서브쿼리로 이 쿼리 한 번에 같이 계산 - N+1 쿼리 없음)
    */
-  public Page<CctvIssue> search(Long cno, String code, Integer state, String noticeyn,
+  public Page<CctvIssueListDTO> search(Long cno, String code, Integer state, String noticeyn,
       String keyword, String cdateFrom, String cdateTo, Pageable pageable) {
     return cctvIssueRepository.search(cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
   }
 
   /**
    * 사용자(매장) 화면용 검색 - sno(매장 번호)로 소유 CCTV의 이슈만 조회
+   * (첨부파일 유무(hasAttach)를 EXISTS 서브쿼리로 이 쿼리 한 번에 같이 계산 - N+1 쿼리 없음)
    */
-  public Page<CctvIssue> searchByShop(long sno, Long cno, String code, Integer state, String noticeyn,
+  public Page<CctvIssueListDTO> searchByShop(long sno, Long cno, String code, Integer state, String noticeyn,
       String keyword, String cdateFrom, String cdateTo, Pageable pageable) {
     return cctvIssueRepository.searchByShop(sno, cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
   }

@@ -57,7 +57,7 @@ public class CctvCont {
 
   /**
    * 매장 CCTV 목록 검색 + 페이징 (/user/shop/cctv, 조회 전용), http://localhost:9102/cctv/search
-   * sno(입장한 매장)는 필수, keyword는 선택 사항. 기본 정렬: no 내림차순(최신순)
+   * sno(입장한 매장)는 필수, keyword는 선택 사항. 기본 정렬: cdate(등록일) 내림차순(최신순)
    * @param sno 매장 번호 (필수, GlobalCurrentShop().no 기준)
    * @param keyword CCTV명/MAC주소 포함 검색
    * @param page 0부터 시작하는 페이지 번호 (기본 0)
@@ -71,7 +71,7 @@ public class CctvCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<Cctv> result = cctvService.search(sno, keyword, pageable);
 
     Map<String, Object> body = new HashMap<>();
@@ -102,7 +102,7 @@ public class CctvCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<Cctv> result = cctvService.searchAdmin(sno, state, keyword, pageable);
 
     Map<String, Object> body = new HashMap<>();

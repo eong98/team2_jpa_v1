@@ -10,6 +10,8 @@ public interface CctvIssueRepository extends JpaRepository<CctvIssue, Long> {
 
   /**
    * 관리자 목록 검색용. 파라미터는 전부 선택 사항(null이면 조건 무시, 전체 대상).
+   * 목록에서 "보기"를 누르기 전에 첨부파일 유무를 바로 보여주기 위해, 이슈마다 별도 쿼리(N+1)를
+   * 날리지 않고 ATTACH 테이블 EXISTS 서브쿼리로 hasAttach까지 이 쿼리 한 번에 같이 계산합니다.
    * @param cno CCTV번호 (정확히 일치)
    * @param code 문제유형코드 (정확히 일치)
    * @param state 오탐여부 (정확히 일치)
@@ -20,8 +22,24 @@ public interface CctvIssueRepository extends JpaRepository<CctvIssue, Long> {
    * @param cdateTo   등록일 종료 (yyyy-MM-dd)
    * @param pageable  페이지 번호/사이즈/정렬
    */
-  @Query("""
-      SELECT ci FROM CctvIssue ci
+  @Query(value = """
+      SELECT new dev.jpa.allimio.cctvissue.CctvIssueListDTO(
+        ci.no, ci.cno, ci.mno, ci.code, ci.state, ci.comnet, ci.reliability, ci.pdate, ci.noticeyn, ci.cdate,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM Attach a WHERE a.bno = ci.no AND a.tname = 'CCTV_ISSUE'
+        ) THEN true ELSE false END
+      )
+      FROM CctvIssue ci
+      WHERE (:cno IS NULL OR ci.cno = :cno)
+        AND (:code IS NULL OR ci.code = :code)
+        AND (:state IS NULL OR ci.state = :state)
+        AND (:noticeyn IS NULL OR ci.noticeyn = :noticeyn)
+        AND (:keyword IS NULL OR ci.comnet LIKE CONCAT('%', :keyword, '%'))
+        AND (:cdateFrom IS NULL OR SUBSTRING(ci.cdate, 1, 10) >= :cdateFrom)
+        AND (:cdateTo IS NULL OR SUBSTRING(ci.cdate, 1, 10) <= :cdateTo)
+      """,
+      countQuery = """
+      SELECT COUNT(ci) FROM CctvIssue ci
       WHERE (:cno IS NULL OR ci.cno = :cno)
         AND (:code IS NULL OR ci.code = :code)
         AND (:state IS NULL OR ci.state = :state)
@@ -30,7 +48,7 @@ public interface CctvIssueRepository extends JpaRepository<CctvIssue, Long> {
         AND (:cdateFrom IS NULL OR SUBSTRING(ci.cdate, 1, 10) >= :cdateFrom)
         AND (:cdateTo IS NULL OR SUBSTRING(ci.cdate, 1, 10) <= :cdateTo)
       """)
-  Page<CctvIssue> search(
+  Page<CctvIssueListDTO> search(
       @Param("cno") Long cno,
       @Param("code") String code,
       @Param("state") Integer state,
@@ -44,11 +62,29 @@ public interface CctvIssueRepository extends JpaRepository<CctvIssue, Long> {
   /**
    * 사용자(매장) 화면용 검색 - sno(매장 번호)는 필수, 나머지 조건은 admin search()와 동일하게 전부 선택 사항.
    * CCTV_ISSUE 테이블에는 매장 컬럼이 없어서, CNO가 속한 CCTV(테이블)의 SNO로 서브쿼리 필터링합니다.
+   * admin search()와 마찬가지로 hasAttach(첨부 유무)를 EXISTS 서브쿼리로 이 쿼리 한 번에 같이 계산합니다.
    * (아직 CCTV 등록 기능이 없어 CCTV/CCTV_ISSUE 데이터가 없는 상태라도, sno 조건 때문에 결과는 항상 0건으로 정상 동작합니다.)
    * @param sno 매장 번호 (필수)
    */
-  @Query("""
-      SELECT ci FROM CctvIssue ci
+  @Query(value = """
+      SELECT new dev.jpa.allimio.cctvissue.CctvIssueListDTO(
+        ci.no, ci.cno, ci.mno, ci.code, ci.state, ci.comnet, ci.reliability, ci.pdate, ci.noticeyn, ci.cdate,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM Attach a WHERE a.bno = ci.no AND a.tname = 'CCTV_ISSUE'
+        ) THEN true ELSE false END
+      )
+      FROM CctvIssue ci
+      WHERE ci.cno IN (SELECT c.no FROM Cctv c WHERE c.sno = :sno)
+        AND (:cno IS NULL OR ci.cno = :cno)
+        AND (:code IS NULL OR ci.code = :code)
+        AND (:state IS NULL OR ci.state = :state)
+        AND (:noticeyn IS NULL OR ci.noticeyn = :noticeyn)
+        AND (:keyword IS NULL OR ci.comnet LIKE CONCAT('%', :keyword, '%'))
+        AND (:cdateFrom IS NULL OR SUBSTRING(ci.cdate, 1, 10) >= :cdateFrom)
+        AND (:cdateTo IS NULL OR SUBSTRING(ci.cdate, 1, 10) <= :cdateTo)
+      """,
+      countQuery = """
+      SELECT COUNT(ci) FROM CctvIssue ci
       WHERE ci.cno IN (SELECT c.no FROM Cctv c WHERE c.sno = :sno)
         AND (:cno IS NULL OR ci.cno = :cno)
         AND (:code IS NULL OR ci.code = :code)
@@ -58,7 +94,7 @@ public interface CctvIssueRepository extends JpaRepository<CctvIssue, Long> {
         AND (:cdateFrom IS NULL OR SUBSTRING(ci.cdate, 1, 10) >= :cdateFrom)
         AND (:cdateTo IS NULL OR SUBSTRING(ci.cdate, 1, 10) <= :cdateTo)
       """)
-  Page<CctvIssue> searchByShop(
+  Page<CctvIssueListDTO> searchByShop(
       @Param("sno") long sno,
       @Param("cno") Long cno,
       @Param("code") String code,

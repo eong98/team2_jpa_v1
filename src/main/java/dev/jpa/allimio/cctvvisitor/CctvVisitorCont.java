@@ -47,7 +47,7 @@ public class CctvVisitorCont {
   /**
    * 관리자 손님(방문객) 목록 검색 + 페이징 (/dbms/cctvvisitor), http://localhost:9102/cctv_visitor/admin/search
    * 조건은 전부 선택 사항(안 넘기면 전체 대상). 매장(sno) 상관없이 전체 손님 내역이 기본이며,
-   * sno를 넘기면 해당 매장 소유 CCTV로 찍힌 손님만 필터링됩니다. 기본 정렬: no 내림차순(최신순)
+   * sno를 넘기면 해당 매장 소유 CCTV로 찍힌 손님만 필터링됩니다. 기본 정렬: cdate(등록일) 내림차순(최신순)
    * @param sno 매장 번호 (선택)
    * @param cno CCTV번호 (선택)
    * @param state 상태값 (선택)
@@ -69,7 +69,7 @@ public class CctvVisitorCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<CctvVisitor> result = cctvVisitorService.searchAdmin(sno, cno, state, keyword, intimeFrom, intimeTo, pageable);
 
     Map<String, Object> body = new HashMap<>();
@@ -106,7 +106,7 @@ public class CctvVisitorCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<CctvVisitor> result = cctvVisitorService.searchByShop(sno, cno, state, keyword, intimeFrom, intimeTo, pageable);
 
     Map<String, Object> body = new HashMap<>();

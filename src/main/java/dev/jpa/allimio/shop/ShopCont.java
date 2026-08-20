@@ -55,7 +55,7 @@ public class ShopCont {
 
   /**
    * 매장 목록 검색 + 페이징 (/user/shop), http://localhost:9100/shop/search
-   * mno(로그인 회원)는 필수, keyword는 선택 사항. 기본 정렬: no 내림차순(최신순)
+   * mno(로그인 회원)는 필수, keyword는 선택 사항. 기본 정렬: cdate(등록일) 내림차순(최신순)
    * @param mno 회원번호 (필수, 세션의 로그인 회원)
    * @param keyword 매장명/주소/상세주소 포함 검색
    * @param page 0부터 시작하는 페이지 번호 (기본 0)
@@ -69,7 +69,7 @@ public class ShopCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "6") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<Shop> result = shopService.search(mno, keyword, pageable);
 
     // 매장 카드에 "등록 CCTV 몇 대"를 보여주기 위해 CCTV 등록 대수를 붙여서 내려줍니다.
@@ -101,7 +101,7 @@ public class ShopCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
     Page<Shop> result = shopService.searchAdmin(mno, keyword, pageable);
 
     Map<String, Object> body = new HashMap<>();

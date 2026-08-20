@@ -46,7 +46,7 @@ public class CctvIssueCont {
 
   /**
    * 관리자 목록 검색 + 페이징, http://localhost:9102/cctv_issue/search
-   * 조건은 전부 선택 사항(안 넘기면 전체 대상). 기본 정렬: no 내림차순(최신순)
+   * 조건은 전부 선택 사항(안 넘기면 전체 대상). 기본 정렬: cdate(등록일) 내림차순(최신순)
    * sno(매장 번호)를 넘기면 해당 매장 소유 CCTV의 이슈만 필터링합니다(사용자 화면용, /user/shop/CctvIssueList.tsx).
    *   ※ CCTV_ISSUE에는 매장 컬럼이 없어서 CNO가 속한 CCTV(테이블)의 SNO로 서브쿼리 필터링(searchByShop).
    * @param sno 매장 번호 (선택, 넘기면 해당 매장 소유 CCTV 이슈만 조회)
@@ -74,8 +74,8 @@ public class CctvIssueCont {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "no"));
-    Page<CctvIssue> result = (sno != null)
+    Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
+    Page<CctvIssueListDTO> result = (sno != null)
         ? cctvIssueService.searchByShop(sno, cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable)
         : cctvIssueService.search(cno, code, state, noticeyn, keyword, cdateFrom, cdateTo, pageable);
 
