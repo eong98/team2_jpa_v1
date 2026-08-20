@@ -21,7 +21,7 @@ import jakarta.persistence.Table;
  * 설문 기본정보 엔티티.
  *
  * <p>관리자가 작성한 설문 제목, 설명, 기간을 저장한다.
- * MEMBER 테이블과의 외래키 컬럼 MNO는 회원 엔티티와 직접 연결하지 않고
+ * MEMBER 테이블과의 외래키 컬럼 MNNO는 회원 엔티티와 직접 연결하지 않고
  * 관리자 회원번호(Long)로 관리한다.</p>
  */
 @Entity
@@ -39,8 +39,8 @@ public class Survey {
     private Long no;
 
     /** 설문을 작성한 관리자 회원번호. MEMBER.NO를 참조한다. */
-    @Column(name = "MNO", nullable = false)
-    private Long memberNo;
+    @Column(name = "MNNO", nullable = false)
+    private Long managerNo;
 
     /** 설문제목. */
     @Column(name = "TITLE", nullable = false, length = 200)
@@ -108,12 +108,12 @@ public class Survey {
         this.no = no;
     }
 
-    public Long getMemberNo() {
-        return memberNo;
+    public Long getManagerNo() {
+        return managerNo;
     }
 
-    public void setMemberNo(Long memberNo) {
-        this.memberNo = memberNo;
+    public void setManagerNo(Long managerNo) {
+        this.managerNo = managerNo;
     }
 
     public String getTitle() {

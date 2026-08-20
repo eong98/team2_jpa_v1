@@ -36,8 +36,8 @@ public class ShopMapService {
     for (ShopMap shopMap : list) {
 
       ShopMapDTO dto = new ShopMapDTO(
-          shopMap.getShopmapno(),
           shopMap.getNo(),
+          shopMap.getSno(),
           shopMap.getFname(),
           shopMap.getFsaved(),
           shopMap.getCdate()
@@ -56,12 +56,12 @@ public class ShopMapService {
    * 회원이 본인의 매장을 선택했을 때
    * 해당 매장의 도면을 조회하기 위해 사용합니다.
    *
-   * @param no 매장번호
+   * @param sno 매장번호
    * @return 매장 도면 정보
    */
-  public ShopMapDTO readByNo(long no) {
+  public ShopMapDTO readByNo(long sno) {
 
-    Optional<ShopMap> optional = shopMapRepository.findByNo(no);
+    Optional<ShopMap> optional = shopMapRepository.findByNo(sno);
 
     if (optional.isEmpty()) {
       return null;
@@ -70,8 +70,8 @@ public class ShopMapService {
     ShopMap shopMap = optional.get();
 
     return new ShopMapDTO(
-        shopMap.getShopmapno(),
         shopMap.getNo(),
+        shopMap.getSno(),
         shopMap.getFname(),
         shopMap.getFsaved(),
         shopMap.getCdate()
@@ -91,7 +91,7 @@ public class ShopMapService {
   public boolean create(ShopMapDTO shopMapDTO) {
 
     // 해당 매장에 이미 도면이 등록되어 있는지 확인
-    Optional<ShopMap> existing = shopMapRepository.findByNo(shopMapDTO.getNo());
+    Optional<ShopMap> existing = shopMapRepository.findByNo(shopMapDTO.getSno());
 
     if (existing.isPresent()) {
       return false;
@@ -113,13 +113,13 @@ public class ShopMapService {
    * 실제 파일 교체 처리는 Controller에서 진행하고,
    * 여기서는 변경된 파일 정보를 DB에 저장합니다.
    *
-   * @param shopmapno 매장 도면 번호
+   * @param no 매장 도면 번호
    * @param shopMapDTO 수정할 도면 정보
    * @return 수정 성공 여부
    */
-  public boolean update(long shopmapno, ShopMapDTO shopMapDTO) {
+  public boolean update(long no, ShopMapDTO shopMapDTO) {
 
-    Optional<ShopMap> optional = shopMapRepository.findById(shopmapno);
+    Optional<ShopMap> optional = shopMapRepository.findById(no);
 
     if (optional.isEmpty()) {
       return false;
@@ -143,18 +143,18 @@ public class ShopMapService {
    * 실제 서버에 저장된 파일 삭제는
    * Controller에서 별도로 처리합니다.
    *
-   * @param shopmapno 매장 도면 번호
+   * @param no 매장 도면 번호
    * @return 삭제 성공 여부
    */
-  public boolean delete(long shopmapno) {
+  public boolean delete(long no) {
 
-    Optional<ShopMap> optional = shopMapRepository.findById(shopmapno);
+    Optional<ShopMap> optional = shopMapRepository.findById(no);
 
     if (optional.isEmpty()) {
       return false;
     }
 
-    shopMapRepository.deleteById(shopmapno);
+    shopMapRepository.deleteById(no);
 
     return true;
   }
@@ -165,12 +165,12 @@ public class ShopMapService {
    * 수정하거나 삭제할 때
    * 기존 파일명을 확인하기 위해 사용합니다.
    *
-   * @param shopmapno 매장 도면 번호
+   * @param no 매장 도면 번호
    * @return 매장 도면 정보
    */
-  public ShopMapDTO read(long shopmapno) {
+  public ShopMapDTO read(long no) {
 
-    Optional<ShopMap> optional = shopMapRepository.findById(shopmapno);
+    Optional<ShopMap> optional = shopMapRepository.findById(no);
 
     if (optional.isEmpty()) {
       return null;
@@ -179,8 +179,8 @@ public class ShopMapService {
     ShopMap shopMap = optional.get();
 
     return new ShopMapDTO(
-        shopMap.getShopmapno(),
         shopMap.getNo(),
+        shopMap.getSno(),
         shopMap.getFname(),
         shopMap.getFsaved(),
         shopMap.getCdate()

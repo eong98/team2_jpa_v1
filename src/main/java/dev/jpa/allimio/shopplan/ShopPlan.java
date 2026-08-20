@@ -31,6 +31,12 @@ public class ShopPlan {
   
   /** 구독 이용기간 (6, 12 / 개월) */
   private Integer pmonth;
+  
+  /** 이용기간별 CCTV 최소 갯수 지정 */
+  private Integer mincctv;
+  
+  /** 이용기간별 CCTV 최대 갯수 지정 */
+  private Integer maxcctv;
 
   /** CCTV 1대당 기본단가 */
   private Double bprice;
@@ -38,9 +44,13 @@ public class ShopPlan {
   /** 구독권 상세 설명 */
   private String description;
 
-  /** 구독중인 상품 */
+  /** 판매중인 상품 */
   @Builder.Default
-  private String issell = "N";
+  private String issell = "Y";
+  
+  /** 추천 요금제 여부 (Y/N) — 결제 화면 카드에 추천 배지 표시용 */
+  @Builder.Default
+  private String isreco = "N";
 
   /** 구독시작일 */
   private String cdate;

@@ -38,10 +38,10 @@ public class AiIssueMapService {
   /**
    * 단건 조회
    */
-  public AiIssueMapDTO read(long aiissueMapno) {
+  public AiIssueMapDTO read(long no) {
 
     Optional<AiIssueMap> optional =
-        aiIssueMapRepository.findById(aiissueMapno);
+        aiIssueMapRepository.findById(no);
 
     if (optional.isEmpty()) {
       return null;
@@ -54,10 +54,10 @@ public class AiIssueMapService {
   /**
    * 원본 매장 도면 번호로 조회
    */
-  public List<AiIssueMapDTO> listByShopmapno(long shopmapno) {
+  public List<AiIssueMapDTO> listBySmno(long smno) {
 
     List<AiIssueMap> list =
-        aiIssueMapRepository.findByShopmapno(shopmapno);
+        aiIssueMapRepository.findBySmno(smno);
 
     List<AiIssueMapDTO> dtoList = new ArrayList<>();
 
@@ -87,13 +87,13 @@ public class AiIssueMapService {
    * AI 이미지 생성 결과 수정
    */
   public boolean updateResult(
-      long aiissueMapno,
+      long no,
       String fsaved,
       int status,
       String err) {
 
     Optional<AiIssueMap> optional =
-        aiIssueMapRepository.findById(aiissueMapno);
+        aiIssueMapRepository.findById(no);
 
     if (optional.isEmpty()) {
       return false;
@@ -114,13 +114,13 @@ public class AiIssueMapService {
   /**
    * 삭제
    */
-  public boolean delete(long aiissueMapno) {
+  public boolean delete(long no) {
 
-    if (!aiIssueMapRepository.existsById(aiissueMapno)) {
+    if (!aiIssueMapRepository.existsById(no)) {
       return false;
     }
 
-    aiIssueMapRepository.deleteById(aiissueMapno);
+    aiIssueMapRepository.deleteById(no);
 
     return true;
   }
@@ -132,9 +132,9 @@ public class AiIssueMapService {
   private AiIssueMapDTO toDTO(AiIssueMap item) {
 
     return new AiIssueMapDTO(
-        item.getAiissueMapno(),
+        item.getNo(),
         item.getMno(),
-        item.getShopmapno(),
+        item.getSmno(),
         item.getXpos(),
         item.getYpos(),
         item.getColor(),

@@ -59,13 +59,13 @@ public class ShopMapController {
    *
    * GET /api/shopmaps/shop/3
    *
-   * @param no 매장번호
+   * @param sno 매장번호
    * @return 해당 매장의 도면 정보
    */
-  @GetMapping("/shop/{no}")
-  public ResponseEntity<ShopMapDTO> readByNo(@PathVariable("no") long no) {
+  @GetMapping("/shop/{sno}")
+  public ResponseEntity<ShopMapDTO> readByNo(@PathVariable("sno") long sno) {
 
-    ShopMapDTO dto = shopMapService.readByNo(no);
+    ShopMapDTO dto = shopMapService.readByNo(sno);
 
     if (dto == null) {
       return ResponseEntity.notFound().build();
@@ -80,12 +80,12 @@ public class ShopMapController {
    *
    * POST /api/shopmaps
    *
-   * no   : 매장번호
+   * sno   : 매장번호
    * file : 등록할 도면 이미지
    */
   @PostMapping
   public ResponseEntity<String> create(
-      @RequestParam("no") long no,
+      @RequestParam("sno") long sno,
       @RequestParam("file") MultipartFile file) {
 
     // 파일을 선택하지 않은 경우
@@ -95,7 +95,7 @@ public class ShopMapController {
     }
 
     // 해당 매장에 이미 도면이 있는지 확인
-    ShopMapDTO existing = shopMapService.readByNo(no);
+    ShopMapDTO existing = shopMapService.readByNo(sno);
 
     if (existing != null) {
       return ResponseEntity.badRequest()
@@ -117,7 +117,7 @@ public class ShopMapController {
     // DB에 저장할 정보
     ShopMapDTO dto = new ShopMapDTO();
 
-    dto.setNo(no);
+    dto.setNo(sno);
     dto.setFname(fname);
     dto.setFsaved(fsaved);
 
@@ -134,11 +134,11 @@ public class ShopMapController {
   /**
    * 기존 매장 도면 변경
    *
-   * PUT /api/shopmaps/{shopmapno}
+   * PUT /api/shopmaps/{no}
    */
-  @PutMapping("/{shopmapno}")
+  @PutMapping("/{no}")
   public ResponseEntity<String> update(
-      @PathVariable("shopmapno") long shopmapno,
+      @PathVariable("no") long no,
       @RequestParam("file") MultipartFile file) {
 
     if (file.isEmpty()) {
@@ -147,7 +147,7 @@ public class ShopMapController {
     }
 
     // 기존 도면 정보 조회
-    ShopMapDTO oldDto = shopMapService.read(shopmapno);
+    ShopMapDTO oldDto = shopMapService.read(no);
 
     if (oldDto == null) {
       return ResponseEntity.notFound().build();
@@ -167,7 +167,7 @@ public class ShopMapController {
     dto.setFname(fname);
     dto.setFsaved(fsaved);
 
-    boolean result = shopMapService.update(shopmapno, dto);
+    boolean result = shopMapService.update(no, dto);
 
     if (!result) {
       return ResponseEntity.badRequest()
@@ -194,21 +194,21 @@ public class ShopMapController {
   /**
    * 매장 도면 삭제
    *
-   * DELETE /api/shopmaps/{shopmapno}
+   * DELETE /api/shopmaps/{no}
    */
-  @DeleteMapping("/{shopmapno}")
+  @DeleteMapping("/{no}")
   public ResponseEntity<String> delete(
-      @PathVariable("shopmapno") long shopmapno) {
+      @PathVariable("no") long no) {
 
     // 삭제 전에 기존 도면 정보 조회
-    ShopMapDTO dto = shopMapService.read(shopmapno);
+    ShopMapDTO dto = shopMapService.read(no);
 
     if (dto == null) {
       return ResponseEntity.notFound().build();
     }
 
     // DB 데이터 삭제
-    boolean result = shopMapService.delete(shopmapno);
+    boolean result = shopMapService.delete(no);
 
     if (!result) {
       return ResponseEntity.badRequest()

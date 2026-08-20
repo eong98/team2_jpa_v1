@@ -38,9 +38,9 @@ public class SurveyQuestion {
     @Column(name = "NO")
     private Long no;
 
-    /** 이 문항이 포함된 설문. SURVEYQUESTION.SNO와 연결된다. */
+    /** 이 문항이 포함된 설문. SURVEYQUESTION.SVNO와 연결된다. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "SNO", nullable = false)
+    @JoinColumn(name = "SVNO", nullable = false)
     private Survey survey;
 
     /** 질문내용. */

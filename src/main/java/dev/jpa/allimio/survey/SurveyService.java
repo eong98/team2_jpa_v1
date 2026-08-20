@@ -329,7 +329,7 @@ public class SurveyService {
 
     /** DTO 설문 기본값을 엔티티에 반영한다. */
     private void applySurveyValues(Survey survey, SurveyDTO dto) {
-        survey.setMemberNo(dto.getMemberNo());
+        survey.setManagerNo(dto.getManagerNo());
         survey.setTitle(dto.getTitle().trim());
         survey.setDetail(normalizeText(dto.getDetail()));
         survey.setStartDate(dto.getStartDate().trim());
@@ -367,7 +367,7 @@ public class SurveyService {
                     "설문 데이터가 없습니다.");
         }
 
-        if (dto.getMemberNo() == null) {
+        if (dto.getManagerNo() == null) {
             throw new IllegalArgumentException(
                     "설문 작성 관리자 회원번호는 필수입니다.");
         }
@@ -639,7 +639,7 @@ public class SurveyService {
 
         SurveyDTO dto = new SurveyDTO();
         dto.setNo(survey.getNo());
-        dto.setMemberNo(survey.getMemberNo());
+        dto.setManagerNo(survey.getManagerNo());
         dto.setTitle(survey.getTitle());
         dto.setDetail(survey.getDetail());
         dto.setStartDate(survey.getStartDate());

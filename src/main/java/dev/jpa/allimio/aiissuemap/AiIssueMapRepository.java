@@ -15,7 +15,7 @@ public interface AiIssueMapRepository
   /**
    * 원본 매장 도면 번호로 AI 이슈 도면 조회
    */
-  List<AiIssueMap> findByShopmapno(long shopmapno);
+  List<AiIssueMap> findBySmno(long smno);
 
   /**
    * 회원번호로 AI 이슈 도면 조회
