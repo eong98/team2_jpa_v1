@@ -211,7 +211,7 @@ public class Tool {
     String name = src.getName().toLowerCase(); // 파일명을 추출하여 소문자로 변경
     // 이미지 파일인지 검사
     if (name.endsWith("jpg") || name.endsWith("jpeg") || name.endsWith("bmp") || name.endsWith("png")
-        || name.endsWith("gif")) {
+        || name.endsWith("gif") || name.endsWith("jfif") || name.endsWith("webp") ) {
       try {
         srcImg = ImageIO.read(src); // 메모리에 원본 이미지 생성
         int srcWidth = srcImg.getWidth(null); // 원본 이미지 너비 추출
