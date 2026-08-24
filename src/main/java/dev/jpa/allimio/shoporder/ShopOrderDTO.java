@@ -26,10 +26,6 @@ public class ShopOrderDTO {
     private Double bprice;
     /** 총 결제 금액 */
     private Long totalprice;
-    /** 구독 시작일 */
-    private String sdate;
-    /** 구독 종료일 */
-    private String edate;
   }
 
   /** 구독 내역 응답 */
@@ -84,9 +80,12 @@ public class ShopOrderDTO {
   }
 
   /**
-   * 구독 갱신 요청.
-   * newCcnt를 안 보내거나 기존 CCNT와 같으면 "동일 조건 갱신"(기간만 연장),
-   * 다르게 보내면(더 큰 값만 허용) "CCTV 대수 변경 갱신"으로 처리됩니다.
+   * 구독 갱신/변경 요청.
+   * - newCcnt: 안 보내거나 기존과 같으면 대수 변경 없음. 다르면(늘리거나 줄이거나) 그 차이만큼
+   *   대당단가 × 이용기간(PMONTH) 기준으로 추가결제/환불이 계산됩니다.
+   * - extendPeriod: true면 "갱신"으로 처리되어 구독 종료일(EDATE)이 이용기간만큼 연장됩니다.
+   *   false 또는 미전달이면 "변경"으로 처리되어 대수만 바뀌고 종료일은 그대로입니다.
+   *   (예: 종료일이 아직 많이 남았는데 CCTV만 늘리고 싶은 경우 extendPeriod=false로 호출)
    */
   @Getter
   @NoArgsConstructor
@@ -94,9 +93,12 @@ public class ShopOrderDTO {
   @Builder
   public static class RenewRequest {
     private Integer newCcnt;
+    private Boolean extendPeriod;
+    /** 대수 감소로 환불이 발생하는 경우에만 필요 */
+    private RefundAccount refundAccount;
   }
-  
-  /** 구독 갱신 결과 — 대수 변경에 따른 추가결제/환불 금액을 함께 반환 */
+
+  /** 구독 갱신/변경 결과 — 대수 변경에 따른 추가결제/환불 금액을 함께 반환 */
   @Getter
   @Setter
   @NoArgsConstructor
@@ -130,24 +132,47 @@ public class ShopOrderDTO {
     private long refundAmount;
   }
   
+  /** 환불계좌 정보 (구독 취소, CCTV 대수 감소 환불 시 공통 사용) */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class RefundAccount {
+    /** 은행명 */
+    private String bankName;
+    /** 계좌번호 */
+    private String accountNo;
+    /** 예금주명 */
+    private String accountHolder;
+  }
   
+  /** 구독 취소 요청 — 환불 대상(환불금액>0)일 때 계좌 정보 필수 */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class CancelRequest {
+    private RefundAccount refundAccount;
+  }
   
-  
-  /**
-   * 내 구독 내역 검색 조건
-   */
+
+  /** 내 구독 내역 검색 조건 (회원용/관리자용 공통) */
   @Getter
   @Setter
   @NoArgsConstructor
   @AllArgsConstructor
   @Builder
   public static class SearchRequest {
+    /** 회원번호. 회원용 API는 컨트롤러가 URL의 mno로 강제 세팅, 관리자용은 선택 필터 */
     private Long mno;
+    /** 검색어 (주문번호 부분일치) */
     private String word;
+    /** 구독 상태 (0 정상 / 1 만료됨 / 2 취소) */
     private Integer status;
+    /** 구독권 번호 */
     private Long pno;
+    /** 매장 번호 */
     private Long sno;
-
     /** 날짜 검색 기준 ('sdate' 구독시작일 / 'edate' 구독종료일 / 'cdate' 구매일), null이면 날짜 검색 안 함 */
     private String dateType;
     /** 날짜 검색 시작일 (YYYY-MM-DD) */
@@ -155,16 +180,4 @@ public class ShopOrderDTO {
     /** 날짜 검색 종료일 (YYYY-MM-DD) */
     private String dateTo;
   }
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
 }

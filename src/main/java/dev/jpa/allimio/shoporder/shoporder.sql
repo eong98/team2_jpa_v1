@@ -15,8 +15,8 @@ CREATE TABLE SHOP_ORDER (
   BPRICE      NUMBER(12, 2)               NOT NULL, -- CCTV 1대당 기본단가 (결제 시점 스냅샷, SHOP_PLAN.BPRICE 변경과 무관)
   TOTALPRICE  NUMBER(12)                  NOT NULL, -- 총 결제 금액 (원)
   STATUS      NUMBER(1)       DEFAULT 0   NOT NULL, -- 구독 상태 (0: 정상, 1: 만료됨, 2: 취소)
-  SDATE       VARCHAR2(30)                NOT NULL, -- 구독 시작일 (YYYY-MM-DD)
-  EDATE       VARCHAR2(30)                NOT NULL, -- 구독 종료일 (YYYY-MM-DD)
+  SDATE       VARCHAR2(30)                    NULL, -- 구독 시작일 (YYYY-MM-DD)
+  EDATE       VARCHAR2(30)                    NULL, -- 구독 종료일 (YYYY-MM-DD)
   CDATE       VARCHAR2(30)                NOT NULL, -- 구매일시 (YYYY-MM-DD HH24:MI:SS)
   UDATE       VARCHAR2(30)                    NULL, -- 구매 변경일시 (환불, 취소, 갱신)
 
@@ -46,3 +46,7 @@ COMMENT ON COLUMN SHOP_ORDER.UDATE      IS '구매 변경일시 (환불, 취소,
 CREATE UNIQUE INDEX UX_SHOP_ORDER_ACTIVE_SNO
   ON SHOP_ORDER (CASE WHEN STATUS = 0 THEN SNO END);
   
+
+
+
+  ALTER TABLE SHOP_ORDER MODIFY (SDATE NULL, EDATE NULL);
