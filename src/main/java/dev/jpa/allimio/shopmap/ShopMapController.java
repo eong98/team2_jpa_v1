@@ -288,5 +288,52 @@ public class ShopMapController {
         .contentType(MediaType.APPLICATION_OCTET_STREAM)
         .body(resource);
   }
+  
+  /**
+   * 사용자 매장 도면 이미지 조회
+   *
+   * 등록된 도면을 브라우저에서 바로 표시하기 위한 API입니다.
+   *
+   * GET /api/shopmaps/view/{no}
+   *
+   * @param no 매장 도면 번호
+   * @return 도면 이미지
+   */
+  @GetMapping("/view/{no}")
+  public ResponseEntity<Resource> view(
+      @PathVariable("no") long no) {
+
+    ShopMapDTO dto = shopMapService.read(no);
+
+    if (dto == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    File file = new File(uploadPath + dto.getFsaved());
+
+    if (!file.exists()) {
+      return ResponseEntity.notFound().build();
+    }
+
+    Resource resource = new FileSystemResource(file);
+
+    String fname = dto.getFname() == null
+        ? ""
+        : dto.getFname().toLowerCase();
+
+    MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+
+    if (fname.endsWith(".png")) {
+      mediaType = MediaType.IMAGE_PNG;
+    } else if (fname.endsWith(".jpg") || fname.endsWith(".jpeg")) {
+      mediaType = MediaType.IMAGE_JPEG;
+    } else if (fname.endsWith(".gif")) {
+      mediaType = MediaType.IMAGE_GIF;
+    }
+
+    return ResponseEntity.ok()
+        .contentType(mediaType)
+        .body(resource);
+  }
 
 }
