@@ -170,5 +170,4 @@ public class MemberDTO {
     this.nation = nation;
   }
   
-  
 }

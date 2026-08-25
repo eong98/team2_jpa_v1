@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class ManagerService {
   private final ManagerRepository managerRepository;
   private final UpdateHistoryRepository updateHistoryRepository;
   private final LoginHistoryRepository loginHistoryRepository;
+  private final PasswordEncoder passwordEncoder;
   
   /**
    * 아이디 중복 체크
@@ -42,6 +44,9 @@ public class ManagerService {
    */
   public Manager save(ManagerDTO managerDTO) {
     managerDTO.setCdate(Tool.getDate());
+    
+    String encodedPassword = passwordEncoder.encode(managerDTO.getPassword());
+    managerDTO.setPassword(encodedPassword);
     
     return managerRepository.save(managerDTO.toEntity());
   }
@@ -77,7 +82,7 @@ public class ManagerService {
   }
 
   // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
-  if (!manager.getPassword().equals(password)) {
+  if (!passwordEncoder.matches(password, manager.getPassword())) {
       saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, manager);
       result.put("success", false);
       result.put("message", "아이디/비밀번호가 일치하지 않습니다.");

@@ -238,9 +238,9 @@ public class MemberService {
 }
   /** 비밀번호 확인 */
   public boolean check_login(String id, String password) {
-    int res = memberRepository.countByIdAndPassword(id, password);
+    Member member = memberRepository.findById(id).orElse(null);
     
-    if(res == 1) {
+    if(member != null && passwordEncoder.matches(password, member.getPassword())) {
       return true;
     } else {
       return false;
@@ -254,7 +254,8 @@ public class MemberService {
    * @return 수정됐다면 true, 실패했다면 false
    */
  public boolean updatePassword(String id, String password) {
-   int check = memberRepository.updatePassword(id, password);
+   String encodedPassword = passwordEncoder.encode(password);
+   int check = memberRepository.updatePassword(id, encodedPassword);
    
    return check > 0;
  }

@@ -90,13 +90,12 @@ public class MemberCont {
    */
   @PostMapping(path="/login")
   public ResponseEntity<Map<String, Object>> login(
-      @RequestParam(name="id", defaultValue="") String id, 
-      @RequestParam(name="password", defaultValue="") String password,
+      @RequestBody MemberDTO memberDTO,
       HttpServletRequest request){
      // ip주소 추출
      String ipAddr = request.getRemoteAddr();
     
-     Map<String, Object> loginResult = memberService.login(id, password, ipAddr);
+     Map<String, Object> loginResult = memberService.login(memberDTO.getId(), memberDTO.getPassword(), ipAddr);
      
      return ResponseEntity.ok(loginResult);
   }
@@ -169,6 +168,7 @@ public class MemberCont {
       @RequestBody MemberDTO memberDTO) {
     String id = memberDTO.getId();
     String password = memberDTO.getPassword();
+    String newPassword = memberDTO.getNewPassword();
     
     
     boolean check = memberService.check_login(id, password);
