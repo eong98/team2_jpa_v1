@@ -26,6 +26,8 @@ public class ShopOrderDTO {
     private Double bprice;
     /** 총 결제 금액 */
     private Long totalprice;
+    /** 결제 수단 (0 카드 / 1 계좌이체 / 2 토스페이) */
+    private Integer pmethod;
   }
 
   /** 구독 내역 응답 */
@@ -107,6 +109,17 @@ public class ShopOrderDTO {
     private int refundMonths;
     /** 환불 금액 (대당단가 × CCTV대수 × 환불개월수) */
     private long refundAmount;
+  }
+  
+  /** 구독 취소 요청 — 환불 대상(환불금액>0)일 때 환불계좌 정보 필수 */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class CancelRequest {
+    private String bankName;
+    private String accountNo;
+    private String accountHolder;
   }
 
   /** 내 구독 내역 검색 조건 (회원용/관리자용 공통) */

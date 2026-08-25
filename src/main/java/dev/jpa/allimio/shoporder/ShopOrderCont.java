@@ -144,13 +144,15 @@ public class ShopOrderCont {
   }
 
   /**
-   * 구독 취소 (환불액 계산 포함)
+   * 구독 취소 (환불액 계산 포함, 환불 대상이면 계좌 정보 필수)
    * PUT /shop_order/ORD-20260819-000001/cancel
    */
   @PutMapping("/{orderno}/cancel")
-  public ResponseEntity<ShopOrderDTO.CancelResult> cancel(@PathVariable("orderno") String orderno) {
-    ShopOrderDTO.CancelResult result = shopOrderService.cancel(orderno);
-    if (result == null) return ResponseEntity.notFound().build();
+  public ResponseEntity<ShopOrderDTO.CancelResult> cancel(
+      @PathVariable("orderno") String orderno,
+      @RequestBody(required = false) ShopOrderDTO.CancelRequest request) {
+    ShopOrderDTO.CancelResult result = shopOrderService.cancel(orderno, request);
+    if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
 }

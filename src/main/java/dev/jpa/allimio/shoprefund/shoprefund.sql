@@ -1,0 +1,46 @@
+--------------------------------------------------------
+-- SHOP_REFUND (환불계좌)
+--------------------------------------------------------
+DROP TABLE SHOP_REFUND CASCADE CONSTRAINTS;
+DROP SEQUENCE SHOP_REFUND_SEQ;
+
+CREATE TABLE SHOP_REFUND (
+  NO             NUMBER(10)                  NOT NULL, -- 환불 고유번호 (PK)
+  ONO            VARCHAR2(30)                NOT NULL, -- 구독 내역 번호 (FK -> SHOP_ORDER.ORDERNO)
+  PAYMENTNO      NUMBER(10)                      NULL, -- 연결된 환불 결제기록 (FK -> SHOP_PAYMENT.NO)
+  MNO            NUMBER(10)                  NOT NULL, -- 회원번호 (FK -> MEMBER.NO)
+  BANK_NAME      VARCHAR2(50)                NOT NULL, -- 은행명
+  ACCOUNT_NO     VARCHAR2(50)                NOT NULL, -- 계좌번호
+  ACCOUNT_HOLDER VARCHAR2(50)                NOT NULL, -- 예금주명
+  AMOUNT         NUMBER(12)                  NOT NULL, -- 환불 금액
+  STATUS         NUMBER(1)       DEFAULT 0   NOT NULL, -- 처리상태 (0: 대기, 1: 완료, 2: 반려)
+  CDATE          VARCHAR2(30)                NOT NULL, -- 등록일시 (환불계좌 입력 시점)
+  UDATE          VARCHAR2(30)                    NULL, -- 처리 완료/변경일시
+
+  CONSTRAINT PK_SHOP_REFUND PRIMARY KEY (NO),
+  CONSTRAINT FK_SHOP_REFUND_ONO FOREIGN KEY (ONO) REFERENCES SHOP_ORDER (ORDERNO),
+  CONSTRAINT FK_SHOP_REFUND_PAYMENTNO FOREIGN KEY (PAYMENTNO) REFERENCES SHOP_PAYMENT (NO),
+  CONSTRAINT FK_SHOP_REFUND_MNO FOREIGN KEY (MNO) REFERENCES MEMBER (NO)
+);
+
+COMMENT ON TABLE  SHOP_REFUND                IS '구독 취소 시 환불계좌 정보 및 처리 상태';
+COMMENT ON COLUMN SHOP_REFUND.ONO             IS '구독 내역 번호 (FK -> SHOP_ORDER.ORDERNO)';
+COMMENT ON COLUMN SHOP_REFUND.PAYMENTNO       IS '연결된 환불 결제기록 (FK -> SHOP_PAYMENT.NO)';
+COMMENT ON COLUMN SHOP_REFUND.MNO             IS '회원 번호 (FK -> MEMBER.NO)';
+COMMENT ON COLUMN SHOP_REFUND.BANK_NAME       IS '은행명';
+COMMENT ON COLUMN SHOP_REFUND.ACCOUNT_NO      IS '계좌번호';
+COMMENT ON COLUMN SHOP_REFUND.ACCOUNT_HOLDER  IS '예금주명';
+COMMENT ON COLUMN SHOP_REFUND.AMOUNT          IS '환불 금액';
+COMMENT ON COLUMN SHOP_REFUND.STATUS          IS '처리상태 (0: 대기, 1: 완료, 2: 반려)';
+COMMENT ON COLUMN SHOP_REFUND.CDATE           IS '등록일시 (환불계좌 입력 시점)';
+COMMENT ON COLUMN SHOP_REFUND.UDATE           IS '처리 완료/변경일시';
+
+CREATE SEQUENCE SHOP_REFUND_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    MAXVALUE 9999997
+    NOCACHE
+    NOCYCLE;
+
+CREATE INDEX IX_SHOP_REFUND_ONO ON SHOP_REFUND (ONO);
+CREATE INDEX IX_SHOP_REFUND_MNO ON SHOP_REFUND (MNO);

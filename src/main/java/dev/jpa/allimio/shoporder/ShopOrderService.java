@@ -15,6 +15,11 @@ import org.springframework.stereotype.Service;
 import dev.jpa.allimio.cctv.CctvRepository;
 import dev.jpa.allimio.shop.Shop;
 import dev.jpa.allimio.shop.ShopWithCctvCount;
+import dev.jpa.allimio.shoporderlog.ShopOrderLogService;
+import dev.jpa.allimio.shoppayment.ShopPaymentDTO;
+import dev.jpa.allimio.shoppayment.ShopPaymentService;
+import dev.jpa.allimio.shoprefund.ShopRefundDTO;
+import dev.jpa.allimio.shoprefund.ShopRefundService;
 import dev.jpa.allimio.tool.Tool;
 
 @Service
@@ -24,6 +29,15 @@ public class ShopOrderService {
 
   @Autowired
   CctvRepository cctvRepository;
+
+  @Autowired
+  ShopOrderLogService shopOrderLogService;
+
+  @Autowired
+  ShopPaymentService shopPaymentService;
+
+  @Autowired
+  ShopRefundService shopRefundService;
 
   /**
    * 신규 구독 결제 등록. 구독권(pno)·대수(ccnt)·기간(pmonth)은 여기서만 정해지고
@@ -49,6 +63,13 @@ public class ShopOrderService {
         .build();
 
     ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+    shopOrderLogService.log(saved.getOrderno(), saved.getMno(), 0, null,
+        null, null, saved.getTotalprice(), "신규 구독 결제");
+
+    // TODO: 실제 결제수단 선택 UI 붙으면 request에서 pmethod 받아서 전달. 지금은 카드(0)로 고정.
+    shopPaymentService.pay(saved.getOrderno(), saved.getMno(), saved.getTotalprice(), 0);
+
     return ShopOrderDTO.Response.from(saved);
   }
 
@@ -61,7 +82,7 @@ public class ShopOrderService {
     String orderno;
     do {
       String randomPart = String.format("%06d", new Random().nextInt(1000000));
-      orderno = "ORD-" + datePart + randomPart;
+      orderno = "ORD-" + datePart + "-" + randomPart;
     } while (shopOrderRepository.existsById(orderno));
     return orderno;
   }
@@ -110,7 +131,7 @@ public class ShopOrderService {
   /**
    * 매장 선택 확정 — 결제된 구독 내역(SNO=null)을 특정 매장에 연결합니다.
    * 실패 사유를 구분해서 예외 메시지로 전달합니다:
-   *  - 이미 활성 구독이 있는 매장: "이미 구독권이 연결된 매장입니다."
+   *  - 이미 활성 구독이 있는 매장: "이미 다른 구독권이 연결된 매장입니다."
    *  - CCTV 대수 불일치: "결제된 CCTV 대수와 매장에 등록된 CCTV 대수가 달라 해당 매장에
    *    구독권을 연결할 수 없습니다."
    * @param orderno 연결할 구독 내역 번호
@@ -148,6 +169,10 @@ public class ShopOrderService {
     shopOrder.setUdate(Tool.getDate());
 
     ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+    shopOrderLogService.log(saved.getOrderno(), saved.getMno(), 1, saved.getSno(),
+        null, saved.getEdate(), null, "매장 연결 확정");
+
     return ShopOrderDTO.Response.from(saved);
   }
 
@@ -182,6 +207,8 @@ public class ShopOrderService {
     if (shopOrder.getStatus() == 2) return null;
     if (shopOrder.getEdate() == null) return null;
 
+    String beforeEdate = shopOrder.getEdate();
+
     LocalDate today = LocalDate.now();
     LocalDate oldEdate = LocalDate.parse(shopOrder.getEdate());
     LocalDate startDate = today.isAfter(oldEdate) ? today : oldEdate;
@@ -194,6 +221,9 @@ public class ShopOrderService {
 
     ShopOrder saved = shopOrderRepository.save(shopOrder);
 
+    shopOrderLogService.log(saved.getOrderno(), saved.getMno(), 2, saved.getSno(),
+        beforeEdate, saved.getEdate(), null, "구독 갱신(기간 연장)");
+
     return ShopOrderDTO.RenewResult.builder()
         .orderno(saved.getOrderno())
         .ccnt(saved.getCcnt())
@@ -204,43 +234,64 @@ public class ShopOrderService {
 
   /**
    * 구독 취소 — 사용한 개월수(1개월 미만 올림)를 뺀 나머지 개월수만큼 환불액을 계산합니다.
+   * 환불액이 0보다 크면 환불계좌 정보(request)가 필수입니다(비어있으면 취소 거부).
    * 매장 미연결(SDATE 없음) 상태면 사용한 기간이 없으므로 전액 환불 처리합니다.
    * 매장 연결(SNO)은 그대로 두고 STATUS만 취소(2) 처리합니다 — 이 매장은 이후
    * "구독권이 연결되어 있지만 만료/취소된 매장" 목록에 다시 노출되어, 재구독 시
    * 같은 매장으로 바로 연결할 수 있습니다.
    * @param orderno
-   * @return 환불 계산 결과, 대상 없으면 null
+   * @param request 환불계좌 정보 (환불 대상일 때만 필수)
+   * @return 환불 계산 결과, 대상 없거나 계좌정보 누락 시 null
    */
-  public ShopOrderDTO.CancelResult cancel(String orderno) {
+  public ShopOrderDTO.CancelResult cancel(String orderno, ShopOrderDTO.CancelRequest request) {
     Optional<ShopOrder> optional = shopOrderRepository.findById(orderno);
     if (optional.isEmpty()) return null;
 
     ShopOrder shopOrder = optional.get();
 
-    if (shopOrder.getSdate() == null) {
-      shopOrder.setStatus(2);
-      shopOrder.setUdate(Tool.getDate());
-      shopOrderRepository.save(shopOrder);
+    long refundAmount;
+    int usedMonths;
+    int refundMonths;
 
-      long fullRefund = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * shopOrder.getPmonth());
-      return ShopOrderDTO.CancelResult.builder()
-          .orderno(orderno)
-          .usedMonths(0)
-          .refundMonths(shopOrder.getPmonth())
-          .refundAmount(fullRefund)
-          .build();
+    if (shopOrder.getSdate() == null) {
+      usedMonths = 0;
+      refundMonths = shopOrder.getPmonth();
+      refundAmount = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * shopOrder.getPmonth());
+    } else {
+      LocalDate sdate = LocalDate.parse(shopOrder.getSdate());
+      LocalDate today = LocalDate.now();
+      long usedDays = ChronoUnit.DAYS.between(sdate, today);
+      usedMonths = (int) Math.max(1, Math.ceil(usedDays / 30.0));
+      refundMonths = Math.max(0, shopOrder.getPmonth() - usedMonths);
+      refundAmount = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * refundMonths);
     }
 
-    LocalDate sdate = LocalDate.parse(shopOrder.getSdate());
-    LocalDate today = LocalDate.now();
-    long usedDays = ChronoUnit.DAYS.between(sdate, today);
-    int usedMonths = (int) Math.max(1, Math.ceil(usedDays / 30.0));
-    int refundMonths = Math.max(0, shopOrder.getPmonth() - usedMonths);
-    long refundAmount = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * refundMonths);
+    // 환불 대상인데 계좌 정보가 없으면 취소 자체를 거부
+    if (refundAmount > 0 && (request == null || request.getAccountNo() == null || request.getAccountNo().isBlank())) {
+      return null;
+    }
 
     shopOrder.setStatus(2);
     shopOrder.setUdate(Tool.getDate());
     shopOrderRepository.save(shopOrder);
+
+    String memo = usedMonths == 0
+        ? "매장 연결 전 취소 · 전액 환불"
+        : "사용 " + usedMonths + "개월 · 환불 " + refundMonths + "개월";
+    shopOrderLogService.log(orderno, shopOrder.getMno(), 3, shopOrder.getSno(),
+        null, null, refundAmount, memo);
+
+    if (refundAmount > 0) {
+      ShopPaymentDTO.Response payment = shopPaymentService.refund(orderno, shopOrder.getMno(), refundAmount);
+
+      ShopRefundDTO.Request refundRequest = ShopRefundDTO.Request.builder()
+          .bankName(request.getBankName())
+          .accountNo(request.getAccountNo())
+          .accountHolder(request.getAccountHolder())
+          .build();
+
+      shopRefundService.save(orderno, payment.getNo(), shopOrder.getMno(), refundRequest, refundAmount);
+    }
 
     return ShopOrderDTO.CancelResult.builder()
         .orderno(orderno)
