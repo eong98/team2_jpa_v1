@@ -21,7 +21,10 @@ import lombok.ToString;
 @JsonInclude(JsonInclude.Include.NON_NULL) // 클래스 안의 모든 null 필드 제외
 public class MemberDTO {
   /** 회원 번호 */
-  private long no;
+  private Long no;
+  
+  /** 점주 번호 */
+  private Long ownerno;
   
   /** 아이디 */
 //  @NotBlank(message = "아이디를 입력하지 않았습니다")
@@ -111,6 +114,7 @@ public class MemberDTO {
 
     MemberDTO dto = new MemberDTO();
     dto.setNo(member.getNo());
+    dto.setOwnerno(member.getOwnerno());
     dto.setId(member.getId());
     dto.setEmail(member.getEmail());
     dto.setPhone(member.getPhone());
@@ -129,7 +133,7 @@ public class MemberDTO {
     return dto;
 }
 
-  public MemberDTO(long no, String id, String email, String phone, String mname, String zipcode, String addr,
+  public MemberDTO(Long no, String id, String email, String phone, String mname, String zipcode, String addr,
       String addrDetail, String cdate, Integer grade, String status, String udate, String termsAgreeYn,
       String privacyAgreeYn, String nation) {
     this.no = no;
@@ -149,7 +153,7 @@ public class MemberDTO {
     this.nation = nation;
   }
 
-  public MemberDTO(long no, String id, String email, String phone, String mname, String zipcode, String addr,
+  public MemberDTO(Long no, String id, String email, String phone, String mname, String zipcode, String addr,
       String addrDetail, Integer grade, String status, String udate, String cdate, String nation) {
     this.no = no;
     this.id = id;
@@ -165,7 +169,6 @@ public class MemberDTO {
     this.cdate = cdate;
     this.nation = nation;
   }
-  
   
   
 }

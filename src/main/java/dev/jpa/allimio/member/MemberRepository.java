@@ -17,6 +17,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   /** 아이디로 회원 조회 */
   public Optional<Member> findById(String id);
   
+  /** 아이디와 이메일로 회원 조회 */
+  public Optional<Member> findByIdAndEmail(String id, String email);
+  
   /** 아이디, 비밀번호 일치하는지 확인 */
   public int countByIdAndPassword(String id, String password);
   

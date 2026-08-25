@@ -24,5 +24,8 @@ public interface ProfileImageRepository extends JpaRepository<ProfileImage, Long
                     @Param("storeFilename") String storeFilename,
                     @Param("mno") Long mno,
                     @Param("updateDate") String updateDate);
+    
+    /** 삭제 */
+    int deleteByMno(Long mno);
 
 }

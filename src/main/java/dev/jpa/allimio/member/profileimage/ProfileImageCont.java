@@ -50,11 +50,11 @@ public class ProfileImageCont {
         String storeFilename = Upload.saveFileSpring(file1MF, upDir);
 
         // 4. 기존 파일명 조회 (교체 성공 후 삭제하기 위함)
-        ProfileImageDTO oldImage = this.profileImageService.findByMemberno(memberno);
+        ProfileImageDTO oldImage = profileImageService.findByMemberno(memberno);
         String oldStoreFilename = (oldImage != null) ? oldImage.getStoreFilename() : null;
 
         // 5. DB 정보 갱신
-        int cnt = this.profileImageService.update_file(uploadFilename, storeFilename, memberno);
+        int cnt = profileImageService.update_file(uploadFilename, storeFilename, memberno);
 
         // 6. DB 갱신 성공 시 이전 파일 삭제
         if (cnt > 0 && oldStoreFilename != null && !oldStoreFilename.trim().isEmpty()) {
@@ -73,7 +73,7 @@ public class ProfileImageCont {
     public ResponseEntity<Integer> delete_file(
             @RequestParam(name = "memberno", defaultValue = "0") Long memberno) {
 
-        ProfileImageDTO profileImageDTO = this.profileImageService.findByMemberno(memberno);
+        ProfileImageDTO profileImageDTO = profileImageService.findByMemberno(memberno);
 
         if (profileImageDTO == null || profileImageDTO.getStoreFilename() == null || profileImageDTO.getStoreFilename().trim().isEmpty()) {
             return ResponseEntity.ok(2); // 삭제할 커스텀 이미지가 없음 (기본 이미지 상태)
@@ -83,10 +83,10 @@ public class ProfileImageCont {
 
         // 실제 물리 디스크 파일 삭제
         Tool.deleteFile(dir, profileImageDTO.getStoreFilename());
-
-        // DB 파일명 정보 빈 문자열로 초기화
-        int cnt = this.profileImageService.update_file("", "", memberno);
-
+        
+        // DB 파일명 정보 삭제
+        int cnt = profileImageService.deleteByMno(profileImageDTO.getMno());
+      
         return ResponseEntity.ok(cnt);
     }
     
@@ -96,7 +96,7 @@ public class ProfileImageCont {
      */
     @GetMapping("/{memberno}")
     public ResponseEntity<ProfileImageDTO> getProfileImage(@PathVariable("memberno") Long memberno) {
-        ProfileImageDTO dto = this.profileImageService.findByMemberno(memberno);
+        ProfileImageDTO dto = profileImageService.findByMemberno(memberno);
 
         // 등록된 이미지가 없으면 null을 담아 200 OK 반환 (프론트가 기본 아바타/첫 글자 출력)
         if (dto == null) {

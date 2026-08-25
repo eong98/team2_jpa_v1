@@ -30,6 +30,7 @@ public class ProfileImageService {
                             .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원 번호입니다: " + memberno));
                     
                     return ProfileImage.builder()
+                            .mno(memberno)
                             .member(member)
                             .build();
                 });
@@ -54,5 +55,11 @@ public class ProfileImageService {
         
         // DTO에 만들어둔 fromEntity 편의 메서드 사용
         return ProfileImageDTO.fromEntity(profileImage);
+    }
+    
+    public int deleteByMno(Long mno) {
+      int cnt = profileImageRepository.deleteByMno(mno);
+      
+      return cnt;
     }
 }

@@ -31,7 +31,7 @@ public class ProfileImageDTO {
     public ProfileImage toEntity() {
         return ProfileImage.builder()
                 .mno(this.mno)
-                .member(this.mno != null ? Member.builder().no(this.mno).build() : null)
+//                .member(this.mno != null ? Member.builder().no(this.mno).build() : null)
                 .storeFilename(this.storeFilename != null ? this.storeFilename : "")
                 .uploadFilename(this.uploadFilename != null ? this.uploadFilename : "")
                 .updateDate(this.updateDate)

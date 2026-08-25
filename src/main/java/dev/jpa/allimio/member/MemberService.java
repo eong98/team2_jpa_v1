@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class MemberService {
   private final MemberRepository memberRepository;
   private final UpdateHistoryRepository updateHistoryRepository;
   private final LoginHistoryRepository loginHistroyRepository;
+  private final PasswordEncoder passwordEncoder;
   
   /**
    * 아이디 중복 체크
@@ -40,6 +42,9 @@ public class MemberService {
    */
   public Member save(MemberDTO memberDTO) {
     memberDTO.setCdate(Tool.getDate());
+    
+    String encodedPassword = passwordEncoder.encode(memberDTO.getPassword());
+    memberDTO.setPassword(encodedPassword);
     
     return memberRepository.save(memberDTO.toEntity());
   }
@@ -74,7 +79,7 @@ public class MemberService {
         return result;
     }
     
-    // [실패 2] 2로 저장됨으로 상태가 2로 시작되면 작동
+    // [실패 2] 상태가 2면 작동
     if (member.getStatus().startsWith("2")) {
         saveLoginLogs(id, 0, "ACCOUNT_SUSPENDED", "정지된 회원입니다.", now, ipAddr, member);
         result.put("success", false);
@@ -83,7 +88,7 @@ public class MemberService {
     }
 
     // [실패 3] 비밀번호 불일치 (Security PasswordEncoder 사용 시 passwordEncoder.matches(password, member.getPassword())로 변경)
-    if (!password.equals(member.getPassword())) {
+    if (!passwordEncoder.matches(password, member.getPassword())) {
         saveLoginLogs(id, 0, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.", now, ipAddr, member);
         result.put("success", false);
         result.put("message", "아이디/비밀번호가 일치하지 않습니다.");

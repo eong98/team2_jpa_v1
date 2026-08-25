@@ -51,8 +51,12 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-validation'
   
   // Security  
-  // testImplementation 'org.springframework.security:spring-security-test'
-  // implementation 'org.springframework.boot:spring-boot-starter-security'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+  
+  // email
+  implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+
 }
 
 tasks.named('test') {

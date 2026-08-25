@@ -25,6 +25,9 @@ public class Member {
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "member_seq_use")
   @SequenceGenerator(name = "member_seq_use", sequenceName = "MEMBER_SEQ", allocationSize = 1)
   private Long no;
+  
+  /** 점주번호 */
+  private Long ownerno;
 
   /** 아이디 */
   private String id;
@@ -114,7 +117,5 @@ public class Member {
     this.privacyAgreeYn = privacyAgreeYn;
     this.nation = nation;
   }
-  
-  
 
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import dev.jpa.allimio.member.profileimage.ProfileImageService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/v1/user")
 public class MemberCont {
   private final MemberService memberService;
-  private final ProfileImageService profileImageService;
+  private final PasswordEncoder passwordEncoder;
 
   // 임시 DTO 생성
   public record IdCheckResponse(boolean available) {
@@ -88,32 +88,16 @@ public class MemberCont {
    * @param password
    * @return 성공이면 DTO+true, 실패면 false
    */
-//  @PostMapping(path="/login")
-// public ResponseEntity<Map<String, Object>> login(
-//     @RequestParam(name="id", defaultValue="") String id, 
-//     @RequestParam(name="password", defaultValue="") String password){
-//    Optional<MemberDTO> loginResult = memberService.login(id, password);
-//    
-//    Map<String, Object> response = new HashMap<>();
-//    
-//    if(loginResult.isPresent()) {  
-//      response.put("success", true);
-//      response.put("user", loginResult.get());
-//    } else {
-//      response.put("success", false);
-//    }
-//    
-//    return ResponseEntity.ok(response);
-//  }
   @PostMapping(path="/login")
   public ResponseEntity<Map<String, Object>> login(
       @RequestParam(name="id", defaultValue="") String id, 
       @RequestParam(name="password", defaultValue="") String password,
       HttpServletRequest request){
-      // ip주소 추출
-      String ipAddr = request.getRemoteAddr();
+     // ip주소 추출
+     String ipAddr = request.getRemoteAddr();
     
      Map<String, Object> loginResult = memberService.login(id, password, ipAddr);
+     
      return ResponseEntity.ok(loginResult);
   }
 
