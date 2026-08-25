@@ -168,7 +168,7 @@ public class MemberCont {
       @RequestBody MemberDTO memberDTO) {
     String id = memberDTO.getId();
     String password = memberDTO.getPassword();
-    String newPassword = memberDTO.getNewPassword();
+    
     
     
     boolean check = memberService.check_login(id, password);
