@@ -61,7 +61,7 @@ public class ShopOrderService {
     String orderno;
     do {
       String randomPart = String.format("%06d", new Random().nextInt(1000000));
-      orderno = "ORD-" + datePart + "-" + randomPart;
+      orderno = "ORD-" + datePart + randomPart;
     } while (shopOrderRepository.existsById(orderno));
     return orderno;
   }
