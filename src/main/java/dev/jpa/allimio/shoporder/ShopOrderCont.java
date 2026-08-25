@@ -1,6 +1,7 @@
 package dev.jpa.allimio.shoporder;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -31,7 +32,7 @@ public class ShopOrderCont {
   }
 
   /**
-   * 신규 구독 결제 등록 (매장 미연결 상태로 생성)
+   * 신규 구독 결제 등록 (매장 미연결 상태로 생성). 구독권/대수/기간은 여기서만 정해짐.
    * POST /shop_order
    */
   @PostMapping
@@ -61,7 +62,7 @@ public class ShopOrderCont {
       ShopOrderDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    searchCondition.setMno(mno); // URL의 mno로 강제 세팅 — 본인 데이터만 조회되도록 위조 방지
+    searchCondition.setMno(mno);
     Page<ShopOrderDTO.Response> pageResult = shopOrderService.search(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
@@ -108,27 +109,47 @@ public class ShopOrderCont {
   }
 
   /**
-   * 구독 갱신/변경 — extendPeriod=true면 기간 연장(갱신), false/미전달이면 대수만 변경.
+   * 매장 선택 확정 (SNO 연결). 실패 사유를 구분해서 응답합니다:
+   *  - 404: 존재하지 않는 구독 내역
+   *  - 409(Conflict): 이미 연결된 매장 / 취소된 구독
+   *  - 422(Unprocessable Entity): CCTV 대수 불일치 → 프론트에서 이 코드로 전용 문구 표시
+   * PUT /shop_order/ORD-20260819-000001/link-shop
+   */
+  @PutMapping("/{orderno}/link-shop")
+  public ResponseEntity<?> linkShop(
+      @PathVariable("orderno") String orderno,
+      @RequestBody ShopOrderDTO.LinkShopRequest request) {
+    try {
+      ShopOrderDTO.Response response = shopOrderService.linkShop(orderno, request);
+      return ResponseEntity.ok(response);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+    } catch (IllegalStateException e) {
+      HttpStatus status = e.getMessage().contains("CCTV 대수")
+          ? HttpStatus.UNPROCESSABLE_ENTITY
+          : HttpStatus.CONFLICT;
+      return ResponseEntity.status(status).body(Map.of("message", e.getMessage()));
+    }
+  }
+
+  /**
+   * 구독 갱신 — 순수 기간 연장 전용 (대수/플랜 변경 없음)
    * PUT /shop_order/ORD-20260819-000001/renew
    */
   @PutMapping("/{orderno}/renew")
-  public ResponseEntity<ShopOrderDTO.RenewResult> renew(
-      @PathVariable("orderno") String orderno,
-      @RequestBody ShopOrderDTO.RenewRequest request) {
-    ShopOrderDTO.RenewResult result = shopOrderService.renew(orderno, request);
+  public ResponseEntity<ShopOrderDTO.RenewResult> renew(@PathVariable("orderno") String orderno) {
+    ShopOrderDTO.RenewResult result = shopOrderService.renew(orderno);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
 
   /**
-   * 구독 취소 (환불액 계산 포함, 환불 대상이면 계좌 정보 필수)
+   * 구독 취소 (환불액 계산 포함)
    * PUT /shop_order/ORD-20260819-000001/cancel
    */
   @PutMapping("/{orderno}/cancel")
-  public ResponseEntity<ShopOrderDTO.CancelResult> cancel(
-      @PathVariable("orderno") String orderno,
-      @RequestBody ShopOrderDTO.CancelRequest request) {
-    ShopOrderDTO.CancelResult result = shopOrderService.cancel(orderno, request);
+  public ResponseEntity<ShopOrderDTO.CancelResult> cancel(@PathVariable("orderno") String orderno) {
+    ShopOrderDTO.CancelResult result = shopOrderService.cancel(orderno);
     if (result == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(result);
   }

@@ -16,7 +16,6 @@ import dev.jpa.allimio.shop.Shop;
  * 구독 내역 Repository
  *
  * SHOP_ORDER 테이블의 데이터를 조회, 등록, 수정할 때 사용합니다.
- * (삭제 API는 없음 — 취소는 STATUS=2로 소프트 처리, 실제 행 삭제는 지원하지 않음)
  */
 @Repository
 public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
@@ -36,7 +35,8 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   /**
    * "구독 결제 완료 후 연결 가능한 매장" 목록용.
    * 특정 회원(mno) 소유 매장 중, 활성(STATUS=0) 구독이 걸려있지 않은 매장만 조회.
-   * (매장이 아예 구독이 없거나, 있었더라도 만료/취소된 경우 둘 다 포함)
+   * (매장이 아예 구독이 없거나, 있었더라도 만료/취소된 경우 둘 다 포함 — 취소한 매장을
+   * 다시 구독해서 연결할 때도 이 쿼리로 자동으로 잡힙니다.)
    */
   @Query("""
       SELECT s FROM Shop s
@@ -50,8 +50,7 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   /**
    * 회원 기준 구독 내역 검색 + 페이징 조회.
    * 날짜 검색은 dateType으로 어느 컬럼(구독시작일/구독종료일/구매일)을 볼지 정하고,
-   * dateFrom~dateTo 하나의 기간으로 그 컬럼만 비교합니다 — 세 개 날짜 필터를
-   * 따로 두지 않고 "기준 선택 + 기간 하나"로 통합한 방식입니다.
+   * dateFrom~dateTo 하나의 기간으로 그 컬럼만 비교합니다.
    */
   @Query("""
       SELECT so FROM ShopOrder so
@@ -86,7 +85,7 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 
   /**
    * 관리자용 구독 내역 검색 + 페이징 조회. mno 포함 모든 조건이 선택사항이라
-   * mno를 안 넘기면 전체 회원 대상으로 조회됩니다. 날짜 검색 방식은 searchByMno와 동일합니다.
+   * mno를 안 넘기면 전체 회원 대상으로 조회됩니다.
    */
   @Query("""
       SELECT so FROM ShopOrder so
