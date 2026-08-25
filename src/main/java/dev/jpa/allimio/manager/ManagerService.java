@@ -243,9 +243,9 @@ public void saveLoginLogs(String loginId, int loginResult, String failCode, Stri
   
   /** 비밀번호 확인 */
   public boolean check_login(String id, String password) {
-    int res = managerRepository.countByIdAndPassword(id, password);
+Manager manager = managerRepository.findById(id).orElse(null);
     
-    if(res == 1) {
+    if(manager != null && passwordEncoder.matches(password, manager.getPassword())) {
       return true;
     } else {
       return false;
@@ -259,7 +259,9 @@ public void saveLoginLogs(String loginId, int loginResult, String failCode, Stri
    * @return 수정됐다면 true, 실패했다면 false
    */
  public boolean updatePassword(String id, String password) {
-   int check = managerRepository.updatePassword(id, password);
+   String encodedPassword = passwordEncoder.encode(password);
+   
+   int check = managerRepository.updatePassword(id, encodedPassword);
    
    return check > 0;
  }
