@@ -56,7 +56,14 @@ public class ShopCont {
   /**
    * 매장 목록 검색 + 페이징 (/user/shop), http://localhost:9100/shop/search
    * mno(로그인 회원)는 필수, keyword는 선택 사항. 기본 정렬: cdate(등록일) 내림차순(최신순)
+   *
+   * grade를 함께 넘기면(권장) 로그인 회원 등급에 따라 대상 매장 범위가 달라집니다.
+   * - grade == 10 (점주): SHOP.MNO(소유) 기준, 기존과 동일
+   * - grade 6~9 (직원): SHOP_MEMBER에서 mno로 배정된 매장(SNO)만 대상
+   * - grade 미전달: 기존 방식(SHOP.MNO 기준)으로 동작 (하위 호환)
+   *
    * @param mno 회원번호 (필수, 세션의 로그인 회원)
+   * @param grade 회원 등급 (선택, 세션의 로그인 회원 grade — 10: 점주, 6~9: 직원)
    * @param keyword 매장명/주소/상세주소 포함 검색
    * @param page 0부터 시작하는 페이지 번호 (기본 0)
    * @param size 페이지당 개수 (기본 6)
@@ -65,12 +72,13 @@ public class ShopCont {
   @GetMapping(path = "/search")
   public Map<String, Object> search(
       @RequestParam(value = "mno") long mno,
+      @RequestParam(value = "grade", required = false) Integer grade,
       @RequestParam(value = "keyword", required = false) String keyword,
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "6") int size
   ) {
     Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "cdate"));
-    Page<Shop> result = shopService.search(mno, keyword, pageable);
+    Page<Shop> result = shopService.searchForUser(mno, grade, keyword, pageable);
 
     // 매장 카드에 "등록 CCTV 몇 대"를 보여주기 위해 CCTV 등록 대수를 붙여서 내려줍니다.
     List<ShopWithCctvCount> contentWithCctvCount = shopService.attachCctvCount(result.getContent());
