@@ -49,4 +49,37 @@ public class MailService {
       throw new RuntimeException("메일 발송에 실패했습니다.", e);
     }
   }
+  
+  /**
+   * CCTV 이슈 알림 이메일 발송
+   */
+  public void sendNotificationMail(
+      String toEmail,
+      String title,
+      String content
+  ) {
+      String subject = "[all-im-io] " + title;
+
+      String htmlContent =
+          "<div style='font-family: Arial, sans-serif; padding: 20px;'>"
+          + "<h2>" + title + "</h2>"
+          + "<p>" + content + "</p>"
+          + "</div>";
+
+      try {
+          MimeMessage message = mailSender.createMimeMessage();
+          MimeMessageHelper helper =
+              new MimeMessageHelper(message, true, "UTF-8");
+
+          helper.setTo(toEmail);
+          helper.setSubject(subject);
+          helper.setText(htmlContent, true);
+
+          mailSender.send(message);
+
+      } catch (MessagingException e) {
+          log.error("이슈 알림 메일 발송 실패: {}", toEmail, e);
+          throw new RuntimeException("알림 메일 발송에 실패했습니다.", e);
+      }
+  }
 }

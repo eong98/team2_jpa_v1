@@ -87,30 +87,10 @@ public class AiIssueMap {
    */
   private String cdate;
 
+  /**
+   * JPA 기본 생성자
+   */
   public AiIssueMap() {
   }
 
-  public AiIssueMap(
-      long no,
-      long mno,
-      long smno,
-      Double xpos,
-      Double ypos,
-      String color,
-      String fsaved,
-      int status,
-      String err,
-      String cdate) {
-
-    this.no = no;
-    this.mno = mno;
-    this.smno = smno;
-    this.xpos = xpos;
-    this.ypos = ypos;
-    this.color = color;
-    this.fsaved = fsaved;
-    this.status = status;
-    this.err = err;
-    this.cdate = cdate;
-  }
 }

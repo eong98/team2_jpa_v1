@@ -1,6 +1,8 @@
 package dev.jpa.allimio.aiissuemap;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
@@ -10,6 +12,8 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
+@NoArgsConstructor
+@AllArgsConstructor
 public class AiIssueMapDTO {
 
   private long no;
@@ -32,46 +36,4 @@ public class AiIssueMapDTO {
 
   private String cdate;
 
-  public AiIssueMapDTO() {
-  }
-
-  public AiIssueMapDTO(
-      long no,
-      long mno,
-      long smno,
-      Double xpos,
-      Double ypos,
-      String color,
-      String fsaved,
-      int status,
-      String err,
-      String cdate) {
-
-    this.no = no;
-    this.mno = mno;
-    this.smno = smno;
-    this.xpos = xpos;
-    this.ypos = ypos;
-    this.color = color;
-    this.fsaved = fsaved;
-    this.status = status;
-    this.err = err;
-    this.cdate = cdate;
-  }
-
-  public AiIssueMap toEntity() {
-
-    return new AiIssueMap(
-        no,
-        mno,
-        smno,
-        xpos,
-        ypos,
-        color,
-        fsaved,
-        status,
-        err,
-        cdate
-    );
-  }
 }
