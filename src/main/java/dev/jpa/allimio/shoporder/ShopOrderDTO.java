@@ -37,10 +37,12 @@ public class ShopOrderDTO {
   @AllArgsConstructor
   @Builder
   public static class Response {
-    private String orderno;
+    private String no;
     private Long pno;
+    private String pname; // join
     private Long mno;
     private Long sno;
+    private String sname; // join
     private Integer pmonth;
     private Integer ccnt;
     private Double bprice;
@@ -50,11 +52,12 @@ public class ShopOrderDTO {
     private String edate;
     private String cdate;
     private String udate;
-
+    
+    /** 1. 기본 엔티티 단건 변환용 메서드 */
     public static Response from(ShopOrder entity) {
       if (entity == null) return null;
       return Response.builder()
-          .orderno(entity.getOrderno())
+          .no(entity.getNo())
           .pno(entity.getPno())
           .mno(entity.getMno())
           .sno(entity.getSno())
@@ -68,6 +71,16 @@ public class ShopOrderDTO {
           .cdate(entity.getCdate())
           .udate(entity.getUdate())
           .build();
+    }
+
+    /** 2. 💡 실무형 조인 맵핑 메서드: 엔티티 + 조인 필드(pname, sname) 받아서 결합 */
+    public static Response from(ShopOrder entity, String pname, String sname) {
+      Response response = from(entity);
+      if (response != null) {
+        response.setPname(pname);
+        response.setSname(sname);
+      }
+      return response;
     }
   }
 
@@ -88,7 +101,7 @@ public class ShopOrderDTO {
   @AllArgsConstructor
   @Builder
   public static class RenewResult {
-    private String orderno;
+    private String no;
     private Integer ccnt;
     private Long totalprice;
     private String edate;
@@ -102,7 +115,7 @@ public class ShopOrderDTO {
   @Builder
   public static class CancelResult {
     /** 취소된 구독 내역 번호 */
-    private String orderno;
+    private String no;
     /** 사용한 개월수 (1개월 미만도 1개월로 올림) */
     private int usedMonths;
     /** 환불 대상 개월수 (총 결제개월수 - 사용개월수) */
@@ -131,16 +144,14 @@ public class ShopOrderDTO {
   public static class SearchRequest {
     /** 회원번호. 회원용 API는 컨트롤러가 URL의 mno로 강제 세팅, 관리자용은 선택 필터 */
     private Long mno;
-    /** 검색어 (주문번호 부분일치) */
+    /** 검색어 (매장이름 부분일치) */
     private String word;
     /** 구독 상태 (0 정상 / 1 만료됨 / 2 취소) */
     private Integer status;
-    /** 구독권 번호 */
-    private Long pno;
-    /** 매장 번호 */
-    private Long sno;
-    /** 날짜 검색 기준 ('sdate' 구독시작일 / 'edate' 구독종료일 / 'cdate' 구매일) */
-    private String dateType;
+    /** 구독권 이름 */
+    private String pname;
+    /** 선택 기간 (6, 12) */
+    private Integer pmonth;
     /** 날짜 검색 시작일 (YYYY-MM-DD) */
     private String dateFrom;
     /** 날짜 검색 종료일 (YYYY-MM-DD) */

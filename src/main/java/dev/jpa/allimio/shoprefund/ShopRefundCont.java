@@ -29,27 +29,28 @@ public class ShopRefundCont {
 
   /**
    * 특정 주문의 환불계좌 (최신순)
-   * GET /shop_refund/order/ORD-20260819-000001
+   * GET /shop_refund/1
    */
-  @GetMapping("/order/{ono}")
-  public ResponseEntity<List<ShopRefundDTO.Response>> findByOno(@PathVariable("ono") String ono) {
-    return ResponseEntity.ok(shopRefundService.findByOno(ono));
+  @GetMapping("/{pno}")
+  public ResponseEntity<List<ShopRefundDTO.Response>> findByPno(@PathVariable("pno") Long pno) {
+    List<ShopRefundDTO.Response> list = shopRefundService.findByPno(pno);
+    return ResponseEntity.ok(list);
   }
 
   /**
    * 회원 기준 환불계좌 검색 + 페이징 조회
    * GET /shop_refund/mno/1/search?status=&dateFrom=&dateTo=&page=0&size=10
    */
-  @GetMapping("/mno/{mno}/search")
-  public ResponseEntity<PageResponse<ShopRefundDTO.Response>> search(
-      @PathVariable("mno") Long mno,
-      ShopRefundDTO.SearchRequest searchCondition,
-      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
-
-    searchCondition.setMno(mno);
-    Page<ShopRefundDTO.Response> pageResult = shopRefundService.search(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));
-  }
+//  @GetMapping("/mno/{mno}/search")
+//  public ResponseEntity<PageResponse<ShopRefundDTO.Response>> search(
+//      @PathVariable("mno") Long mno,
+//      ShopRefundDTO.SearchRequest searchCondition,
+//      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
+//
+//    searchCondition.setMno(mno);
+//    Page<ShopRefundDTO.Response> pageResult = shopRefundService.search(searchCondition, pageable);
+//    return ResponseEntity.ok(PageResponse.of(pageResult));
+//  }
 
   /**
    * 관리자용 전체 환불계좌 검색 + 페이징 조회

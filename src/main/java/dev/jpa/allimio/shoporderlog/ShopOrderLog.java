@@ -33,8 +33,8 @@ public class ShopOrderLog {
   /** 로그 고유번호 (PK) */
   private Long no;
 
-  /** 구독 내역 번호 (FK -> SHOP_ORDER.ORDERNO) */
-  private String orderno;
+  /** 구독 내역 번호 (FK -> SHOP_ORDER.ono) */
+  private String ono;
 
   /** 회원번호 (조회 편의용 비정규화) */
   private Long mno;

@@ -37,7 +37,7 @@ public class ShopRefund {
   private String ono;
 
   /** 연결된 환불 결제기록 (FK -> SHOP_PAYMENT.NO) */
-  private Long paymentno;
+  private Long pno;
 
   /** 회원번호 (FK -> MEMBER.NO) */
   private Long mno;

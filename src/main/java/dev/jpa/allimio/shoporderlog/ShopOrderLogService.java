@@ -18,7 +18,7 @@ public class ShopOrderLogService {
   /**
    * 로그 한 건 기록. ShopOrderService의 save/linkShop/renew/cancel 각 메서드
    * 마지막에 이 메서드를 호출해서 이벤트를 남깁니다.
-   * @param orderno 구독 내역 번호
+   * @param ono 구독 내역 번호
    * @param mno 회원번호
    * @param action 이벤트 종류 (0 결제 / 1 매장연결 / 2 갱신 / 3 취소)
    * @param sno 관련 매장번호 (매장연결일 때만)
@@ -27,10 +27,10 @@ public class ShopOrderLogService {
    * @param amount 관련 금액 (결제액/환불액)
    * @param memo 부가 설명
    */
-  public void log(String orderno, Long mno, Integer action, Long sno,
+  public void log(String ono, Long mno, Integer action, Long sno,
       String beforeEdate, String afterEdate, Long amount, String memo) {
     ShopOrderLog logEntity = ShopOrderLog.builder()
-        .orderno(orderno)
+        .ono(ono)
         .mno(mno)
         .action(action)
         .sno(sno)
@@ -45,15 +45,15 @@ public class ShopOrderLogService {
   }
 
   /** 특정 주문의 전체 이력 (최신순) */
-  public List<ShopOrderLogDTO.Response> findByOrderno(String orderno) {
-    return shopOrderLogRepository.findByOrdernoOrderByCdateDesc(orderno)
+  public List<ShopOrderLogDTO.Response> findByOno(String ono) {
+    return shopOrderLogRepository.findByOnoOrderByCdateDesc(ono)
         .stream().map(ShopOrderLogDTO.Response::from).collect(Collectors.toList());
   }
 
   /** 회원 기준 검색 + 페이징 */
   public Page<ShopOrderLogDTO.Response> search(ShopOrderLogDTO.SearchRequest c, Pageable pageable) {
     Page<ShopOrderLog> result = shopOrderLogRepository.searchByMno(
-        c.getMno(), c.getSno(), c.getAction(), c.getDateFrom(), c.getDateTo(), pageable);
+        c.getMno(), c.getOno(), c.getSno(), c.getAction(), c.getDateFrom(), c.getDateTo(), pageable);
     return result.map(ShopOrderLogDTO.Response::from);
   }
 

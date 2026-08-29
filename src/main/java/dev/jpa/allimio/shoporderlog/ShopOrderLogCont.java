@@ -29,22 +29,24 @@ public class ShopOrderLogCont {
    * 특정 주문의 전체 이력 (최신순)
    * GET /shop_order_log/order/ORD-20260819-000001
    */
-  @GetMapping("/order/{orderno}")
-  public ResponseEntity<List<ShopOrderLogDTO.Response>> findByOrderno(@PathVariable("orderno") String orderno) {
-    return ResponseEntity.ok(shopOrderLogService.findByOrderno(orderno));
+  @GetMapping("/{ono}")
+  public ResponseEntity<List<ShopOrderLogDTO.Response>> findByOno(@PathVariable("ono") String ono) {
+    return ResponseEntity.ok(shopOrderLogService.findByOno(ono));
   }
 
   /**
    * 회원 기준 변경 이력 검색 + 페이징 조회
    * GET /shop_order_log/mno/1/search?sno=&action=&dateFrom=&dateTo=&page=0&size=10
    */
-  @GetMapping("/mno/{mno}/search")
+  @GetMapping("{mno}/{ono}")
   public ResponseEntity<PageResponse<ShopOrderLogDTO.Response>> search(
       @PathVariable("mno") Long mno,
+      @PathVariable("ono") String ono,
       ShopOrderLogDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
     searchCondition.setMno(mno);
+    searchCondition.setOno(ono);
     Page<ShopOrderLogDTO.Response> pageResult = shopOrderLogService.search(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }

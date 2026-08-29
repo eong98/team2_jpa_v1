@@ -16,7 +16,7 @@ public class ShopOrderLogDTO {
   @Builder
   public static class Response {
     private Long no;
-    private String orderno;
+    private String ono;
     private Long mno;
     private Integer action;
     private Long sno;
@@ -30,7 +30,7 @@ public class ShopOrderLogDTO {
       if (entity == null) return null;
       return Response.builder()
           .no(entity.getNo())
-          .orderno(entity.getOrderno())
+          .ono(entity.getOno())
           .mno(entity.getMno())
           .action(entity.getAction())
           .sno(entity.getSno())
@@ -54,6 +54,7 @@ public class ShopOrderLogDTO {
     private Long mno;
     /** 매장 번호 */
     private Long sno;
+    private String ono;
     /** 이벤트 종류 (0 결제 / 1 매장연결 / 2 갱신 / 3 취소) */
     private Integer action;
     /** 조회 시작일 (YYYY-MM-DD) */

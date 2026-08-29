@@ -1,6 +1,7 @@
 package dev.jpa.allimio.shoppayment;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +69,16 @@ public class ShopPaymentService {
     ShopPayment saved = shopPaymentRepository.save(shopPayment);
     return ShopPaymentDTO.Response.from(saved);
   }
+  
+  /**
+   * 결제 단건 조회 (PK 기준)
+   * @param no 결제 고유번호
+   * @return 결제 내역, 없으면 null
+   */
+  public ShopPaymentDTO.Response findById(Long no) {
+    Optional<ShopPayment> optional = shopPaymentRepository.findById(no);
+    return optional.map(ShopPaymentDTO.Response::from).orElse(null);
+  }
 
   /** 특정 주문의 결제 내역 (최신순) */
   public List<ShopPaymentDTO.Response> findByOno(String ono) {
@@ -78,14 +89,14 @@ public class ShopPaymentService {
   /** 회원 기준 검색 + 페이징 */
   public Page<ShopPaymentDTO.Response> search(ShopPaymentDTO.SearchRequest c, Pageable pageable) {
     Page<ShopPayment> result = shopPaymentRepository.searchByMno(
-        c.getMno(), c.getPmethod(), c.getPstatus(), c.getDateFrom(), c.getDateTo(), pageable);
+        c.getMno(), c.getOno(), c.getPmethod(), c.getPstatus(), c.getDateFrom(), c.getDateTo(), pageable);
     return result.map(ShopPaymentDTO.Response::from);
   }
 
   /** 관리자용 검색 + 페이징 */
-  public Page<ShopPaymentDTO.Response> searchAllAdmin(ShopPaymentDTO.SearchRequest c, Pageable pageable) {
-    Page<ShopPayment> result = shopPaymentRepository.searchAllAdmin(
-        c.getMno(), c.getPmethod(), c.getPstatus(), c.getDateFrom(), c.getDateTo(), pageable);
-    return result.map(ShopPaymentDTO.Response::from);
-  }
+//  public Page<ShopPaymentDTO.Response> searchAllAdmin(ShopPaymentDTO.SearchRequest c, Pageable pageable) {
+//    Page<ShopPayment> result = shopPaymentRepository.searchAllAdmin(
+//        c.getMno(), c.getWord(), c.getPmethod(), c.getPstatus(), c.getDateFrom(), c.getDateTo(), pageable);
+//    return result.map(ShopPaymentDTO.Response::from);
+//  }
 }

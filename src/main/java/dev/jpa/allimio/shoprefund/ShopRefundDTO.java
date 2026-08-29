@@ -28,7 +28,7 @@ public class ShopRefundDTO {
   public static class Response {
     private Long no;
     private String ono;
-    private Long paymentno;
+    private Long pno;
     private Long mno;
     private String bankName;
     private String accountNo;
@@ -43,7 +43,7 @@ public class ShopRefundDTO {
       return Response.builder()
           .no(entity.getNo())
           .ono(entity.getOno())
-          .paymentno(entity.getPaymentno())
+          .pno(entity.getPno())
           .mno(entity.getMno())
           .bankName(entity.getBankName())
           .accountNo(entity.getAccountNo())
@@ -74,6 +74,7 @@ public class ShopRefundDTO {
   @Builder
   public static class SearchRequest {
     private Long mno;
+    private String ono;
     private Integer status;
     private String dateFrom;
     private String dateTo;

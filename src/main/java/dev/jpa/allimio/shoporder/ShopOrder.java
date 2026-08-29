@@ -15,7 +15,7 @@ import lombok.Setter;
  * SHOP_ORDER 테이블과 연결됩니다.
  * PK(ORDERNO)는 시퀀스가 아니라 랜덤 문자열로 직접 발급합니다(ShopOrderService.generateOrderNo()).
  * 매장(SNO) 연결은 결제 시점엔 비워두고, 매장 선택 확정 시점에 채워집니다.
- * 구독권 자체는 만료 전 변경 불가 — 만료 전 변경 가능한 건 CCTV 대수(CCNT)뿐입니다.
+ * 구독권 
  */
 @Entity
 @Table(name = "SHOP_ORDER")
@@ -27,7 +27,7 @@ import lombok.Setter;
 public class ShopOrder {
   @Id
   /** 구독 내역 랜덤번호 (PK) */
-  private String orderno;
+  private String no;
 
   /** 회원 번호 (FK -> MEMBER.NO) */
   private Long mno;
@@ -50,7 +50,7 @@ public class ShopOrder {
   /** 총 결제 금액 (원) */
   private Long totalprice;
 
-  /** 구독 상태 (0: 정상, 1: 만료됨, 2: 취소) */
+  /** 구독 상태 (0: 대기, 1: 정상, 2: 만료, 3: 취소) */
   @Builder.Default
   private Integer status = 0;
 

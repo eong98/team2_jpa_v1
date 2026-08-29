@@ -18,7 +18,7 @@ import org.springframework.stereotype.Repository;
 public interface ShopOrderLogRepository extends JpaRepository<ShopOrderLog, Long> {
 
   /** 특정 주문의 전체 이력을 최신순으로 조회 (구독 상세의 이력 탭 등에서 사용) */
-  List<ShopOrderLog> findByOrdernoOrderByCdateDesc(String orderno);
+  List<ShopOrderLog> findByOnoOrderByCdateDesc(String ono);
 
   /**
    * 회원 기준 변경 이력 검색 + 페이징 조회.
@@ -26,7 +26,8 @@ public interface ShopOrderLogRepository extends JpaRepository<ShopOrderLog, Long
    */
   @Query("""
       SELECT l FROM ShopOrderLog l
-      WHERE l.mno = :mno
+      WHERE l.mno = :mno 
+        AND l.ono = :ono 
         AND (:sno IS NULL OR l.sno = :sno)
         AND (:action IS NULL OR l.action = :action)
         AND (:dateFrom IS NULL OR :dateFrom = '' OR SUBSTRING(l.cdate, 1, 10) >= :dateFrom)
@@ -35,6 +36,7 @@ public interface ShopOrderLogRepository extends JpaRepository<ShopOrderLog, Long
       """)
   Page<ShopOrderLog> searchByMno(
       @Param("mno") Long mno,
+      @Param("ono") String ono,
       @Param("sno") Long sno,
       @Param("action") Integer action,
       @Param("dateFrom") String dateFrom,

@@ -48,6 +48,7 @@ public class ShopPaymentDTO {
   public static class SearchRequest {
     /** 회원번호. 회원용 API는 컨트롤러가 URL의 mno로 강제 세팅, 관리자용은 선택 필터 */
     private Long mno;
+    private String ono;
     /** 결제 수단 (0 카드 / 1 계좌이체 / 2 토스페이) */
     private Integer pmethod;
     /** 결제 상태 (0 완료 / 1 실패 / 2 취소) */

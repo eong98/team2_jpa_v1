@@ -45,9 +45,9 @@ public class ShopOrderCont {
    * 단건 조회
    * GET /shop_order/ORD-20260819-000001
    */
-  @GetMapping("/{orderno}")
-  public ResponseEntity<ShopOrderDTO.Response> findById(@PathVariable("orderno") String orderno) {
-    ShopOrderDTO.Response response = shopOrderService.findById(orderno);
+  @GetMapping("/{no}")
+  public ResponseEntity<ShopOrderDTO.Response> findById(@PathVariable("no") String no) {
+    ShopOrderDTO.Response response = shopOrderService.findById(no);
     if (response == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(response);
   }
@@ -63,7 +63,7 @@ public class ShopOrderCont {
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
     searchCondition.setMno(mno);
-    Page<ShopOrderDTO.Response> pageResult = shopOrderService.search(searchCondition, pageable);
+    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchOrders(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
 
@@ -72,14 +72,14 @@ public class ShopOrderCont {
    * 안 넘기면 전체 회원 대상으로 조회됩니다.
    * GET /shop_order/list/admin?mno=1&word=ORD&status=0&dateType=cdate&dateFrom=2026-08-01&dateTo=2026-08-31&page=0&size=10
    */
-  @GetMapping("/list/admin")
-  public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchAllAdmin(
-      ShopOrderDTO.SearchRequest searchCondition,
-      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
-
-    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchAllAdmin(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));
-  }
+//  @GetMapping("/list/admin")
+//  public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchAllAdmin(
+//      ShopOrderDTO.SearchRequest searchCondition,
+//      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
+//
+//    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchAllAdmin(searchCondition, pageable);
+//    return ResponseEntity.ok(PageResponse.of(pageResult));
+//  }
 
   /**
    * 회원 기준 목록 (페이징 없는 단순 목록, 마이페이지 요약 등에서 사용)
@@ -115,12 +115,12 @@ public class ShopOrderCont {
    *  - 422(Unprocessable Entity): CCTV 대수 불일치 → 프론트에서 이 코드로 전용 문구 표시
    * PUT /shop_order/ORD-20260819-000001/link-shop
    */
-  @PutMapping("/{orderno}/link-shop")
+  @PutMapping("/{no}/link-shop")
   public ResponseEntity<?> linkShop(
-      @PathVariable("orderno") String orderno,
+      @PathVariable("no") String no,
       @RequestBody ShopOrderDTO.LinkShopRequest request) {
     try {
-      ShopOrderDTO.Response response = shopOrderService.linkShop(orderno, request);
+      ShopOrderDTO.Response response = shopOrderService.linkShop(no, request);
       return ResponseEntity.ok(response);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
@@ -136,9 +136,9 @@ public class ShopOrderCont {
    * 구독 갱신 — 순수 기간 연장 전용 (대수/플랜 변경 없음)
    * PUT /shop_order/ORD-20260819-000001/renew
    */
-  @PutMapping("/{orderno}/renew")
-  public ResponseEntity<ShopOrderDTO.RenewResult> renew(@PathVariable("orderno") String orderno) {
-    ShopOrderDTO.RenewResult result = shopOrderService.renew(orderno);
+  @PutMapping("/{no}/renew")
+  public ResponseEntity<ShopOrderDTO.RenewResult> renew(@PathVariable("no") String no) {
+    ShopOrderDTO.RenewResult result = shopOrderService.renew(no);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
@@ -147,11 +147,11 @@ public class ShopOrderCont {
    * 구독 취소 (환불액 계산 포함, 환불 대상이면 계좌 정보 필수)
    * PUT /shop_order/ORD-20260819-000001/cancel
    */
-  @PutMapping("/{orderno}/cancel")
+  @PutMapping("/{no}/cancel")
   public ResponseEntity<ShopOrderDTO.CancelResult> cancel(
-      @PathVariable("orderno") String orderno,
+      @PathVariable("no") String no,
       @RequestBody(required = false) ShopOrderDTO.CancelRequest request) {
-    ShopOrderDTO.CancelResult result = shopOrderService.cancel(orderno, request);
+    ShopOrderDTO.CancelResult result = shopOrderService.cancel(no, request);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
