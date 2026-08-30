@@ -65,4 +65,28 @@ public class ShopOrder {
 
   /** 구매 변경일시 (환불, 취소, 갱신) */
   private String udate;
+  
+  
+  /**
+   * -------------------구독권 변경 -------------------
+   *  
+   */
+  
+  /** 변경 신청된 구독권 번호 (등급 변경 시) */
+  private Long pendingPno;
+
+  /** 변경 신청된 이용기간 */
+  private Integer pendingPmonth;
+
+  /** 변경 신청된 CCTV 대수 */
+  private Integer pendingCcnt;
+
+  /** 변경 신청된 등급의 대당단가 (스냅샷) */
+  private Double pendingBprice;
+
+  /** 변경 확정 시 반영될 총 결제금액 */
+  private Long pendingTotalprice;
+
+  /** 변경 확정 시 반영될 새 종료일 */
+  private String pendingEdate;
 }

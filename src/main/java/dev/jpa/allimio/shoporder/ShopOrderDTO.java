@@ -52,6 +52,29 @@ public class ShopOrderDTO {
     private String edate;
     private String cdate;
     private String udate;
+    /** 변경 신청된 구독권 번호 (등급 변경 시) */
+    private Long pendingPno;
+
+    /** 변경 신청된 이용기간 */
+    private Integer pendingPmonth;
+
+    /** 변경 신청된 CCTV 대수 */
+    private Integer pendingCcnt;
+
+    /** 변경 신청된 등급의 대당단가 (스냅샷) */
+    private Double pendingBprice;
+
+    /** 변경 확정 시 반영될 총 결제금액 */
+    private Long pendingTotalprice;
+
+    /** 변경 확정 시 반영될 새 종료일 */
+    private String pendingEdate;
+    
+    
+    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최소 CCTV 대수 (변경 시 하한선) */
+    private Integer minCcnt;
+    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최대 CCTV 대수 (변경 시 상한선) */
+    private Integer maxCcnt;
     
     /** 1. 기본 엔티티 단건 변환용 메서드 */
     public static Response from(ShopOrder entity) {
@@ -70,6 +93,12 @@ public class ShopOrderDTO {
           .edate(entity.getEdate())
           .cdate(entity.getCdate())
           .udate(entity.getUdate())
+          .pendingPno(entity.getPendingPno())
+          .pendingPmonth(entity.getPendingPmonth())
+          .pendingCcnt(entity.getPendingCcnt())
+          .pendingBprice(entity.getPendingBprice())
+          .pendingTotalprice(entity.getPendingTotalprice())
+          .pendingEdate(entity.getPendingEdate())
           .build();
     }
 
@@ -79,6 +108,16 @@ public class ShopOrderDTO {
       if (response != null) {
         response.setPname(pname);
         response.setSname(sname);
+      }
+      return response;
+    }
+    
+    // ShopOrderDTO.Response.from(entity, pname, sname) 패턴과 동일하게 오버로드 추가
+    public static Response from(ShopOrder entity, String pname, String sname, Integer minCcnt, Integer maxCcnt) {
+      Response response = from(entity, pname, sname);
+      if (response != null) {
+        response.setMinCcnt(minCcnt);
+        response.setMaxCcnt(maxCcnt);
       }
       return response;
     }
@@ -156,5 +195,74 @@ public class ShopOrderDTO {
     private String dateFrom;
     /** 날짜 검색 종료일 (YYYY-MM-DD) */
     private String dateTo;
+  }  
+  
+  
+  /**
+   * -------------------구독권 변경 로직 -------------------
+   *  
+   */
+  /**
+   * 구독권 변경 신청 요청 — 기간/대수를 자유롭게 조합해서 변경 신청합니다.
+   * 대수가 바뀌면(현재 등급의 범위를 벗어나든 아니든) 관리자 승인이 필요한
+   * "대기중" 상태로 전환되고, 기간만 바뀌는 경우는 즉시 반영됩니다.
+   */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class ChangeRequest {
+    /** 변경할 이용기간 (6, 12). 기존과 같으면 기간 변동 없음 */
+    private Integer pmonth;
+    /** 변경할 CCTV 대수. 기존과 같으면 대수 변동 없음 */
+    private Integer ccnt;
   }
+
+  /** 구독권 변경 예상 결과(미리보기) — 실제 반영 없이 계산만 */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class ChangePreview {
+    /** 변경 후 적용될 구독권 이름 (등급이 바뀌는 경우 새 등급명) */
+    private String pname;
+    /** 변경 후 대당단가 */
+    private Double bprice;
+    /** 추가 결제 금액 (0이면 없음) */
+    private Long extraCharge;
+    /** 환불 금액 (0이면 없음) */
+    private Long refundAmount;
+    /** 변경 후 예상 총 결제금액 */
+    private Long totalprice;
+    /** 변경 후 예상 종료일 (기간 변경이 없으면 기존과 동일) */
+    private String edate;
+    /** 대수 변경 여부 — true면 관리자 승인 필요(즉시 반영 안 됨) */
+    private boolean requiresApproval;
+  }
+
+  /** 구독권 변경 신청 결과 */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class ChangeResult {
+    private String no;
+    /** true면 대수 변경이 포함되어 관리자 승인 대기 상태로 전환됨 */
+    private boolean pending;
+    /** pending=false(기간만 변경)일 때 즉시 반영된 결과 */
+    private Response applied;
+  }
+
+  /** 관리자용 — 구독권 변경 승인/반려 요청 */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class ChangeApprovalRequest {
+    /** true면 승인, false면 반려 */
+    private boolean approve;
+  }
+  
 }

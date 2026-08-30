@@ -155,4 +155,73 @@ public class ShopOrderCont {
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+  /**
+   * -------------------구독권 변경 로직 -------------------
+   *  
+   */
+  
+  /**
+   * 구독권 변경 예상 결과 미리보기
+   * POST /shop_order/ORD-xxx/change/preview
+   */
+  @PostMapping("/{no}/change/preview")
+  public ResponseEntity<ShopOrderDTO.ChangePreview> previewChange(
+      @PathVariable("no") String no,
+      @RequestBody ShopOrderDTO.ChangeRequest request) {
+    ShopOrderDTO.ChangePreview preview = shopOrderService.previewChange(no, request);
+    if (preview == null) return ResponseEntity.badRequest().build();
+    return ResponseEntity.ok(preview);
+  }
+
+  /**
+   * 구독권 변경 신청 (기간만 변경 시 즉시 반영, 대수 변경 시 승인 대기 전환)
+   * PUT /shop_order/ORD-xxx/change
+   */
+  @PutMapping("/{no}/change")
+  public ResponseEntity<ShopOrderDTO.ChangeResult> requestChange(
+      @PathVariable("no") String no,
+      @RequestBody ShopOrderDTO.ChangeRequest request) {
+    ShopOrderDTO.ChangeResult result = shopOrderService.requestChange(no, request);
+    if (result == null) return ResponseEntity.badRequest().build();
+    return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 관리자용 — 구독권 변경 승인/반려
+   * PUT /shop_order/ORD-xxx/change/approve
+   */
+  @PutMapping("/{no}/change/approve")
+  public ResponseEntity<ShopOrderDTO.Response> approveChange(
+      @PathVariable("no") String no,
+      @RequestBody ShopOrderDTO.ChangeApprovalRequest request) {
+    ShopOrderDTO.Response response = shopOrderService.approveChange(no, request);
+    if (response == null) return ResponseEntity.badRequest().build();
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 관리자용 — 구독권 변경 승인 대기 목록
+   * GET /shop_order/change/pending-list
+   */
+  @GetMapping("/change/pending-list")
+  public ResponseEntity<List<ShopOrderDTO.Response>> findPendingChangeList() {
+    return ResponseEntity.ok(shopOrderService.findPendingChangeList());
+  }
 }

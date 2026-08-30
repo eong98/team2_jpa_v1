@@ -1,12 +1,15 @@
 package dev.jpa.allimio.shopplan;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.Tuple;
 
 public interface ShopPlanRepository extends JpaRepository<ShopPlan, Long> {
   
@@ -40,5 +43,19 @@ public interface ShopPlanRepository extends JpaRepository<ShopPlan, Long> {
       @Param("issell") String issell,
       @Param("cdate") String cdate,
       Pageable pageable);
+  
+  
+  /**
+   * 특정 이용기간(pmonth) 안에서, 주어진 CCTV 대수(ccnt)가 속하는 구독권(등급)을 찾습니다.
+   * 대수 변경 시 등급 자동전환 판단에 사용합니다.
+   */
+  @Query("""
+      SELECT p FROM ShopPlan p
+      WHERE p.pmonth = :pmonth
+        AND p.mincctv <= :ccnt
+        AND p.maxcctv >= :ccnt
+      """)
+  Optional<ShopPlan> findByPmonthAndCcntInRange(@Param("pmonth") Integer pmonth, @Param("ccnt") Integer ccnt);
+  
 
 }

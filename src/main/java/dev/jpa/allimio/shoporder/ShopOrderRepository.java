@@ -85,7 +85,9 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   
   /** 단건 조회 (조인 데이터 Object[] 배열 반환) */
   @Query("""
-      SELECT so AS order, sp.pname AS pname, s.title AS sname 
+      SELECT so AS order, sp.pname AS pname, s.title AS sname, 
+        (SELECT MIN(p2.mincctv) FROM ShopPlan p2 WHERE p2.pmonth = so.pmonth) AS minCcnt,
+        (SELECT MAX(p2.maxcctv) FROM ShopPlan p2 WHERE p2.pmonth = so.pmonth) AS maxCcnt 
       FROM ShopOrder so
       LEFT JOIN ShopPlan sp ON so.pno = sp.no
       LEFT JOIN Shop s ON so.sno = s.no
@@ -127,4 +129,31 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 //      @Param("dateFrom") String dateFrom,
 //      @Param("dateTo") String dateTo,
 //      Pageable pageable);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  /**
+   * -------------------구독권 변경 로직 -------------------
+   *  
+   */
+  List<ShopOrder> findByStatusAndPendingCcntIsNotNull(Integer status);
+  
+  
+  
 }

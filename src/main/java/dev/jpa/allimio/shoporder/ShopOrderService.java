@@ -19,6 +19,8 @@ import dev.jpa.allimio.shop.ShopWithCctvCount;
 import dev.jpa.allimio.shoporderlog.ShopOrderLogService;
 import dev.jpa.allimio.shoppayment.ShopPaymentDTO;
 import dev.jpa.allimio.shoppayment.ShopPaymentService;
+import dev.jpa.allimio.shopplan.ShopPlan;
+import dev.jpa.allimio.shopplan.ShopPlanRepository;
 import dev.jpa.allimio.shoprefund.ShopRefundDTO;
 import dev.jpa.allimio.shoprefund.ShopRefundService;
 import dev.jpa.allimio.tool.Tool;
@@ -28,6 +30,9 @@ import jakarta.persistence.Tuple;
 public class ShopOrderService {
   @Autowired
   ShopOrderRepository shopOrderRepository;
+  
+  @Autowired
+  ShopPlanRepository shopPlanRepository;
 
   @Autowired
   CctvRepository cctvRepository;
@@ -92,15 +97,20 @@ public class ShopOrderService {
   /** 단일 조회 */
   @Transactional(readOnly = true)
   public ShopOrderDTO.Response findById(String no) {
-    return shopOrderRepository.findWithJoinById(no)
-        .map((Tuple tuple) -> {
-          ShopOrder order = tuple.get("order", ShopOrder.class);
-          String pname = tuple.get("pname", String.class);
-          String sname = tuple.get("sname", String.class);
+    Optional<Tuple> optional = shopOrderRepository.findWithJoinById(no);
+    if (optional.isEmpty()) return null;
 
-          return ShopOrderDTO.Response.from(order, pname, sname);
-        })
-        .orElse(null);
+    Tuple tuple = optional.get();
+    ShopOrder shopOrder = tuple.get("order", ShopOrder.class);
+    String pname = tuple.get("pname", String.class);
+    String sname = tuple.get("sname", String.class);
+
+    Number minCcntNum = tuple.get("minCcnt", Number.class);
+    Number maxCcntNum = tuple.get("maxCcnt", Number.class);
+    Integer minCcnt = minCcntNum != null ? minCcntNum.intValue() : null;
+    Integer maxCcnt = maxCcntNum != null ? maxCcntNum.intValue() : null;
+
+    return ShopOrderDTO.Response.from(shopOrder, pname, sname, minCcnt, maxCcnt);
   }
   
   
@@ -325,5 +335,260 @@ public class ShopOrderService {
         .refundMonths(refundMonths)
         .refundAmount(refundAmount)
         .build();
+  }
+  
+  
+  
+  
+  
+  
+  
+
+  /**
+   * -------------------구독권 변경 로직 -------------------
+   *  
+   */
+
+  /**
+   * 구독권 변경 예상 결과 미리보기 — 실제 반영은 하지 않고 계산만 합니다.
+   * 대수 변경이 있으면 등급을 자동 재매칭하고, 남은 기간(기간 변경이 없을 때) 또는
+   * 새 이용기간 전체(기간이 바뀔 때) 기준으로 추가금/환불금을 계산합니다.
+   * @param no 구독 내역 번호
+   * @param request 변경 요청 (기간/대수)
+   * @return 미리보기 결과, 대상 아니면 null
+   */
+  public ShopOrderDTO.ChangePreview previewChange(String no, ShopOrderDTO.ChangeRequest request) {
+    Optional<ShopOrder> optional = shopOrderRepository.findById(no);
+    if (optional.isEmpty()) return null;
+
+    ShopOrder shopOrder = optional.get();
+    if (shopOrder.getStatus() != 1) return null; // 정상 상태만 변경 가능
+    if (shopOrder.getEdate() == null) return null; // 매장 미연결 상태는 이 API 대상 아님
+
+    Integer newPmonth = request.getPmonth() != null ? request.getPmonth() : shopOrder.getPmonth();
+    Integer newCcnt = request.getCcnt() != null ? request.getCcnt() : shopOrder.getCcnt();
+
+    boolean pmonthChanged = !newPmonth.equals(shopOrder.getPmonth());
+    boolean ccntChanged = !newCcnt.equals(shopOrder.getCcnt());
+
+    // 새 조건(기간+대수)에 맞는 등급을 항상 재조회 — 대수만 바뀌어도, 기간만 바뀌어도 등급이 바뀔 수 있음
+    ShopPlan newPlan = shopPlanRepository.findByPmonthAndCcntInRange(newPmonth, newCcnt)
+        .orElse(null);
+    if (newPlan == null) return null; // 어느 등급 구간에도 안 맞는 조합 (최대 대수 초과 등)
+
+    int chargeMonths = pmonthChanged
+        ? newPmonth // 기간이 바뀌면 새 이용기간 전체 기준
+        : remainingMonths(shopOrder.getEdate()); // 기간 그대로면 남은 기간만 일할 계산
+
+    // 기존 조건 기준 남은가치 vs 새 조건 기준 값, 차액으로 정산 (prorate)
+    long oldValue = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * chargeMonths);
+    long newValue = (long) (newPlan.getBprice() * newCcnt * chargeMonths);
+    long diff = newValue - oldValue;
+
+    long extraCharge = diff > 0 ? diff : 0;
+    long refundAmount = diff < 0 ? -diff : 0;
+    long newTotalprice = Math.max(0, shopOrder.getTotalprice() + diff);
+
+    String newEdate = shopOrder.getEdate();
+    if (pmonthChanged) {
+      LocalDate today = LocalDate.now();
+      LocalDate oldEdate = LocalDate.parse(shopOrder.getEdate());
+      LocalDate startDate = today.isAfter(oldEdate) ? today : oldEdate;
+      newEdate = startDate.plusMonths(newPmonth).toString();
+    }
+
+    return ShopOrderDTO.ChangePreview.builder()
+        .pname(newPlan.getPname())
+        .bprice(newPlan.getBprice())
+        .extraCharge(extraCharge)
+        .refundAmount(refundAmount)
+        .totalprice(newTotalprice)
+        .edate(newEdate)
+        .requiresApproval(ccntChanged) // 대수가 바뀌면 관리자 승인 필요
+        .build();
+  }
+
+  /**
+   * 구독권 변경 신청.
+   * - 대수 변경이 없고 기간만 바뀌는 경우: 즉시 반영 (관리자 승인 불필요)
+   * - 대수가 바뀌는 경우(등급이 같이 바뀌든 아니든): PENDING_* 필드에 저장하고
+   *   STATUS를 0(대기)으로 전환. 관리자가 실제 CCTV 설치 확인 후 승인해야 확정됩니다.
+   *   이 경우 현재 CCNT/PNO/TOTALPRICE는 승인 전까지 그대로 유지되어, 대기 중에도
+   *   기존 조건으로 서비스가 계속 제공됩니다.
+   * @param no 구독 내역 번호
+   * @param request 변경 요청
+   * @return 변경 결과, 대상 아니면 null
+   */
+  public ShopOrderDTO.ChangeResult requestChange(String no, ShopOrderDTO.ChangeRequest request) {
+    Optional<ShopOrder> optional = shopOrderRepository.findById(no);
+    if (optional.isEmpty()) return null;
+
+    ShopOrder shopOrder = optional.get();
+    if (shopOrder.getStatus() != 1) return null;
+    if (shopOrder.getEdate() == null) return null;
+
+    Integer newPmonth = request.getPmonth() != null ? request.getPmonth() : shopOrder.getPmonth();
+    Integer newCcnt = request.getCcnt() != null ? request.getCcnt() : shopOrder.getCcnt();
+
+    boolean pmonthChanged = !newPmonth.equals(shopOrder.getPmonth());
+    boolean ccntChanged = !newCcnt.equals(shopOrder.getCcnt());
+
+    if (!pmonthChanged && !ccntChanged) return null; // 변경사항 없음
+
+    ShopPlan newPlan = shopPlanRepository.findByPmonthAndCcntInRange(newPmonth, newCcnt)
+        .orElse(null);
+    if (newPlan == null) return null;
+
+    int chargeMonths = pmonthChanged ? newPmonth : remainingMonths(shopOrder.getEdate());
+    long oldValue = (long) (shopOrder.getBprice() * shopOrder.getCcnt() * chargeMonths);
+    long newValue = (long) (newPlan.getBprice() * newCcnt * chargeMonths);
+    long diff = newValue - oldValue;
+    long newTotalprice = Math.max(0, shopOrder.getTotalprice() + diff);
+
+    String newEdate = shopOrder.getEdate();
+    if (pmonthChanged) {
+      LocalDate today = LocalDate.now();
+      LocalDate oldEdate = LocalDate.parse(shopOrder.getEdate());
+      LocalDate startDate = today.isAfter(oldEdate) ? today : oldEdate;
+      newEdate = startDate.plusMonths(newPmonth).toString();
+    }
+
+    if (ccntChanged) {
+      // 대수 변경 포함 — 대기 상태로 전환, 기존 값은 그대로 두고 PENDING_*에만 저장
+      shopOrder.setStatus(0);
+      shopOrder.setPendingPno(newPlan.getNo());
+      shopOrder.setPendingPmonth(newPmonth);
+      shopOrder.setPendingCcnt(newCcnt);
+      shopOrder.setPendingBprice(newPlan.getBprice());
+      shopOrder.setPendingTotalprice(newTotalprice);
+      shopOrder.setPendingEdate(newEdate);
+      shopOrder.setUdate(Tool.getDate());
+
+      ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+      shopOrderLogService.log(saved.getNo(), saved.getMno(), 4, saved.getSno(),
+          shopOrder.getEdate(), newEdate, diff,
+          "구독권 변경 신청(대수/등급 변경, 관리자 승인 대기) · " + shopOrder.getCcnt() + "대 → " + newCcnt + "대");
+
+      return ShopOrderDTO.ChangeResult.builder()
+          .no(saved.getNo())
+          .pending(true)
+          .applied(null)
+          .build();
+    }
+
+    // 기간만 변경 — 즉시 반영
+    String beforeEdate = shopOrder.getEdate();
+    shopOrder.setPno(newPlan.getNo());
+    shopOrder.setPmonth(newPmonth);
+    shopOrder.setBprice(newPlan.getBprice());
+    shopOrder.setTotalprice(newTotalprice);
+    shopOrder.setEdate(newEdate);
+    shopOrder.setUdate(Tool.getDate());
+
+    ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+    shopOrderLogService.log(saved.getNo(), saved.getMno(), 5, saved.getSno(),
+        beforeEdate, newEdate, diff, "구독권 기간 변경(즉시 반영)");
+
+    return ShopOrderDTO.ChangeResult.builder()
+        .no(saved.getNo())
+        .pending(false)
+        .applied(ShopOrderDTO.Response.from(saved))
+        .build();
+  }
+
+  /**
+   * 관리자용 — 구독권 변경(대수/등급) 승인/반려.
+   * 승인 시 실제 매장에 등록된 CCTV 대수와 PENDING_CCNT가 일치하는지 검증하고,
+   * 일치해야만 PENDING_* 값을 실제 컬럼에 확정 반영합니다. 불일치하면 거부합니다.
+   * 반려 시 PENDING_* 값만 초기화하고 STATUS를 1(정상)로 되돌립니다.
+   * 
+   * 
+   * 1. 사용자가 대수 변경 신청 → STATUS=0(대기)으로 자동 전환 (이건 자동)
+    2. 관리자가 CCTV 실물 설치/철거 완료 (관리자가 직접, CctvList 화면 등에서)
+    3. 관리자가 "구독 변경 대기 목록" 화면에서 이 건을 확인
+    4. 관리자가 "승인" 버튼 클릭 → approveChange(no, {approve: true}) 호출
+       또는 "반려" 버튼 클릭 → approveChange(no, {approve: false}) 호출
+    5. 그제서야 PENDING_* → 실제 값 반영(승인) 또는 초기화(반려)
+   * 
+   * @param no 구독 내역 번호
+   * @param request 승인 여부
+   * @return 처리 결과, 대상 아니거나 대수 불일치로 승인 실패 시 null
+   */
+  public ShopOrderDTO.Response approveChange(String no, ShopOrderDTO.ChangeApprovalRequest request) {
+    Optional<ShopOrder> optional = shopOrderRepository.findById(no);
+    if (optional.isEmpty()) return null;
+
+    ShopOrder shopOrder = optional.get();
+    if (shopOrder.getStatus() != 0 || shopOrder.getPendingCcnt() == null) return null; // 변경 대기 건이 아님
+
+    if (!request.isApprove()) {
+      clearPendingChange(shopOrder);
+      shopOrder.setStatus(1);
+      shopOrder.setUdate(Tool.getDate());
+      ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+      shopOrderLogService.log(saved.getNo(), saved.getMno(), 4, saved.getSno(),
+          null, null, null, "구독권 변경 신청 반려");
+
+      return ShopOrderDTO.Response.from(saved);
+    }
+
+    if (shopOrder.getSno() != null) {
+      long actualCctvCount = cctvRepository.countBySno(shopOrder.getSno());
+      if (actualCctvCount != shopOrder.getPendingCcnt()) {
+        return null; // 실제 설치 대수와 신청 대수 불일치 — 승인 거부
+      }
+    }
+
+    String beforeEdate = shopOrder.getEdate();
+    shopOrder.setPno(shopOrder.getPendingPno());
+    shopOrder.setPmonth(shopOrder.getPendingPmonth());
+    shopOrder.setCcnt(shopOrder.getPendingCcnt());
+    shopOrder.setBprice(shopOrder.getPendingBprice());
+    shopOrder.setTotalprice(shopOrder.getPendingTotalprice());
+    shopOrder.setEdate(shopOrder.getPendingEdate());
+    clearPendingChange(shopOrder);
+    shopOrder.setStatus(1);
+    shopOrder.setUdate(Tool.getDate());
+
+    ShopOrder saved = shopOrderRepository.save(shopOrder);
+
+    shopOrderLogService.log(saved.getNo(), saved.getMno(), 5, saved.getSno(),
+        beforeEdate, saved.getEdate(), null, "구독권 변경 승인 완료(대수/등급 확정)");
+
+    return ShopOrderDTO.Response.from(saved);
+  }
+
+  private void clearPendingChange(ShopOrder shopOrder) {
+    shopOrder.setPendingPno(null);
+    shopOrder.setPendingPmonth(null);
+    shopOrder.setPendingCcnt(null);
+    shopOrder.setPendingBprice(null);
+    shopOrder.setPendingTotalprice(null);
+    shopOrder.setPendingEdate(null);
+  }
+
+  /**
+   * 오늘부터 종료일(edate)까지 남은 개월수를 계산합니다. 한 달 미만 자투리 기간도
+   * 최소 1개월로 올림 처리합니다.
+   */
+  private int remainingMonths(String edate) {
+    LocalDate today = LocalDate.now();
+    LocalDate end = LocalDate.parse(edate);
+    if (!end.isAfter(today)) return 1;
+
+    long days = ChronoUnit.DAYS.between(today, end);
+    return (int) Math.max(1, Math.ceil(days / 30.0));
+  }
+
+  /**
+   * 관리자용 — 구독권 변경(대수/등급) 승인 대기 목록. STATUS=0이면서
+   * PENDING_CCNT가 있는 건만 조회합니다(매장 미연결 대기와 구분).
+   */
+  public List<ShopOrderDTO.Response> findPendingChangeList() {
+    return shopOrderRepository.findByStatusAndPendingCcntIsNotNull(0)
+        .stream().map(ShopOrderDTO.Response::from).collect(Collectors.toList());
   }
 }
