@@ -37,7 +37,6 @@ public class QaCont {
    * 삭제된 게시글 확인용 데이터 호출 필요
    * (후순위) 중복된 키워드가 5개 이상일때 관리자 화면에서 자주묻는 질문 유형으로 집계(비공개) -> 직접 등록
    * 비밀번호 암호화
-   * 입력값 null, 공백 체크 유효성 검증
    * 권한 설정(비밀글, 관리자 게시 허용글 등
    * 관리자 답변 알림?
    * 작성자 정보 노출?
@@ -59,6 +58,21 @@ public class QaCont {
     Page<QaDTO.QaResponse> pageResult = qaService.getAllQuestions(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
+  
+  /**
+   * 비회원 문의 목록 검색 (이메일+키워드)
+   * GET /qa/guest/list?guestEmail=xxx@xxx.com&word=환불
+   */
+  @GetMapping("/guest/list")
+  public ResponseEntity<PageResponse<QaDTO.QaResponse>> searchGuestList(
+      QaDTO.QaSearchRequest searchCondition, // 👈 요거 하나만 적으면 끝!
+      @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
+
+    // Service로 searchCondition 전달
+    Page<QaDTO.QaResponse> pageResult = qaService.getSearchGuestQa(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
+  
   
   /**
    * FAQ 목록 전체/검색 조회 (페이징)
@@ -94,36 +108,52 @@ public class QaCont {
 
   
   /**
-   * 단건 상세 조회 
-   * GET /qa/22?mno=1 (회원 조회 시)
-   * GET /qa/22?ano=1 (관리자 조회 시)
-   * 
+   * 단건 상세 조회 (회원 본인 글 / 관리자 / 비밀글 아닌 글 전용)
+   * GET /qa/22
+   *
+   * 비밀번호가 필요한 비회원 잠긴 글 조회는 이 API를 쓰지 않습니다.
+   * (URL 쿼리파라미터로 비밀번호를 전달하면 브라우저 히스토리/서버 접근로그/
+   * 리퍼러 등을 통해 노출될 수 있어 보안상 금지 — POST /qa/{no}/verify 사용)
+   *
    * @param no 게시글 번호
-   * @param mno 요청 회원 번호 (optional)
-   * @param ano 요청 관리자 번호 (optional)
-   * @return
+   * @param accessNo 요청자 PK (회원번호 또는 관리자번호)
+   * @param grade 회원 등급 (1 = 관리자)
    */
   @GetMapping("/{no}")
-  public ResponseEntity<QaDTO.QaResponse> getQaDetail
-      (@PathVariable("no") Long no,
+  public ResponseEntity<QaDTO.QaResponse> getQaDetail(
+      @PathVariable("no") Long no,
       @RequestHeader(name = "accessNo", required = false) Long accessNo,
       @RequestHeader(name = "grade", required = false) Integer grade) {
 
-    // grade 숫자값으로 관리자 여부 판단 (예: 1 = 관리자)
     boolean isAdmin = grade != null && grade == 1;
     Long mno = isAdmin ? null : accessNo;
     Long ano = isAdmin ? accessNo : null;
-    
-    System.out.println("mno ---> " + mno);
-    System.out.println("grade ---> " + grade);
-    
-    // 1. Service에서 엔티티 조회
-    QaDTO.QaResponse response = qaService.getQa(no, mno, ano);
-    
-    // 2. DTO 변환 후 200 OK 응답 반환
+
+    // pw는 항상 null로 호출 — 이 경로로는 비밀글(잠긴 글)을 열 수 없고,
+    // 본인 글이 아닌 비밀글이면 서비스에서 예외가 발생합니다.
+    QaDTO.QaResponse response = qaService.getQaDetail(no, mno, ano, null);
+
     return ResponseEntity.ok(response);
   }
-  
+
+  /**
+   * 비밀글(비회원 잠긴 글 등) 비밀번호 검증 후 상세 조회.
+   * POST /qa/22/verify
+   * 비밀번호를 요청 바디로 전달하여 URL 노출을 방지합니다.
+   *
+   * @param no 게시글 번호
+   * @param request 입력한 비밀번호 (GuestDetailRequest.pw)
+   */
+  @PostMapping("/{no}/verify")
+  public ResponseEntity<QaDTO.QaResponse> verifyAndGetQa(
+      @PathVariable("no") Long no,
+      @RequestBody QaDTO.GuestDetailRequest request) {
+
+    // 회원/관리자 여부와 무관하게 비밀번호로만 검증하는 경로이므로 mno/ano는 null 고정
+    QaDTO.QaResponse response = qaService.getQaDetail(no, null, null, request.getPw());
+
+    return ResponseEntity.ok(response);
+  }
   
   /**
    * 1:1 문의글 작성 (등록)
@@ -131,12 +161,9 @@ public class QaCont {
    * http://localhost:9102/qa
    */
   @PostMapping
-  public ResponseEntity<Long> createQuestion(@RequestBody QaDTO.QCRequest dto) {
-    Long createdNo = qaService.createQuestion(dto);
-    return ResponseEntity
-        .status(HttpStatus.CREATED) // 1. HTTP 응답 상태 코드를 '201 Created'로 설정 
-        //-> 새로운 자원(데이터)이 성공적으로 생성 200대신 201 로 전송 권장
-        .body(createdNo);           // 2. 응답 본문(Body)에 생성된 게시글의 번호(PK)를 담아 반환
+  public ResponseEntity<QaDTO.QaResponse> createQuestion(@RequestBody QaDTO.QCRequest dto) {
+    QaDTO.QaResponse response = qaService.createQuestion(dto);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   /**

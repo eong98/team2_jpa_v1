@@ -1,5 +1,6 @@
 package dev.jpa.allimio.qa;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import dev.jpa.allimio.qa.QaDTO.QaResponse;
 
 public interface QaRepository extends JpaRepository<Qa, Long> {
   // ==========================================
@@ -25,23 +27,21 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
    */
   Optional<Qa> findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByNoAsc(
       Long no, String isdel, String isfaq);
-  
-  
 
   // ==========================================
   // [작성자] 내 문의 내역 조회
   // ==========================================
   /**
    * 내 문의내역 전체조회 + 검색조회
-   * 
-   * @param word 검색어 (제목, 내용)
-   * @param type 문의 유형
-   * @param status 답변 상태
-   * @param mno 작성자 회원번호
-   * @param pageable 페이징 정보
    */
   @Query("""
-      SELECT q FROM Qa q 
+      SELECT new dev.jpa.allimio.qa.QaDTO$QaResponse(
+        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
+        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn,
+        q.guestEmail, null, null
+      )
+      FROM Qa q
+      LEFT JOIN Member m ON q.mno = m.no
       WHERE q.mno = :mno 
         AND q.isdel = 'N' 
         AND q.isfaq = 'N' 
@@ -50,7 +50,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND (:status IS NULL OR q.status = :status) 
       ORDER BY q.cdate DESC 
       """)
-  Page<Qa> searchMyQuestions(
+  Page<QaDTO.QaResponse> searchMyQuestions(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
@@ -62,15 +62,15 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
   // ==========================================
   /**
    * 회원 문의내역 전체조회 + 검색조회 (관리자용)
-   * 
-   * @param word 검색어 (제목, 내용)
-   * @param type 문의 유형
-   * @param status 답변 상태
-   * @param mno 작성자 회원번호 (선택)
-   * @param pageable 페이징 정보
    */
   @Query("""
-      SELECT q FROM Qa q 
+      SELECT new dev.jpa.allimio.qa.QaDTO$QaResponse(
+        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
+        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn, 
+        q.guestEmail, null, null
+      )
+      FROM Qa q
+      LEFT JOIN Member m ON q.mno = m.no
       WHERE q.isdel = 'N' 
         AND q.isfaq = 'N' 
         AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) 
@@ -79,7 +79,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND (:mno IS NULL OR q.mno = :mno) 
       ORDER BY q.cdate DESC
       """)
-  Page<Qa> searchAllQuestions(
+  Page<QaDTO.QaResponse> searchAllQuestions(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
@@ -88,11 +88,6 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
 
   /**
    * FAQ 게시글 전체조회 + 검색조회
-   * 
-   * @param word 검색어 (제목, 내용)
-   * @param type FAQ 카테고리
-   * @param status 답변 상태
-   * @param pageable 페이징 정보
    */
   @Query("""
       SELECT q FROM Qa q  
@@ -113,4 +108,35 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
    * 게시글 삭제용 (글 번호, 비밀번호, 삭제 여부 일치 조회)
    */
   Optional<Qa> findByNoAndPwAndIsdel(Long no, String pw, String isdel);
+
+  /**
+   * 비회원 검색조회
+   * 검색어 : 작성자 이메일 , 제목, 내용
+   */
+  @Query("""
+      SELECT q FROM Qa q  
+      WHERE q.isdel = 'N' 
+        AND q.isfaq = 'N'  
+        AND (:word IS NULL OR :word = '' 
+                OR q.title LIKE CONCAT('%', :word, '%') 
+                OR q.content LIKE CONCAT('%', :word, '%') 
+                OR LOWER(q.guestEmail) LIKE LOWER(CONCAT('%', :word, '%'))) 
+      ORDER BY q.cdate DESC
+      """)
+  Page<Qa> searchGuestList(
+      @Param("word") String word,
+      Pageable pageable);
+
+  /** 단건 상세 조회 — 작성자 아이디 포함 */
+  @Query("""
+      SELECT NEW dev.jpa.allimio.qa.QaDTO$QaResponse(
+        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
+        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn, 
+        q.guestEmail, null, null
+      )
+      FROM Qa q 
+      LEFT JOIN Member m ON m.no = q.mno
+      WHERE q.no = :no
+      """)
+  Optional<QaDTO.QaResponse> findByIdWithMemberId(@Param("no") Long no);
 }

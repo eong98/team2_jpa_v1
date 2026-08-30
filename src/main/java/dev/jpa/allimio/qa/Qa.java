@@ -74,6 +74,9 @@ public class Qa {
 
   /** 삭제 일시 */
   private String ddate;
+  
+  /** 비회원 문의 작성자 이메일 (검색용) */
+  private String guestEmail;
 
   public Qa() {
 
@@ -100,7 +103,7 @@ public class Qa {
    */
   @Builder
   public Qa(Long no, Long mno, int type, String title, String content, String cdate, String pw, int status,
-      String isdel, String vmode, int vseq, String isfaq, Long ano, String answer, String adate, String ddate, String fileyn) {
+      String isdel, String vmode, int vseq, String isfaq, Long ano, String answer, String adate, String ddate, String fileyn, String guestEmail) {
     this.no = no;
     this.mno = mno;
     this.type = type;
@@ -118,6 +121,7 @@ public class Qa {
     this.adate = adate;
     this.ddate = ddate;
     this.fileyn = fileyn;
+    this.guestEmail= guestEmail;
   }
 
   // ==========================================
@@ -126,7 +130,7 @@ public class Qa {
   /**
    * 문의글 작성자가 수정할 때 호출
    */
-  public void updateQuestion(String title, String content, String vmode, int type, String pw, String fileyn) {
+  public void updateQuestion(String title, String content, String vmode, int type, String pw, String fileyn, String guestEmail) {
     this.title = title;
     this.content = content;
     this.vmode = vmode;
@@ -135,6 +139,7 @@ public class Qa {
     if (pw != null && !pw.isBlank()) {
       this.pw = pw; // 공백이나 빈값이 아닌 새 비밀번호가 입력되었을 때만 업데이트
     }
+    this.guestEmail = guestEmail;
   }
   
   // ==========================================

@@ -6,7 +6,7 @@ DROP SEQUENCE QA_SEQ;
 
 CREATE TABLE QA(
   NO          NUMBER(10)                   NOT NULL, -- 문의사항 번호
-  MNO         NUMBER(10)                   NOT NULL, -- 문의하는 회원번호(FK)
+  MNO         NUMBER(10)                       NULL, -- 문의하는 회원번호(FK)
   TYPE        NUMBER(7)                    NOT NULL, -- 0: 기타, 1: 관제신청, 2: 영상요청, 3: 장비장애
   TITLE       VARCHAR2(200)                NOT NULL, -- 문의제목
   CONTENT     CLOB                         NOT NULL, -- 문의내용
@@ -23,7 +23,8 @@ CREATE TABLE QA(
   ISFAQ       CHAR(1)                      NOT NULL, -- 자주묻는질문 여부
   FILEYN      CHAR(1)      DEFAULT 'N'     NOT NULL, -- 첨부파일 여부
   VCNT        NUMBER(10,0) DEFAULT 0           NULL, -- 조회수
-  ID          VARCHAR2(20)                 NOT NULL, -- 등록자 ID
+  GUEST_EMAIL VARCHAR2(50)                     NULL, -- 비회원 문의 시 이메일
+
 
   CONSTRAINT PK_QA PRIMARY KEY (NO),
   CONSTRAINT FK_QA_MNO FOREIGN KEY (MNO) REFERENCES MEMBER (NO),
@@ -48,7 +49,7 @@ COMMENT ON COLUMN QA.ISDEL   IS '삭제 여부 (Y/N)';
 COMMENT ON COLUMN QA.DDATE   IS '삭제 일시';
 COMMENT ON COLUMN QA.ISFAQ   IS '자주묻는질문 여부';
 COMMENT ON COLUMN QA.FILEYN  IS '첨부파일 여부';
-COMMENT ON COLUMN QA.ID      IS '등록자 ID';
+COMMENT ON COLUMN QA.GUEST_EMAIL IS '비회원 문의 시 이메일';
 
 CREATE SEQUENCE QA_SEQ
   START WITH 1
@@ -121,5 +122,13 @@ INSERT INTO QA (NO, MNO, TYPE, TITLE, CONTENT, CDATE, PW, STATUS, VMODE, VSEQ, A
 VALUES (QA_SEQ.NEXTVAL, 1, 1, '요금 세금계산서 발행 요청',
   '이번 달 이용 요금에 대한 세금계산서 발행 부탁드립니다.', '2026-08-01', '1234', 0, 'N', NULL, NULL,
   NULL, NULL, 'N', NULL, 'N', 'N');
+
+COMMIT;
+
+
+
+ALTER TABLE QA ADD (
+  GUEST_EMAIL VARCHAR2(50)  NULL  -- 비회원 문의 시 답변 알림용 이메일 (선택)
+);
 
 COMMIT;

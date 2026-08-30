@@ -19,6 +19,7 @@ public class QaDTO {
   public static class QCRequest {
     /** 문의 회원 번호 (FK -> MEMBER.NO) */
     private Long mno;
+    private String id;
     /** 문의 유형 (0: 기타, 1: 관제신청, 2: 영상요청, 3: 장비장애) */
     private int type;
     /** 문의 제목 */
@@ -41,6 +42,10 @@ public class QaDTO {
     /** 첨부파일 등록 여부 */
     @Builder.Default
     private String fileyn = "N";
+    
+
+    /** 작성 시 입력한 이메일 */
+    private String guestEmail;
 
     public Qa toEntity() {
       return Qa.builder()
@@ -55,12 +60,13 @@ public class QaDTO {
           .isdel("N")
           .isfaq("N")
           .fileyn(this.fileyn)
+          .guestEmail(this.guestEmail)
           .build();
     }
 
     /** 수정 시 DTO 내용을 기존 엔티티에 반영 */
     public void applyUpdateTo(Qa qa) {
-      qa.updateQuestion(this.title, this.content, this.vmode, this.type, this.pw, this.fileyn);
+      qa.updateQuestion(this.title, this.content, this.vmode, this.type, this.pw, this.fileyn, this.guestEmail);
     }
   }
 
@@ -148,42 +154,30 @@ public class QaDTO {
    * 문의사항 및 FAQ 상세/목록 응답용 DTO
    */
   @Getter
+  @Setter
   @NoArgsConstructor
   @AllArgsConstructor
   @Builder
   public static class QaResponse {
-    /** 문의사항 고유 번호 (PK) */
     private Long no;
-    /** 문의 회원 번호 (FK -> MEMBER.NO) */
     private Long mno;
-    /** 문의 유형 (0: 기타, 1: 관제신청, 2: 영상요청, 3: 장비장애, 4: FAQ) */
+    /** MEMBER.ID — 조인해서 가져온 값. 조인 안 한 조회(fromEntity())에서는 null */
+    private String id;
     private int type;
-    /** 문의 제목 */
     private String title;
-    /** 문의 내용 */
     private String content;
-    /** 등록 일시 */
     private String cdate;
-    /** 답변 상태 (0: 답변대기, 1: 확인중, 2: 답변완료) */
     private int status;
-    /** 답변자 고유 번호 */
     private Long ano;
-    /** 답변 내용 */
     private String answer;
-    /** 답변 등록 일시 */
     private String adate;
-    /** 삭제 여부 (Y/N) */
     private String isdel;
-    /** 비밀글 여부 (Y/N) */
     private String vmode;
-    /** 자주묻는 질문(FAQ) 정렬 순서 */
     private Integer vseq;
-    /** 자주묻는 질문(FAQ) 여부 */
     private String isfaq;
-    /** 첨부파일 등록 여부 */
     private String fileyn;
-    
-    /** 이전글 / 다음글 탐색용 DTO */
+    private String guestEmail;
+
     private QaNav prev;
     private QaNav next;
 
@@ -195,6 +189,7 @@ public class QaDTO {
       return QaResponse.builder()
           .no(entity.getNo())
           .mno(entity.getMno())
+          .id(null) // 엔티티만으로는 아이디를 모름 — ShopOrderDTO 패턴처럼 별도 오버로드로 채움
           .type(entity.getType())
           .title(entity.getTitle())
           .content(entity.getContent())
@@ -210,7 +205,18 @@ public class QaDTO {
           .fileyn(entity.getFileyn())
           .prev(prev)
           .next(next)
+          .guestEmail(entity.getGuestEmail())
           .build();
+    }
+
+    /**
+     * ShopOrderDTO.Response.from(entity, pname, sname) 패턴과 동일 —
+     * 엔티티+prev+next로 만든 DTO에 조인해서 가져온 작성자 아이디만 추가로 세팅합니다.
+     */
+    public static QaResponse fromEntity(Qa entity, QaNav prev, QaNav next, String id) {
+      QaResponse response = fromEntity(entity, prev, next);
+      response.setId(id);
+      return response;
     }
   }
 
@@ -253,6 +259,9 @@ public class QaDTO {
 
     /** 관리자 번호 (FK -> MANAGER.NO) */
     private Long ano;
+    
+
+    private String guestEmail;
   }
 
   /**
@@ -269,4 +278,16 @@ public class QaDTO {
     private String vmode;
     private String cdate;
   }
+  
+  
+  /** 비회원 문의 상세 조회 요청 — 비밀번호 확인용 */
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Builder
+  public static class GuestDetailRequest {
+    private String pw;
+  }
+  
+  
 }
