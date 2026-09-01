@@ -60,6 +60,59 @@ public class ShopRefundService {
     return result.map(ShopRefundDTO.Response::from);
   }
 
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+  /**
+   * 변경 신청 시점에 계좌 정보만 먼저 저장합니다(결제 연결(PNO) 전, 금액 미확정 0).
+   * 승인 시점에 실제 정산 금액이 나오면 updateAmountForOrder()로 채웁니다.
+   */
+  public ShopRefundDTO.Response savePendingAccountOnly(String ono, Long mno, String bankName, String accountNo, String accountHolder) {
+    ShopRefund shopRefund = ShopRefund.builder()
+        .ono(ono)
+        .pno(null)
+        .mno(mno)
+        .bankName(bankName)
+        .accountNo(accountNo)
+        .accountHolder(accountHolder)
+        .amount(0L)
+        .status(0)
+        .cdate(Tool.getDate())
+        .build();
+
+    ShopRefund saved = shopRefundRepository.save(shopRefund);
+    return ShopRefundDTO.Response.from(saved);
+  }
+
+  /**
+   * 승인 시점에 확정된 환불 금액을 채웁니다. 신청 시점에 미리 만들어둔
+   * (amount=0인) 환불 건을 찾아서 금액만 업데이트합니다.
+   */
+  public ShopRefundDTO.Response updateAmountForOrder(String ono, Long amount) {
+    ShopRefund refund = shopRefundRepository.findByOnoOrderByCdateDesc(ono).stream()
+        .filter(r -> r.getAmount() == 0L && r.getStatus() == 0)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("신청 시점에 등록된 환불계좌를 찾을 수 없습니다."));
+
+    refund.setAmount(amount);
+    refund.setUdate(Tool.getDate());
+
+    ShopRefund saved = shopRefundRepository.save(refund);
+    return ShopRefundDTO.Response.from(saved);
+  }
+  
+  
+  
   /**
    * 관리자용 — 처리상태 변경 (실제 이체 완료 처리 등)
    * @param no 환불 고유번호

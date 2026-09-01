@@ -35,22 +35,35 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 
   /**
    * "구독 결제 완료 후 연결 가능한 매장" 목록용.
-   * 특정 회원(mno) 소유 매장 중, 활성(STATUS=1) 구독이 걸려있지 않은 매장만 조회.
-   * (매장이 아예 구독이 없거나, 있었더라도 만료/취소된 경우 둘 다 포함 — 취소한 매장을
-   * 다시 구독해서 연결할 때도 이 쿼리로 자동으로 잡힙니다.)
+   * 특정 회원(mno) 소유 매장 중, 정상(STATUS=2) 구독이 걸려있지 않은 매장만 조회.
    */
   @Query("""
       SELECT s FROM Shop s
       WHERE s.mno = :mno
         AND s.no NOT IN (
-          SELECT so.sno FROM ShopOrder so WHERE so.status = 1 AND so.sno IS NOT NULL
+          SELECT so.sno FROM ShopOrder so WHERE so.status = 2 AND so.sno IS NOT NULL
         )
       """)
   List<Shop> findLinkableShops(@Param("mno") long mno);
+
+  
+  /**
+   * "매장에 연결 가능한 구독권" 목록. 매장(SNO) 미연결이면서 매장연결대기(0)
+   * 또는 정상(2) 상태인 것만 조회. (승인대기(1)/만료(3)/취소(4)는 제외)
+   */
+  @Query("""
+      SELECT so, sp.pname
+      FROM ShopOrder so
+      LEFT JOIN ShopPlan sp ON so.pno = sp.no
+      WHERE so.mno = :mno
+        AND so.sno IS NULL
+        AND so.status IN (0, 2)
+      ORDER BY so.cdate DESC
+      """)
+  List<Object[]> findLinkableOrders(@Param("mno") Long mno);
   
   /**
    * 회원 기준 구독 내역 검색 + 페이징 조회.
-   * 날짜 검색은 dateType으로 어느 컬럼(구독시작일/구독종료일/구매일)을 볼지 정하고,
    * dateFrom~dateTo 하나의 기간으로 그 컬럼만 비교합니다.
    * 검색어 : 매장이름/플랜이름 
    * 필터 검색 : 구독권 기간, 종류, 상태, 연결된매장 여부, 등록일
@@ -75,6 +88,42 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
       """)
   Page<Object[]> searchAllWithJoin(
       @Param("mno") Long mno,
+      @Param("word") String word,
+      @Param("status") Integer status,
+      @Param("pname") String pname,
+      @Param("pmonth") Integer pmonth,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      Pageable pageable);
+  
+  
+  /**
+   * 회원 + 매장 기준 구독 내역 검색 + 페이징 조회.
+   * dateFrom~dateTo 하나의 기간으로 그 컬럼만 비교합니다.
+   * 검색어 : 매장이름/플랜이름 
+   * 필터 검색 : 구독권 기간, 종류, 상태, 연결된매장 여부, 등록일
+   */
+  @Query("""
+      SELECT so, sp.pname, s.title
+      FROM ShopOrder so
+      LEFT JOIN ShopPlan sp ON so.pno = sp.no
+      LEFT JOIN Shop s ON so.sno = s.no
+      WHERE so.mno = :mno AND so.sno = :sno 
+        AND (
+          :word IS NULL OR :word = ''
+          OR sp.pname LIKE CONCAT('%', :word, '%')
+          OR s.title LIKE CONCAT('%', :word, '%')
+        )
+        AND (:status IS NULL OR so.status = :status)
+        AND (:pname IS NULL OR sp.pname = :pname)
+        AND (:pmonth IS NULL OR sp.pmonth = :pmonth)
+        AND (:dateFrom IS NULL OR :dateFrom = '' OR SUBSTRING(so.cdate, 1, 10) >= :dateFrom)
+        AND (:dateTo IS NULL OR :dateTo = '' OR SUBSTRING(so.cdate, 1, 10) <= :dateTo) 
+       ORDER BY so.status, so.cdate DESC
+      """)
+  Page<Object[]> searchSnoAndMno(
+      @Param("mno") Long mno,
+      @Param("sno") Long sno,
       @Param("word") String word,
       @Param("status") Integer status,
       @Param("pname") String pname,
@@ -133,26 +182,8 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   
   
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  /**
-   * -------------------구독권 변경 로직 -------------------
-   *  
-   */
-  List<ShopOrder> findByStatusAndPendingCcntIsNotNull(Integer status);
+  /** 관리자용 — CCTV 대수 변경 승인 대기(STATUS=1) 목록 조회. PENDING_CCNT 체크 불필요. */
+  List<ShopOrder> findByStatus(Integer status);
   
   
   

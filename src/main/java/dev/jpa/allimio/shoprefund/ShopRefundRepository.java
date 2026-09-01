@@ -17,6 +17,9 @@ public interface ShopRefundRepository extends JpaRepository<ShopRefund, Long> {
 
   /** 특정 주문의 환불계좌 (한 주문에 여러 번 취소가 있을 순 없지만, 안전하게 리스트로) */
   List<ShopRefund> findByPnoOrderByCdateDesc(Long pno);
+  
+  /** 특정 주문의 환불계좌를 최신순으로 조회 (승인 시점에 신청 시 만든 대기 건을 찾을 때 사용) */
+  List<ShopRefund> findByOnoOrderByCdateDesc(String ono);
 
   /** 회원 기준 환불계좌 검색 + 페이징 조회 */
 //  @Query("""

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import dev.jpa.allimio.shop.ShopWithCctvCount;
@@ -66,6 +67,22 @@ public class ShopOrderCont {
     Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchOrders(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
+  
+  /**
+   * 매장별 구독 내역 검색 + 페이징 조회
+   * GET /shop_order/1/1/...
+   */
+  @GetMapping("/{mno}/{sno}")
+  public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchShopOrders(
+      @PathVariable("mno") Long mno,
+      @PathVariable("sno") Long sno,
+      ShopOrderDTO.SearchRequest searchCondition,
+      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
+    
+    searchCondition.setMno(mno);
+    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchShopOrders(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
 
   /**
    * 관리자용 구독 내역 전체 검색 + 페이징 조회. mno를 넘기면 특정 회원만,
@@ -81,23 +98,23 @@ public class ShopOrderCont {
 //    return ResponseEntity.ok(PageResponse.of(pageResult));
 //  }
 
-  /**
-   * 회원 기준 목록 (페이징 없는 단순 목록, 마이페이지 요약 등에서 사용)
-   * GET /shop_order/mno/1
-   */
-  @GetMapping("/mno/{mno}")
-  public ResponseEntity<List<ShopOrderDTO.Response>> findByMno(@PathVariable("mno") long mno) {
-    return ResponseEntity.ok(shopOrderService.findByMno(mno));
-  }
-
-  /**
-   * 매장 기준 목록
-   * GET /shop_order/sno/1
-   */
-  @GetMapping("/sno/{sno}")
-  public ResponseEntity<List<ShopOrderDTO.Response>> findBySno(@PathVariable("sno") long sno) {
-    return ResponseEntity.ok(shopOrderService.findBySno(sno));
-  }
+//  /**
+//   * 회원 기준 목록 (페이징 없는 단순 목록, 마이페이지 요약 등에서 사용)
+//   * GET /shop_order/mno/1
+//   */
+//  @GetMapping("/mno/{mno}")
+//  public ResponseEntity<List<ShopOrderDTO.Response>> findByMno(@PathVariable("mno") long mno) {
+//    return ResponseEntity.ok(shopOrderService.findByMno(mno));
+//  }
+//
+//  /**
+//   * 매장 기준 목록
+//   * GET /shop_order/sno/1
+//   */
+//  @GetMapping("/sno/{sno}")
+//  public ResponseEntity<List<ShopOrderDTO.Response>> findBySno(@PathVariable("sno") long sno) {
+//    return ResponseEntity.ok(shopOrderService.findBySno(sno));
+//  }
 
   /**
    * 구독 결제 완료 후 연결 가능한 매장 목록 (무구독 매장 + 만료/취소된 구독이 걸린 매장)
@@ -107,6 +124,17 @@ public class ShopOrderCont {
   public ResponseEntity<List<ShopWithCctvCount>> findLinkableShops(@PathVariable("mno") long mno) {
     return ResponseEntity.ok(shopOrderService.findLinkableShops(mno));
   }
+  /**
+   * 특정 매장에 연결 가능한 구독권 목록 (매장 CCTV 대수와 일치하는 것만)
+   * GET /shop_order/linkable-plans/{mno}/{sno}
+   */
+  @GetMapping("/linkable-plans/{mno}/{sno}")
+  public ResponseEntity<List<ShopOrderDTO.Response>> findLinkableOrders(@PathVariable("mno") Long mno) {
+    return ResponseEntity.ok(shopOrderService.findLinkableOrders(mno));
+  }
+  
+  
+  
 
   /**
    * 매장 선택 확정 (SNO 연결). 실패 사유를 구분해서 응답합니다:
@@ -137,8 +165,12 @@ public class ShopOrderCont {
    * PUT /shop_order/ORD-20260819-000001/renew
    */
   @PutMapping("/{no}/renew")
-  public ResponseEntity<ShopOrderDTO.RenewResult> renew(@PathVariable("no") String no) {
-    ShopOrderDTO.RenewResult result = shopOrderService.renew(no);
+  public ResponseEntity<ShopOrderDTO.RenewResult> renew(
+      @PathVariable("no") String no,
+      @RequestParam(required = false) Integer newPmonth,
+      @RequestParam(required = false) Integer pmethod
+      ) {
+    ShopOrderDTO.RenewResult result = shopOrderService.renew(no, newPmonth, pmethod);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }
