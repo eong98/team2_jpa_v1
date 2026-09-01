@@ -21,11 +21,11 @@ public class MailService {
   
   public void sendPasswordResetMail(String toEmail, String token) {
     String subject = "[all-im-io] 비밀번호 재설정 안내";
-    String frontendUrl = "http://10.1.205.109:9102";
+    String frontendUrl = "http://10.1.205.120:9102";
     
     // token에 특수문자가 섞였을때 깨지지않게 인코딩
     String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
-    String resetUrl = frontendUrl + "/reset/password?token=" + token;
+    String resetUrl = frontendUrl + "/reset/password?token=" + encodedToken;
     
     String htmlContent = "<div style='font-family: Arial, sans-serif; padding: 20px;'>"
         + "<h2>비밀번호 재설정 안내</h2>"

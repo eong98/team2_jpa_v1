@@ -2,6 +2,7 @@ package dev.jpa.allimio.history.login;
 
 import dev.jpa.allimio.manager.Manager;
 import dev.jpa.allimio.member.Member;
+import dev.jpa.allimio.shopmember.ShopMemberDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -9,7 +10,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-@Setter @Getter @NoArgsConstructor @AllArgsConstructor @ToString @Builder
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Builder
 public class LoginHistoryDTO {
   /** 로그인 기록 번호*/
   private Long no;
