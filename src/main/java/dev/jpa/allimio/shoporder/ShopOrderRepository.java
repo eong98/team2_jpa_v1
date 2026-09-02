@@ -35,21 +35,24 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 
   /**
    * "구독 결제 완료 후 연결 가능한 매장" 목록용.
-   * 특정 회원(mno) 소유 매장 중, 정상(STATUS=2) 구독이 걸려있지 않은 매장만 조회.
+   * 특정 회원(mno) 소유 매장 중, 정상(STATUS=1) 구독이 걸려있지 않은 매장만 조회.
    */
   @Query("""
       SELECT s FROM Shop s
       WHERE s.mno = :mno
         AND s.no NOT IN (
-          SELECT so.sno FROM ShopOrder so WHERE so.status = 2 AND so.sno IS NOT NULL
+          SELECT so.sno FROM ShopOrder so 
+          WHERE so.status = 1 
+              AND so.sno IS NOT NULL
         )
       """)
   List<Shop> findLinkableShops(@Param("mno") long mno);
 
   
   /**
-   * "매장에 연결 가능한 구독권" 목록. 매장(SNO) 미연결이면서 매장연결대기(0)
-   * 또는 정상(2) 상태인 것만 조회. (승인대기(1)/만료(3)/취소(4)는 제외)
+   * "매장에 연결 가능한 구독권" 목록. 
+   * 매장(SNO) 미연결이면서 매장연결대기(0)상태인 것만 조회. 
+   * (정상(1)/만료(2)/취소(3)는 제외)
    */
   @Query("""
       SELECT so, sp.pname
@@ -57,7 +60,7 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
       LEFT JOIN ShopPlan sp ON so.pno = sp.no
       WHERE so.mno = :mno
         AND so.sno IS NULL
-        AND so.status IN (0, 2)
+        AND so.status = 0 
       ORDER BY so.cdate DESC
       """)
   List<Object[]> findLinkableOrders(@Param("mno") Long mno);
@@ -182,8 +185,8 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   
   
   
-  /** 관리자용 — CCTV 대수 변경 승인 대기(STATUS=1) 목록 조회. PENDING_CCNT 체크 불필요. */
-  List<ShopOrder> findByStatus(Integer status);
+  /** 관리자용 — CCTV 대수 변경 승인 대기 목록 조회.  */
+  List<ShopOrder> findByStatusAndPendingCcntIsNotNull(Integer status);
   
   
   

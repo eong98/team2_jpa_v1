@@ -107,14 +107,14 @@ public class ShopOrderCont {
 //    return ResponseEntity.ok(shopOrderService.findByMno(mno));
 //  }
 //
-//  /**
-//   * 매장 기준 목록
-//   * GET /shop_order/sno/1
-//   */
-//  @GetMapping("/sno/{sno}")
-//  public ResponseEntity<List<ShopOrderDTO.Response>> findBySno(@PathVariable("sno") long sno) {
-//    return ResponseEntity.ok(shopOrderService.findBySno(sno));
-//  }
+  /**
+   * 매장 기준 목록
+   * GET /shop_order/sno/1
+   */
+  @GetMapping("/sno/{sno}")
+  public ResponseEntity<List<ShopOrderDTO.Response>> findBySno(@PathVariable("sno") long sno) {
+    return ResponseEntity.ok(shopOrderService.findBySno(sno));
+  }
 
   /**
    * 구독 결제 완료 후 연결 가능한 매장 목록 (무구독 매장 + 만료/취소된 구독이 걸린 매장)

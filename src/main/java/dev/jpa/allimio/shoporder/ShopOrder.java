@@ -50,7 +50,7 @@ public class ShopOrder {
   /** 총 결제 금액 (원) */
   private Long totalprice;
 
-  /** 구독 상태 (0: 매장연결 대기, 1: CCTV 대수 변경 승인대기, 2: 정상, 3: 만료됨, 4: 취소) */
+  /** 구독 상태 (0: 매장연결 대기, 1: 정상, 2: 만료됨, 3: 취소) */
   @Builder.Default
   private Integer status = 0;
 

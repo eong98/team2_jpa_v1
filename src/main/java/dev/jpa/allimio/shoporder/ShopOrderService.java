@@ -48,13 +48,12 @@ public class ShopOrderService {
   ShopRefundService shopRefundService;
 
   // ══════════════════════════════════════════════
-  // STATUS 상수 (가독성용) — 0:매장연결대기 / 1:승인대기 / 2:정상 / 3:만료 / 4:취소
+  // STATUS 상수 (가독성용) — 0:매장연결대기 / 1:정상 / 2:만료 / 3:취소
   // ══════════════════════════════════════════════
   private static final int STATUS_WAIT_SHOP = 0;
-  private static final int STATUS_WAIT_APPROVAL = 1;
-  private static final int STATUS_NORMAL = 2;
-  private static final int STATUS_EXPIRED = 3;
-  private static final int STATUS_CANCELLED = 4;
+  private static final int STATUS_NORMAL = 1;
+  private static final int STATUS_EXPIRED = 2;
+  private static final int STATUS_CANCELLED = 3;
   
   
   // --------------------------------------------------
@@ -240,6 +239,15 @@ public class ShopOrderService {
         .map(shop -> new ShopWithCctvCount(shop, cctvRepository.countBySno(shop.getNo())))
         .collect(Collectors.toList());
   }
+  
+  
+  /** 매장 기준 구독·결제 내역 */
+  public List<ShopOrderDTO.Response> findBySno(long sno) {
+    return shopOrderRepository.findBySnoOrderByCdateDesc(sno)
+        .stream().map(ShopOrderDTO.Response::from).collect(Collectors.toList());
+  }
+  
+  
 
   // --------------------------------------------------
   // 수정
@@ -443,7 +451,7 @@ public class ShopOrderService {
    * 기간 변경(12→6): 남은기간 275일 이상이어야 가능. SDATE 기준 새 종료일
    * 전체 금액(결제시점 단가)과 이미 낸 금액의 차액을 즉시 환불(계좌 필요).
    *
-   * 대수 변경: 신청일~EDATE가 28일 미만이면 불가. STATUS를 1(승인대기)로
+   * 대수 변경: 신청일~EDATE가 28일 미만이면 불가. 
    * 전환하고 기존 PNO/CCNT 등은 그대로 유지(PENDING_*에만 신청값 저장).
    * 증가는 신청 시점에 남은기간×늘어난대수를 당일 단가로 즉시 결제.
    * 증가/감소 둘 다 승인 시점에 정산(환불)이 예정되어 있으므로 신청 시
@@ -499,7 +507,6 @@ public class ShopOrderService {
 
       int diffCcnt = newCcnt - shopOrder.getCcnt();
 
-      shopOrder.setStatus(STATUS_WAIT_APPROVAL); // 1: CCTV 대수변경 승인대기
       shopOrder.setPendingPno(currentPlan.getNo());
       shopOrder.setPendingPmonth(newPmonth);
       shopOrder.setPendingCcnt(newCcnt);
@@ -566,7 +573,7 @@ public class ShopOrderService {
   }
 
   /**
-   * 관리자용 — 구독권 대수 변경 승인/반려. 승인대기(STATUS=1) 건만 대상입니다.
+   * 관리자용 — 구독권 대수 변경 승인/반려.
    * 
    * 승인 시 실제 매장 등록 CCTV 대수와 PENDING_CCNT가 일치해야 확정됩니다.
    * 증가였던 경우: 신청일~승인일 사이는 아직 기존 대수로 서비스했으므로,
@@ -580,11 +587,10 @@ public class ShopOrderService {
     if (optional.isEmpty()) return null;
 
     ShopOrder shopOrder = optional.get();
-    if (shopOrder.getStatus() != STATUS_WAIT_APPROVAL || shopOrder.getPendingCcnt() == null) return null;
+    if (shopOrder.getStatus() == STATUS_NORMAL || shopOrder.getPendingCcnt() == null) return null;
 
     if (!request.isApprove()) {
       clearPendingChange(shopOrder);
-      shopOrder.setStatus(STATUS_NORMAL);
       shopOrder.setUdate(Tool.getDate());
       ShopOrder saved = shopOrderRepository.save(shopOrder);
 
@@ -624,7 +630,6 @@ public class ShopOrderService {
     shopOrder.setEdate(shopOrder.getPendingEdate());
     shopOrder.setTotalprice(Math.max(0, shopOrder.getTotalprice() + settlementAmount));
     clearPendingChange(shopOrder);
-    shopOrder.setStatus(STATUS_NORMAL); // 승인 완료 → 정상(2)
     shopOrder.setUdate(Tool.getDate());
 
     ShopOrder saved = shopOrderRepository.save(shopOrder);
@@ -653,7 +658,7 @@ public class ShopOrderService {
 
   /** 관리자용 — CCTV 대수 변경 승인대기(STATUS=1) 목록 */
   public List<ShopOrderDTO.Response> findPendingChangeList() {
-    return shopOrderRepository.findByStatus(STATUS_WAIT_APPROVAL)
+    return shopOrderRepository.findByStatusAndPendingCcntIsNotNull(STATUS_NORMAL)
         .stream().map(ShopOrderDTO.Response::from).collect(Collectors.toList());
   }
 
