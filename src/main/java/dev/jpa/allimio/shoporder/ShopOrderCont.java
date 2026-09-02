@@ -129,8 +129,8 @@ public class ShopOrderCont {
    * GET /shop_order/linkable-plans/{mno}/{sno}
    */
   @GetMapping("/linkable-plans/{mno}/{sno}")
-  public ResponseEntity<List<ShopOrderDTO.Response>> findLinkableOrders(@PathVariable("mno") Long mno) {
-    return ResponseEntity.ok(shopOrderService.findLinkableOrders(mno));
+  public ResponseEntity<List<ShopOrderDTO.Response>> findLinkableOrders(@PathVariable("mno") Long mno, @PathVariable("sno") Long sno) {
+    return ResponseEntity.ok(shopOrderService.findLinkableOrders(mno, sno));
   }
   
   
