@@ -197,21 +197,16 @@ public class ShopOrderService {
    * @param mno 회원번호
    * @return 연결 가능한 구독권 목록
    */
-  public List<ShopOrderDTO.Response> findLinkableOrders(Long mno) {
-    // 1. 해당 회원의 연결 가능한 매장 목록 조회
-    List<Shop> shops = shopOrderRepository.findLinkableShops(mno);
-
-    // 2. 매장들의 CCTV 등록 대수 목록을 Set으로 수집 (중복 제거 및 조회 성능 최적화)
-    Set<Long> actualCctvCounts = shops.stream()
-        .map(shop -> cctvRepository.countBySno(shop.getNo()))
-        .collect(Collectors.toSet());
-
+  public List<ShopOrderDTO.Response> findLinkableOrders(Long mno, Long sno) {
     // 3. 연결 가능한 구독권을 가져와서 CCTV 개수가 일치하는 구독권만 필터링 후 DTO 변환
     return shopOrderRepository.findLinkableOrders(mno).stream()
         .filter(row -> {
           ShopOrder order = (ShopOrder) row[0];
           // 구독권의 ccnt가 Null이 아니고, 매장들의 CCTV 개수 집합(Set)에 포함되는지 검증
-          return order.getCcnt() != null && actualCctvCounts.contains((long) order.getCcnt());
+
+          System.out.println(cctvRepository.countBySno(sno));
+          System.out.println(order.getCcnt());
+          return order.getCcnt() != null && cctvRepository.countBySno(sno) == order.getCcnt();
         })
         .map(row -> {
           ShopOrder order = (ShopOrder) row[0];
