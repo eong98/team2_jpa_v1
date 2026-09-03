@@ -1,5 +1,7 @@
 package dev.jpa.allimio.shopinvitecode;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,7 +24,7 @@ public class InviteCodeCont {
    * @param shopno
    * @return
    */
-  @PostMapping(path="/create")
+  @PostMapping(path="/create/{shopno}")
   public ResponseEntity<String> createCode(
       @PathVariable("shopno") Long shopno){
     String code = codeService.createCode(shopno);
@@ -35,11 +37,16 @@ public class InviteCodeCont {
    * @param request
    * @return
    */
-  @PutMapping
-  public ResponseEntity<Void> inviteMember(
+  @PostMapping(path="/accept")
+  public ResponseEntity<?> inviteMember(
       @RequestBody Request request){
-    codeService.invite(request.getCode(), request.getMno());
-    
-    return ResponseEntity.ok().build();
-  } 
+    try {
+      codeService.invite(request.getCode(), request.getMno());
+      return ResponseEntity.ok(Map.of("success", true));
+  } catch (IllegalArgumentException | IllegalStateException e) {
+      // 서비스에서 던진 "이미 만료된 초대코드입니다" 등의 메시지를 그대로 전달
+      return ResponseEntity.ok(Map.of("success", false));
+ 
+    }
+  }
 }

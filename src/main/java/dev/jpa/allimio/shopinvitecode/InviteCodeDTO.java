@@ -14,6 +14,9 @@ import lombok.ToString;
 @ToString
 @Builder
 public class InviteCodeDTO {
+  /** 코드 번호 */
+  private Long no;
+  
   /** 매장 번호 */
   private Long sno;
   
@@ -28,6 +31,7 @@ public class InviteCodeDTO {
   
   public InviteCode toEntity() {
     return InviteCode.builder()
+        .no(no)
         .sno(this.sno)
         .code(this.code)
         .expiryDate(this.expiryDate)

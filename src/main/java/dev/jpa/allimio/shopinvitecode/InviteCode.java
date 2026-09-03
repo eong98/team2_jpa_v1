@@ -3,10 +3,14 @@ package dev.jpa.allimio.shopinvitecode;
 import dev.jpa.allimio.shop.Shop;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,13 +30,12 @@ import lombok.ToString;
 public class InviteCode {
   /** 매장 번호 (PK) */
   @Id
-  private Long sno;
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "shop_invite_seq_use")
+  @SequenceGenerator(name = "shop_invite_seq_use", sequenceName = "SHOP_INVITE_SEQ", allocationSize = 1)
+  private Long no;
   
   /** 매장번호(PK와 매칭) */
-  @OneToOne(fetch = FetchType.LAZY)
-  @MapsId
-  @JoinColumn(name = "sno", unique = true)
-  private Shop shop;
+  private Long sno;
   
   /** 초대 코드(6자리 난수) */
   private String code;
