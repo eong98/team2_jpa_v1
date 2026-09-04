@@ -50,7 +50,7 @@ public class ShopOrder {
   /** 총 결제 금액 (원) */
   private Long totalprice;
 
-  /** 구독 상태 (0: 매장연결 대기, 1: 정상, 2: 만료됨, 3: 취소) */
+  /** 구독 상태 (0: 매장연결 대기, 1: 정상, 2: 취소) */
   @Builder.Default
   private Integer status = 0;
 
@@ -67,26 +67,4 @@ public class ShopOrder {
   private String udate;
   
   
-  /**
-   * -------------------구독권 변경 -------------------
-   *  
-   */
-  
-  /** 변경 신청된 구독권 번호 (등급 변경 시) */
-  private Long pendingPno;
-
-  /** 변경 신청된 이용기간 */
-  private Integer pendingPmonth;
-
-  /** 변경 신청된 CCTV 대수 */
-  private Integer pendingCcnt;
-
-  /** 변경 신청된 등급의 대당단가 (스냅샷) */
-  private Double pendingBprice;
-
-  /** 변경 확정 시 반영될 총 결제금액 */
-  private Long pendingTotalprice;
-
-  /** 변경 확정 시 반영될 새 종료일 */
-  private String pendingEdate;
 }

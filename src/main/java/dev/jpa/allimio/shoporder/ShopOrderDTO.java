@@ -52,23 +52,6 @@ public class ShopOrderDTO {
     private String edate;
     private String cdate;
     private String udate;
-    /** 변경 신청된 구독권 번호 (등급 변경 시) */
-    private Long pendingPno;
-    /** 변경 신청된 이용기간 */
-    private Integer pendingPmonth;
-    /** 변경 신청된 CCTV 대수 */
-    private Integer pendingCcnt;
-    /** 변경 신청된 등급의 대당단가 (스냅샷) */
-    private Double pendingBprice;
-    /** 변경 확정 시 반영될 총 결제금액 */
-    private Long pendingTotalprice;
-    /** 변경 확정 시 반영될 새 종료일 */
-    private String pendingEdate;    
-    
-    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최소 CCTV 대수 (변경 시 하한선) */
-    private Integer minCcnt;
-    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최대 CCTV 대수 (변경 시 상한선) */
-    private Integer maxCcnt;
     
     /** 1. 기본 엔티티 단건 변환용 메서드 */
     public static Response from(ShopOrder entity) {
@@ -87,12 +70,6 @@ public class ShopOrderDTO {
           .edate(entity.getEdate())
           .cdate(entity.getCdate())
           .udate(entity.getUdate())
-          .pendingPno(entity.getPendingPno())
-          .pendingPmonth(entity.getPendingPmonth())
-          .pendingCcnt(entity.getPendingCcnt())
-          .pendingBprice(entity.getPendingBprice())
-          .pendingTotalprice(entity.getPendingTotalprice())
-          .pendingEdate(entity.getPendingEdate())
           .build();
     }
 
@@ -106,15 +83,6 @@ public class ShopOrderDTO {
       return response;
     }
     
-    // ShopOrderDTO.Response.from(entity, pname, sname) 패턴과 동일하게 오버로드 추가
-    public static Response from(ShopOrder entity, String pname, String sname, Integer minCcnt, Integer maxCcnt) {
-      Response response = from(entity, pname, sname);
-      if (response != null) {
-        response.setMinCcnt(minCcnt);
-        response.setMaxCcnt(maxCcnt);
-      }
-      return response;
-    }
   }
   
 
@@ -196,61 +164,4 @@ public class ShopOrderDTO {
   
 
   
-  /**
-   * -------------------구독권 변경 로직 -------------------
-   *  
-   */
-  
-  /** 구독권 변경 신청 요청 */
-  @Getter
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  public static class ChangeRequest {
-    private Integer pmonth;
-    private Integer ccnt;
-    /** 추가금 발생 시 결제수단 (0 카드 / 1 계좌이체 / 2 토스페이) */
-    private Integer pmethod;
-    /** 환불 발생 가능성이 있는 변경(기간축소/대수증가/대수감소) 시 미리 받는 계좌 정보 */
-    private String bankName;
-    private String accountNo;
-    private String accountHolder;
-  }
-
-  /** 구독권 변경 예상 결과 미리보기 */
-  @Getter
-  @Setter
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  public static class ChangePreview {
-    private String pname;
-    private Double bprice;
-    private Long extraCharge;
-    private Long refundAmount;
-    private Long totalprice;
-    private String edate;
-    private Boolean requiresApproval;
-  }
-
-  /** 구독권 변경 신청 결과 */
-  @Getter
-  @Setter
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  public static class ChangeResult {
-    private String no;
-    private boolean pending;
-    private Response applied;
-  }
-
-  /** 관리자용 — 구독권 변경 승인/반려 요청 */
-  @Getter
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  public static class ChangeApprovalRequest {
-    private boolean approve;
-  }
 }

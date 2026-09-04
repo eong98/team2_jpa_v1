@@ -35,24 +35,28 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 
   /**
    * "구독 결제 완료 후 연결 가능한 매장" 목록용.
-   * 특정 회원(mno) 소유 매장 중, 정상(STATUS=1) 구독이 걸려있지 않은 매장만 조회.
+   * 특정 회원(mno) 소유 매장 중 아래 조건을 가진 매장은 제외
+   * 구독권 매칭이 된 매장,
+   * 구독권의 status 가 1인 매장
+   * 구독권의 edate 가 오늘보다 이전인 매장 (status 가 1이면서 만료되지 않은 구독권)
    */
   @Query("""
       SELECT s FROM Shop s
       WHERE s.mno = :mno
         AND s.no NOT IN (
-          SELECT so.sno FROM ShopOrder so 
-          WHERE so.status = 1 
-              AND so.sno IS NOT NULL
+          SELECT so.sno FROM ShopOrder so
+          WHERE so.sno IS NOT NULL 
+              AND so.status = 1 
+              AND so.edate >= :today 
         )
       """)
-  List<Shop> findLinkableShops(@Param("mno") long mno);
+  List<Shop> findLinkableShops(@Param("mno") long mno, @Param("today") String today);
 
   
   /**
    * "매장에 연결 가능한 구독권" 목록. 
    * 매장(SNO) 미연결이면서 매장연결대기(0)상태인 것만 조회. 
-   * (정상(1)/만료(2)/취소(3)는 제외)
+   * (정상(1)/취소(2)는 제외)
    */
   @Query("""
       SELECT so, sp.pname
@@ -181,12 +185,6 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 //      @Param("dateFrom") String dateFrom,
 //      @Param("dateTo") String dateTo,
 //      Pageable pageable);
-  
-  
-  
-  
-  /** 관리자용 — CCTV 대수 변경 승인 대기 목록 조회.  */
-  List<ShopOrder> findByStatusAndPendingCcntIsNotNull(Integer status);
   
   
   
