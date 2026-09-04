@@ -56,14 +56,34 @@ public class MailService {
   public void sendNotificationMail(
       String toEmail,
       String title,
-      String content
+      String content,
+      String imageUrl
   ) {
       String subject = "[all-im-io] " + title;
+      
+      // 이슈 이미지가 있을 때만 이미지 보기 버튼 생성
+      String imageButton = "";
+
+      if (imageUrl != null && !imageUrl.isBlank()) {
+          imageButton =
+              "<p style='margin-top:20px;'>"
+              + "<a href='" + imageUrl + "' "
+              + "style='display:inline-block; "
+              + "padding:10px 18px; "
+              + "background-color:#333; "
+              + "color:#fff; "
+              + "text-decoration:none; "
+              + "border-radius:5px;'>"
+              + "이슈 위치 이미지 보기"
+              + "</a>"
+              + "</p>";
+      }
 
       String htmlContent =
           "<div style='font-family: Arial, sans-serif; padding: 20px;'>"
           + "<h2>" + title + "</h2>"
           + "<p>" + content + "</p>"
+          + imageButton
           + "</div>";
 
       try {

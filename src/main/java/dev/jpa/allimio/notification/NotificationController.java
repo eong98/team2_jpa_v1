@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.tool.MailService;
+
+
 /**
  * 회원 이슈 알림 Controller
  *
@@ -25,12 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final MailService mailService;
 
     /**
      * 생성자 주입
      */
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService , MailService mailService ) {
         this.notificationService = notificationService;
+        this.mailService = mailService;
     }
 
 
@@ -104,4 +109,19 @@ public class NotificationController {
 
         return ResponseEntity.noContent().build();
     }
+  
+    
+    /**
+     * 메일 테스트  
+      */
+    @GetMapping("/test-mail/{no}")
+    public ResponseEntity<String> testMail(
+            @PathVariable("no") Long no) {
+
+        notificationService.sendNotificationMail(no);
+
+        return ResponseEntity.ok("메일 발송 완료");
+    }
+    
+    
 }

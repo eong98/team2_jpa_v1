@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -58,4 +60,30 @@ public interface NotificationRepository
      * AND MNO = ?;
      */
     Optional<Notification> findByNoAndMno(Long no, Long mno);
+
+
+    /**
+     * AI 이슈맵 번호(ASMNO)로 생성된 이슈 이미지 파일명을 조회
+     *
+     * NOTIFICATION.ASMNO
+     *      → AIISSUEMAP.NO
+     *      → AIISSUEMAP.FSAVED
+     *
+     * @param asmno AIISSUEMAP 번호
+     * @return 생성된 이슈 이미지 파일명
+     */
+    @Query(
+        value = """
+            SELECT A.FSAVED
+            FROM AIISSUEMAP A
+            WHERE A.NO = :asmno
+            """,
+        nativeQuery = true
+    )
+    Optional<String> findFsavedByAsmno(
+        @Param("asmno") Long asmno
+    );
+    
+    
 }
+
