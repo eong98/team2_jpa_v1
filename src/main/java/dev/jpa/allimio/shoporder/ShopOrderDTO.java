@@ -39,10 +39,8 @@ public class ShopOrderDTO {
   public static class Response {
     private String no;
     private Long pno;
-    private String pname; // join
     private Long mno;
     private Long sno;
-    private String sname; // join
     private Integer pmonth;
     private Integer ccnt;
     private Double bprice;
@@ -52,6 +50,15 @@ public class ShopOrderDTO {
     private String edate;
     private String cdate;
     private String udate;
+    
+    private String pname; // 구독권 이름
+    private String sname; // 매장 이름
+    private Integer pstatus; // 변경신청 상태
+    
+    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최소 CCTV 대수 (변경 시 하한선) */
+    private Integer minCcnt;
+    /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최대 CCTV 대수 (변경 시 상한선) */
+    private Integer maxCcnt;
     
     /** 1. 기본 엔티티 단건 변환용 메서드 */
     public static Response from(ShopOrder entity) {
@@ -73,14 +80,28 @@ public class ShopOrderDTO {
           .build();
     }
 
-    /** 2. 💡 실무형 조인 맵핑 메서드: 엔티티 + 조인 필드(pname, sname) 받아서 결합 */
-    public static Response from(ShopOrder entity, String pname, String sname) {
+    /** 2. 조인 맵핑 메서드: 엔티티 + 조인 필드 받아서 결합 */
+    public static Response from(ShopOrder entity, String pname, String sname, Integer pstatus) {
       Response response = from(entity);
       if (response != null) {
         response.setPname(pname);
         response.setSname(sname);
+        response.setPstatus(pstatus);
       }
       return response;
+    }
+    
+    /** 변경 버튼 클릭시 노출 화면 반환 */
+    public static Response from(ShopOrder entity, String pname, String sname, Integer pstatus, Integer minCcnt, Integer maxCcnt) {
+      Response res = from(entity);
+      if (res != null) {
+        res.setPname(pname);
+        res.setSname(sname);
+        res.setPstatus(pstatus);
+        res.setMinCcnt(minCcnt);
+        res.setMaxCcnt(maxCcnt);
+      }
+      return res;
     }
     
   }

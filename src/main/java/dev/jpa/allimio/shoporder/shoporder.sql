@@ -85,3 +85,12 @@ COMMENT ON COLUMN SHOP_ORDER.STATUS IS '구독 상태 (0: 대기, 1: 정상, 2: 
 DROP INDEX UX_SHOP_ORDER_ACTIVE_SNO;
 CREATE UNIQUE INDEX UX_SHOP_ORDER_ACTIVE_SNO
   ON SHOP_ORDER (CASE WHEN STATUS = 1 THEN SNO END);
+
+
+
+SELECT so.*, sp.pname
+FROM SHOP_ORDER so
+LEFT JOIN SHOP_PLAN sp ON so.pno = sp.no
+WHERE so.mno = :mno
+  AND (:word IS NULL OR sp.pname LIKE '%' || :word || '%')
+ORDER BY so.status ASC, so.cdate DESC;

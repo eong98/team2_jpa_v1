@@ -122,6 +122,15 @@ public class ShopOrderPendingDTO {
       return res;
     }
     
+    public static Response from(ShopOrderPending entity, String pname, String sname) {
+      Response res = from(entity);
+      if (res != null) {
+        res.setPname(pname);
+        res.setSname(sname);
+      }
+      return res;
+    }
+    
   }
   
   /** 검색조건 */

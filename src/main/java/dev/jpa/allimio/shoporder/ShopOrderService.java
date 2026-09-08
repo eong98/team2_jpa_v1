@@ -2,6 +2,7 @@ package dev.jpa.allimio.shoporder;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -75,8 +76,10 @@ public class ShopOrderService {
 
 
   /**
-   * 신규 구독 결제 등록. 매장(SNO)은 아직 비워두고(매장연결대기, STATUS=0),
-   * BPRICE는 결제 시점 단가를 스냅샷으로 저장합니다.
+   * 구독권 등록 (매장 NULL, 상태 0)
+   *  
+   * @param request
+   * @return
    */
   public ShopOrderDTO.Response save(ShopOrderDTO.Request request) {
     ShopOrder shopOrder = ShopOrder.builder()
@@ -111,34 +114,24 @@ public class ShopOrderService {
   // 목록
   // --------------------------------------------------
   
-
-  /** 주문번호 기준 단일 조회 */
-  @Transactional(readOnly = true)
-  public ShopOrderDTO.Response findById(String no) {
-    // 구독권 이름, 매장이름 JOIN 포함된 목록
-    Optional<Tuple> optional = shopOrderRepository.findWithJoinById(no);
-    if (optional.isEmpty()) return null;
-
-    Tuple tuple = optional.get();
-    ShopOrder shopOrder = tuple.get("order", ShopOrder.class);
-    String pname = tuple.get("pname", String.class);
-    String sname = tuple.get("sname", String.class);
-
-    return ShopOrderDTO.Response.from(shopOrder, pname, sname);
-  }
-  
-
-  /** 회원 기준 구독 내역 전체 검색 + 페이징 조회 (전체 구독내역 목록) */
+  /**
+   * 전체 구독내역 목록 
+   *  
+   * @param req
+   * @param pageable
+   * @return /user/shoporder/ShopOrderList.tsx
+   */
   @Transactional(readOnly = true)
   public Page<ShopOrderDTO.Response> searchOrders(ShopOrderDTO.SearchRequest req, Pageable pageable) {
+    String today = LocalDate.now().toString();
     Page<Object[]> result = shopOrderRepository.searchAllWithJoin(
         req.getMno(),
         req.getWord(),
         req.getStatus(),
-        req.getPname(),
         req.getPmonth(),
         req.getDateFrom(),
         req.getDateTo(),
+        today,
         pageable
     );
 
@@ -147,22 +140,31 @@ public class ShopOrderService {
       ShopOrder order = (ShopOrder) row[0];
       String pname = (String) row[1];
       String sname = (String) row[2];
-      return ShopOrderDTO.Response.from(order, pname, sname);
+      Integer pstatus = row[3] != null ? ((Number) row[3]).intValue() : null;
+      return ShopOrderDTO.Response.from(order, pname, sname, pstatus);
     });
   }
   
-  /** 회원+매장 기준 구독 내역 검색 + 페이징 조회 (매장별 구독내역) */
+  /**
+   * 매장별 전체 구독내역 목록
+   * 
+   * @param req
+   * @param pageable
+   * @return /user/shop/ShopOrderList.tsx
+   */
   @Transactional(readOnly = true)
   public Page<ShopOrderDTO.Response> searchShopOrders(ShopOrderDTO.SearchRequest req, Pageable pageable) {
+    String today = LocalDate.now().toString();
+    
     Page<Object[]> result = shopOrderRepository.searchSnoAndMno(
         req.getMno(),
         req.getSno(),
         req.getWord(),
         req.getStatus(),
-        req.getPname(),
         req.getPmonth(),
         req.getDateFrom(),
         req.getDateTo(),
+        today,
         pageable
         );
     
@@ -170,10 +172,131 @@ public class ShopOrderService {
     return result.map(row -> {
       ShopOrder order = (ShopOrder) row[0];
       String pname = (String) row[1];
-      String sname = (String) row[2];
-      return ShopOrderDTO.Response.from(order, pname, sname);
+      Integer pstatus = row[2] != null ? ((Number) row[2]).intValue() : null;
+      return ShopOrderDTO.Response.from(order, pname, null, pstatus);
     });
   }
+  
+  /**
+   * 매장별 구독내역 상단 노출(상태: 정상 | 만료)
+   * @param sno
+   * @param status
+   * @return order | null
+   */
+  @Transactional(readOnly = true)
+  public ShopOrderDTO.Response findByShopTop(Long mno, Long sno, Integer status) {
+    List<Object[]> res = shopOrderRepository.findByShopTop(mno, sno, status);
+    
+    Object[] row = res.get(0);
+    ShopOrder order = (ShopOrder) row[0];
+    String pname = (String) row[1];
+    Integer pstatus = row[2] != null ? ((Number) row[2]).intValue() : null;
+
+    return ShopOrderDTO.Response.from(order, pname, null, pstatus);
+  }
+
+  /** 주문내역 상세조회 */
+  @Transactional(readOnly = true)
+  public ShopOrderDTO.Response findById(String no) {
+    // 구독권 이름, 매장이름 JOIN 포함된 목록
+    List<Object[]> res = shopOrderRepository.findByIdWithJoin(no);
+
+    Object[] row = res.get(0);
+    ShopOrder order = (ShopOrder) row[0];
+    String pname = (String) row[1];
+    String sname = (String) row[2];
+      
+    return ShopOrderDTO.Response.from(order, pname, sname, null);
+  }
+  
+  /**
+   * 구독 결제 완료 후 
+   * 로그인된 점주의 연결 가능한 매장 목록 조회
+   * 
+   * 1. 연결된 구독권이 없는 매장
+   * 2. 연결된 구독권이 있지만 취소된 매장
+   * 3. 연결된 구독권의 종료일자가 지난 매장
+   * 
+   * @param mno 회원번호
+   * @return 연결 가능한 매장 목록 (CCTV 등록 대수 포함) : ShopMatch.tsx
+   */
+  public List<ShopWithCctvCount> findLinkableShops(long mno) {
+    String today = LocalDate.now().toString();
+    
+    List<Shop> shops = shopOrderRepository.findLinkableShops(mno, today);
+    
+    return shops.stream()
+        .map(shop -> new ShopWithCctvCount(shop, cctvRepository.countBySno(shop.getNo())))
+        .collect(Collectors.toList());
+  }
+  
+  /**
+   * 로그인된 점주의 매장1에 연결 가능한 구독권 목록 조회
+   * 
+   * 1. 연결되지 않은 구독권(대기상태)
+   * 2. 연결된(정상,만료), 취소된 구독권은 대상아님
+   * 
+   * @param mno 회원번호
+   * @param sno 접속한 매장의 번호
+   * @return 연결 가능한 구독권 목록 : ShopOrderMatch.tsx
+   */
+  public List<ShopOrderDTO.Response> findLinkableOrders(Long mno, Long sno) {
+    return shopOrderRepository.findLinkableOrders(mno).stream()
+        .filter(row -> {
+          ShopOrder order = (ShopOrder) row[0];
+          return order.getCcnt() != null && cctvRepository.countBySno(sno) == order.getCcnt();
+        })
+        .map(row -> {
+          ShopOrder order = (ShopOrder) row[0];
+          String pname = (String) row[1];
+          return ShopOrderDTO.Response.from(order, pname, null, null);
+        })
+        .collect(Collectors.toList());
+  }
+  
+
+  /**
+   * 특정 매장의 정상 상태인 구독권 개수 (무조건 0, 1 반환됨)
+   * 
+   * @param sno
+   * @return 목록 개수 반환 / 0: 갱신가능 | 1: 갱신불가 (리액트에서 처리)
+   */
+  public int setCount(Long sno) {
+    LocalDate today = LocalDate.now();
+    
+    List<ShopOrder> list = shopOrderRepository.findAllBySnoAndStatus(sno, 1).stream()
+        .filter(order -> {
+          if (order.getEdate() == null || order.getEdate().length() < 10) return false;
+          
+          LocalDate oldEdate = LocalDate.parse(order.getEdate().substring(0, 10));
+          return !today.isAfter(oldEdate);
+        }).collect(Collectors.toList());
+    
+    return  list.size();
+  }  
+  
+
+  /**
+   * 변경가능한 CCTV 대수 호출
+   * @param no
+   * @return
+   */
+  @Transactional(readOnly = true)
+  public ShopOrderDTO.Response setChangeInfo(String no) {
+    List<Object[]> res = shopOrderRepository.findByNoWithChange(no);
+
+    Object[] row = res.get(0);
+    ShopOrder order = (ShopOrder) row[0];
+    Integer minCcnt = row[1] != null ? ((Number) row[1]).intValue() : null;
+    Integer maxCcnt = row[2] != null ? ((Number) row[2]).intValue() : null;
+
+    return ShopOrderDTO.Response.from(order, null, null, null, minCcnt, maxCcnt);
+  }
+  
+  
+  
+  
+  
   /**
    * 관리자용 전체(또는 특정 회원) 구독 내역 검색 + 페이징 조회
    * @param c 검색조건 (mno 선택사항 — null이면 전체 회원 대상)
@@ -188,55 +311,6 @@ public class ShopOrderService {
 //  }
   
 
-  /**
-   * 회원기준 (특정 매장(sno)에 연결 가능한) 구독권 목록.
-   * 매장 미연결이면서 매장연결대기(0) 상태인 구독권 중,
-   * 매장의 CCTV 등록 대수와 일치하는 것만 필터링합니다.
-   * @param mno 회원번호
-   * @param sno 접속한 매장의 번호
-   * @return 연결 가능한 구독권 목록
-   */
-  public List<ShopOrderDTO.Response> findLinkableOrders(Long mno, Long sno) {
-    return shopOrderRepository.findLinkableOrders(mno).stream()
-        .filter(row -> {
-          ShopOrder order = (ShopOrder) row[0];
-          return order.getCcnt() != null && cctvRepository.countBySno(sno) == order.getCcnt();
-        })
-        .map(row -> {
-          ShopOrder order = (ShopOrder) row[0];
-          String pname = (String) row[1];
-          return ShopOrderDTO.Response.from(order, pname, null);
-        })
-        .collect(Collectors.toList());
-  }
-  
-  
-
-  /**
-   * 구독 결제 완료 후 
-   * 연결 가능 매장 조회 (매장연결 화면)
-   * 
-   * 회원(mno) 소유 매장 중, 정상(STATUS=1) 구독이 걸려있지 않은 매장만 포함됩니다
-   * — 구독이 아예 없던 매장 + 이전 구독이 만료,취소된 매장 둘 다 여기 해당합니다.
-   * @param mno 회원번호
-   * @return 연결 가능한 매장 목록 (CCTV 등록 대수 포함)
-   */
-  public List<ShopWithCctvCount> findLinkableShops(long mno) {
-    String today = LocalDate.now().toString();
-    
-    List<Shop> shops = shopOrderRepository.findLinkableShops(mno, today);
-    
-    return shops.stream()
-        .map(shop -> new ShopWithCctvCount(shop, cctvRepository.countBySno(shop.getNo())))
-        .collect(Collectors.toList());
-  }
-  
-  
-  /** 매장 기준 구독·결제 내역 */
-  public List<ShopOrderDTO.Response> findBySno(long sno) {
-    return shopOrderRepository.findBySnoOrderByCdateDesc(sno)
-        .stream().map(ShopOrderDTO.Response::from).collect(Collectors.toList());
-  }
   
   
 
@@ -320,20 +394,20 @@ public class ShopOrderService {
    */
   public ShopOrderDTO.RenewResult renew(String no, Integer newPmonth, Integer pmethod) {
     Optional<ShopOrder> optional = shopOrderRepository.findById(no);
-    if (optional.isEmpty()) return null;
+    if (optional.isEmpty()) throw new IllegalStateException("갱신 대상을 찾을수 없습니다.");
 
     ShopOrder shopOrder = optional.get();
     // 취소 상태는 갱신대상 아님.
-    if (shopOrder.getStatus() == STATUS_CANCELLED) return null;
+    if (shopOrder.getStatus() == STATUS_CANCELLED) throw new IllegalStateException("취소된 구독권은 갱신할 수 없습니다.");
     // 매장대기상태 (edate 없는 경우) 갱신 대상 아님
-    if (shopOrder.getEdate() == null && shopOrder.getStatus() == STATUS_WAIT_SHOP) return null;
+    if (shopOrder.getEdate() == null && shopOrder.getStatus() == STATUS_WAIT_SHOP)  throw new IllegalStateException("매장 대기 상태는 갱신 대상이 아닙니다.");
 
     LocalDate today = LocalDate.now();
     LocalDate oldEdate = LocalDate.parse(shopOrder.getEdate());
 
-    if (today.isAfter(oldEdate)) return null; // 만료 후 갱신 불가 (리액트에서 버튼 안나오게 처리)
+    if (today.isAfter(oldEdate)) throw new IllegalStateException("만료일이 지났습니다.");; // 만료 후 갱신 불가 (리액트에서 버튼 안나오게 처리)
     long daysLeft = ShopOrderCaculator.daysUntil(today, shopOrder.getEdate());
-    if (daysLeft > 7) return null; // 만료 7일 전부터만 가능
+    if (daysLeft > 7)  throw new IllegalStateException("갱신 가능 기간이 아닙니다.");; // 만료 7일 전부터만 가능
 
     int extendMonths = newPmonth != null ? newPmonth : shopOrder.getPmonth();
 
