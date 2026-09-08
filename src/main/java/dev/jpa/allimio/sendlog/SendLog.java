@@ -7,18 +7,28 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+
 /**
  * 알림 발송 로그 Entity
  *
- * 이메일 또는 웹 알림 발송 결과를 기록한다.
+ * NOTIFICATION 알림의 실제 발송 결과를 기록한다.
  *
- * 현재는 이메일 발송 성공/실패 기록에 주로 사용한다.
+ * 발송 채널:
+ * - EMAIL : 이메일 발송
+ * - SMS   : 문자 발송
+ *
+ * 발송 상태:
+ * - 1 : 발송 성공
+ * - 2 : 발송 실패
+ *
+ * 실패한 경우 MESSAGE에 실패 사유를 저장한다.
  */
 @Entity
 @Table(name = "SENDLOG")
@@ -29,10 +39,11 @@ import lombok.Setter;
 @Builder
 @SequenceGenerator(
     name = "sendlog_seq_generator",
-    sequenceName = "SENDLOG_SEQ",
+    sequenceName = "SEQ_SENDLOG_NO",
     allocationSize = 1
 )
 public class SendLog {
+
 
     /**
      * 발송 로그 번호
@@ -47,21 +58,28 @@ public class SendLog {
 
 
     /**
-     * 발송 대상 알림 번호
+     * 알림 번호
      *
-     * NOTIFICATION.NO 값
+     * FK -> NOTIFICATION.NO
      */
-    @Column(name = "NNO", nullable = false)
+    @Column(
+        name = "NNO",
+        nullable = false
+    )
     private Long nno;
 
 
     /**
      * 발송 채널
      *
-     * EMAIL : 이메일 발송
-     * WEB   : 웹 알림
+     * EMAIL : 이메일
+     * SMS   : 문자
      */
-    @Column(name = "CHANNEL", nullable = false, length = 10)
+    @Column(
+        name = "CHANNEL",
+        nullable = false,
+        length = 10
+    )
     private String channel;
 
 
@@ -69,28 +87,45 @@ public class SendLog {
      * 발송 상태
      *
      * 1 : 발송 성공
-     * 0 : 발송 실패
+     * 2 : 발송 실패
      */
-    @Column(name = "STATUS", nullable = false)
+    @Column(
+        name = "STATUS",
+        nullable = false
+    )
     private Integer status;
 
 
     /**
      * 발송 결과 메시지
      *
-     * 성공 시 성공 메시지,
-     * 실패 시 오류 내용을 저장한다.
+     * 성공:
+     * - 이메일 발송 완료
+     * - 문자 발송 완료
+     *
+     * 실패:
+     * - 이메일 주소 없음
+     * - SMTP 오류
+     * - 문자 API 호출 실패
+     * 등
      */
-    @Column(name = "MESSAGE", length = 1000)
+    @Column(
+        name = "MESSAGE",
+        length = 1000
+    )
     private String message;
 
 
     /**
-     * 발송 로그 등록일
+     * 발송 로그 등록일시
      *
-     * 현재 SQL에서 VARCHAR2(30)으로 정의되어 있어
-     * String으로 매핑한다.
+     * DB:
+     * VARCHAR2(30)
      */
-    @Column(name = "CDATE", nullable = false, length = 30)
+    @Column(
+        name = "CDATE",
+        nullable = false,
+        length = 30
+    )
     private String cdate;
 }

@@ -67,7 +67,7 @@ public class Notification {
      * AI 알림  도면 번호
      * 해당 기능이 없는 경우 NULL
      */
-    @Column(name = "AIMAPNO")
+    @Column(name = "ASMNO")
     private Long aimapno;
 
 
