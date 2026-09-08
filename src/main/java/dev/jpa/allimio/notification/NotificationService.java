@@ -100,6 +100,97 @@ public class NotificationService {
 
 
     /**
+     * 관리자 전체 알림 발송 내역 조회
+     *
+     * NOTIFICATION + MEMBER + SENDLOG 조회 결과를
+     * NotificationAdminDTO로 변환한다.
+     */
+    public List<NotificationAdminDTO> getAdminNotifications() {
+
+        return notificationRepository
+                .findAdminNotifications()
+                .stream()
+                .map(row -> new NotificationAdminDTO(
+
+                        // 알림 번호
+                        row[0] == null
+                                ? null
+                                : Long.valueOf(row[0].toString()),
+
+                        // 회원 번호
+                        row[1] == null
+                                ? null
+                                : Long.valueOf(row[1].toString()),
+
+                        // 회원 이름
+                        row[2] == null
+                                ? null
+                                : row[2].toString(),
+
+                        // 이메일
+                        row[3] == null
+                                ? null
+                                : row[3].toString(),
+
+                        // 전화번호
+                        row[4] == null
+                                ? null
+                                : row[4].toString(),
+
+                        // CCTV 이슈 번호
+                        row[5] == null
+                                ? null
+                                : Long.valueOf(row[5].toString()),
+
+                        // AI 이슈맵 번호
+                        row[6] == null
+                                ? null
+                                : Long.valueOf(row[6].toString()),
+
+                        // 제목
+                        row[7] == null
+                                ? null
+                                : row[7].toString(),
+
+                        // 내용
+                        row[8] == null
+                                ? null
+                                : row[8].toString(),
+
+                        // 중요도
+                        row[9] == null
+                                ? null
+                                : row[9].toString(),
+
+                        // 전체 상태
+                        row[10] == null
+                                ? null
+                                : row[10].toString(),
+
+                        // 읽음 여부
+                        row[11] == null
+                                ? null
+                                : row[11].toString(),
+
+                        // 등록일
+                        row[12] == null
+                                ? null
+                                : row[12].toString(),
+
+                        // 이메일 발송 상태
+                        row[13] == null
+                                ? null
+                                : row[13].toString(),
+
+                        // 문자 발송 상태
+                        row[14] == null
+                                ? null
+                                : row[14].toString()
+                ))
+                .toList();
+    }
+
+    /**
      * 알림 읽음 처리
      *
      * 알림 상세를 확인했을 때

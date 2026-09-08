@@ -85,5 +85,73 @@ public interface NotificationRepository
     );
     
     
+    
+    /**
+     * 관리자 전체 알림 발송 내역 조회
+     *
+     * NOTIFICATION : 알림 정보
+     * MEMBER       : 수신자 정보
+     * SENDLOG      : 이메일 / 문자 발송 결과
+     *
+     * 이메일과 문자는 가장 최근 SENDLOG를 기준으로 조회한다.
+     */
+    @Query(
+        value = """
+            SELECT
+                N.NO,
+                N.MNO,
+                M.MNAME,
+                M.EMAIL,
+                M.PHONE,
+                N.CINO,
+                N.ASMNO,
+                N.ATITLE,
+                N.CONTENT,
+                N.PRIORITY,
+                N.STATUS,
+                N.READYN,
+                N.CDATE,
+
+                (
+                    SELECT CASE
+                             WHEN S.STATUS = 1 THEN 'SENT'
+                             ELSE 'FAILED'
+                           END
+                    FROM SENDLOG S
+                    WHERE S.NNO = N.NO
+                      AND S.CHANNEL = 'EMAIL'
+                      AND S.NO = (
+                          SELECT MAX(S2.NO)
+                          FROM SENDLOG S2
+                          WHERE S2.NNO = N.NO
+                            AND S2.CHANNEL = 'EMAIL'
+                      )
+                ) AS EMAIL_STATUS,
+
+                (
+                    SELECT CASE
+                             WHEN S.STATUS = 1 THEN 'SENT'
+                             ELSE 'FAILED'
+                           END
+                    FROM SENDLOG S
+                    WHERE S.NNO = N.NO
+                      AND S.CHANNEL = 'SMS'
+                      AND S.NO = (
+                          SELECT MAX(S2.NO)
+                          FROM SENDLOG S2
+                          WHERE S2.NNO = N.NO
+                            AND S2.CHANNEL = 'SMS'
+                      )
+                ) AS SMS_STATUS
+
+            FROM NOTIFICATION N
+            LEFT JOIN MEMBER M
+                ON N.MNO = M.NO
+
+            ORDER BY N.NO DESC
+            """,
+        nativeQuery = true
+    )
+    List<Object[]> findAdminNotifications();
 }
 

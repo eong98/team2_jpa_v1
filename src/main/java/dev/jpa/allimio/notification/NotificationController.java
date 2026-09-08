@@ -35,6 +35,19 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
+    /**
+     * 관리자 전체 알림 발송 내역 조회
+     *
+     * GET /api/notifications/admin
+     */
+    @GetMapping("/admin")
+    public ResponseEntity<List<NotificationAdminDTO>> getAdminNotifications() {
+
+        List<NotificationAdminDTO> notifications =
+                notificationService.getAdminNotifications();
+
+        return ResponseEntity.ok(notifications);
+    }
 
     /**
      * 회원별 알림 목록 조회
