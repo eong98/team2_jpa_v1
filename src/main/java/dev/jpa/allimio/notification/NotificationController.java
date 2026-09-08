@@ -8,8 +8,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import dev.jpa.allimio.tool.MailService;
+import org.springframework.web.bind.annotation.PostMapping;
 
 
 /**
@@ -28,14 +27,12 @@ import dev.jpa.allimio.tool.MailService;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final MailService mailService;
 
     /**
      * 생성자 주입
      */
-    public NotificationController(NotificationService notificationService , MailService mailService ) {
+    public NotificationController(NotificationService notificationService ) {
         this.notificationService = notificationService;
-        this.mailService = mailService;
     }
 
 
@@ -112,10 +109,12 @@ public class NotificationController {
   
     
     /**
-     * 메일 테스트  
-      */
-    @GetMapping("/test-mail/{no}")
-    public ResponseEntity<String> testMail(
+     * 알림 이메일 발송
+     *
+     * POST /api/notifications/{no}/email
+     */
+    @PostMapping("/{no}/email")
+    public ResponseEntity<String> sendNotificationMail(
             @PathVariable("no") Long no) {
 
         notificationService.sendNotificationMail(no);
