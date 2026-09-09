@@ -77,6 +77,7 @@ public class SecurityConfig {
           ));
       
       config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+
       config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type", "*"));
       config.setAllowCredentials(true);
       config.setExposedHeaders(List.of("Authorization", "Set-Cookie"));

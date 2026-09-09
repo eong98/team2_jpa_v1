@@ -58,6 +58,9 @@ dependencies {
   
   // random number
   implementation 'org.apache.commons:commons-lang3'
+  
+  // Redis
+  implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 
 }
