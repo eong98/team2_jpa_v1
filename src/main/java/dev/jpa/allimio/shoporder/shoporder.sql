@@ -39,10 +39,6 @@ COMMENT ON COLUMN SHOP_ORDER.EDATE              IS '구독 종료일 (YYYY-MM-DD
 COMMENT ON COLUMN SHOP_ORDER.CDATE              IS '구매일시 (YYYY-MM-DD HH24:MI:SS)';
 COMMENT ON COLUMN SHOP_ORDER.UDATE              IS '구매 변경일시 (환불, 취소, 갱신, 변경신청/확정)';
 
--- 활성(STATUS=1: 정상) 구독은 매장당 1건만 허용 — 실수로 중복 연결하는 것 자체를
--- DB 레벨에서 막기 위한 안전장치
-CREATE UNIQUE INDEX UX_SHOP_ORDER_ACTIVE_SNO
-  ON SHOP_ORDER (CASE WHEN STATUS = 1 THEN SNO END);
   
 
 

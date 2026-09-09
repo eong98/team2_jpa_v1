@@ -14,7 +14,7 @@ CREATE TABLE SHOP_ORDER_PENDING (
   PMONTH             NUMBER(2)                       NULL, -- 변경 신청된 이용기간 (6, 12)
   EDATE              VARCHAR2(30)                    NULL, -- 변경 확정시 반영될 새 종료일
   TOTALPRICE         NUMBER(12)                      NULL, -- 변경 확정시 반영될 총 결제금액
-  STATUS             NUMBER(1)       DEFAULT 0   NOT NULL, -- 변경신청 상태(0: 승인대기, 1:승인반려, 2:완료)
+  STATUS             NUMBER(1)       DEFAULT 0   NOT NULL, -- 변경신청 상태(0: 대기, 1:반려, 2:완료)
   MEMO               CLOB                            NULL, -- 승인 반려 사유 (관리자 입력)
   CDATE              VARCHAR2(30)                NOT NULL, -- 변경 신청일시
   UDATE              VARCHAR2(30)                    NULL, -- 변경 완료일시
@@ -35,8 +35,8 @@ COMMENT ON COLUMN SHOP_ORDER_PENDING.BPRICE             IS '변경 신청된 등
 COMMENT ON COLUMN SHOP_ORDER_PENDING.PMONTH             IS '변경 신청된 이용기간 (6, 12)';
 COMMENT ON COLUMN SHOP_ORDER_PENDING.EDATE              IS '변경 확정시 반영될 새 종료일';
 COMMENT ON COLUMN SHOP_ORDER_PENDING.TOTALPRICE         IS '변경 확정시 반영될 총 결제금액';
-COMMENT ON COLUMN SHOP_ORDER_PENDING.STATUS             IS '변경신청 상태(0: 승인대기, 1:승인반려, 2:완료)';
-COMMENT ON COLUMN SHOP_ORDER_PENDING.MEMO            IS '승인 반려 사유 (관리자 입력)';
+COMMENT ON COLUMN SHOP_ORDER_PENDING.STATUS             IS '변경신청 상태(0: 대기, 1:반려, 2:완료)';
+COMMENT ON COLUMN SHOP_ORDER_PENDING.MEMO               IS '승인 반려 사유 (관리자 입력)';
 COMMENT ON COLUMN SHOP_ORDER_PENDING.CDATE              IS '변경 신청일시';
 COMMENT ON COLUMN SHOP_ORDER_PENDING.UDATE              IS '변경 완료일시';
 

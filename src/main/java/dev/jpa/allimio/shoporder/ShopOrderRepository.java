@@ -6,9 +6,11 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import dev.jpa.allimio.shop.Shop;
 import jakarta.persistence.Tuple;
@@ -255,5 +257,44 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
 //      Pageable pageable);
   
   
+  
+  
+  
+  
+  @Transactional // 데이터 변경 작업을 처리하므로 트랜잭션 범위 내에서 실행되어야 함
+  @Modifying(clearAutomatically = true, flushAutomatically = true) // CUD(INSERT/UPDATE/DELETE) 쿼리 선언
+  // - clearAutomatically = true: 쿼리 실행 후 영속성 컨텍스트(1차 캐시)를 강제로 초기화(clear)하여 DB 데이터와의 불일치(Stale Data) 방지
+  // - flushAutomatically = true: 쿼리 실행 전 영속성 컨텍스트의 지연 쓰기 데이터(Pending Changes)를 DB에 미리 반영(flush)
+  @Query(value = """
+    MERGE INTO MEMBER m               -- 1. MEMBER 테이블(별칭 m)을 대상으로 MERGE 수행
+      USING DUAL                            -- 2. 단일 조건 체크를 위해 가상 테이블 DUAL 사용
+      ON (m.no = :mno)                     -- 3. 매핑 조건: 파라미터로 받은 회원 번호(:no)가 PK(or 회원번호)와 일치하는지 검사
+      WHEN MATCHED THEN              -- 4. 조건에 일치하는 회원 레코드가 존재할 경우 (UPDATE 수행)
+        UPDATE SET m.grade = :grade    -- 5. 해당 회원의 등급(grade)을 전달받은 파라미터값(:grade)으로 수정
+    """, nativeQuery = true)             //  -- JPA JPQL이 아닌 DB 고유의 SQL 문법을 직접 실행하는 Native Query로 지정
+  int mergeMemberGrade(@Param("mno") Long mno, @Param("grade") Integer grade);
+  
+  /** 회원 현재 등급 조회 (MEMBER 도메인 파일 안 거치고 직접 조회) */
+  @Query(value = "SELECT grade FROM MEMBER WHERE no = :mno", nativeQuery = true)
+  Integer findMemberGrade(@Param("mno") Long mno);
+  
+  /**
+   * 이 회원이 정상, 대기중인 (status=0, 1, 만료 안 됨) 구독권을 하나라도
+   * 가지고 있는지 확인합니다. 등급 강등 조건 판단에 사용합니다.
+   */
+  @Query(value = """
+      SELECT COUNT(*) FROM SHOP_ORDER
+      WHERE mno = :mno AND (status = 0 OR (status = 1 AND edate >= :today))
+      """, nativeQuery = true)
+  int countActiveByMno(@Param("mno") Long mno, @Param("today") String today);
+  
+
+  /**
+   * 구독권 만료시 등급변경을 위한 조회
+   * @param status
+   * @param edate
+   * @return
+   */
+  List<ShopOrder> findAllByStatusAndEdateBefore(Integer status, String edate);
   
 }

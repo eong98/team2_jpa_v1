@@ -15,7 +15,7 @@ CREATE TABLE SHOP_ORDER_LOG (
 );
 
 COMMENT ON TABLE  SHOP_ORDER_LOG              IS '구독 내역 변경 이력 (결제·매장연결·갱신·취소 로그)';
-COMMENT ON COLUMN SHOP_ORDER_LOG.ONO      IS '구독 내역 번호 (FK -> SHOP_ORDER.NO)';
+COMMENT ON COLUMN SHOP_ORDER_LOG.ONO          IS '구독 내역 번호 (FK -> SHOP_ORDER.NO)';
 COMMENT ON COLUMN SHOP_ORDER_LOG.MNO          IS '회원번호 (조회 편의용 비정규화)';
 COMMENT ON COLUMN SHOP_ORDER_LOG.ACTION       IS '이벤트 종류 (0: 결제, 1: 매장연결, 2: 갱신, 3: 취소)';
 COMMENT ON COLUMN SHOP_ORDER_LOG.SNO          IS '관련 매장번호 (매장연결일 때만 값 있음)';

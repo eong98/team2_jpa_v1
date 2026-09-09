@@ -43,6 +43,16 @@ public class ShopOrderCont {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
+  @GetMapping("/grade/{mno}")
+  public ResponseEntity<Integer> memberGrade(@PathVariable(name = "mno") Long mno) {
+    if (mno == null) {
+      return ResponseEntity.badRequest().build();
+  }
+  
+    int grade = shopOrderService.memberGrade(mno);
+  return ResponseEntity.ok(grade);
+  }
+  
 
   /**
    * 전체 구독내역 목록 
