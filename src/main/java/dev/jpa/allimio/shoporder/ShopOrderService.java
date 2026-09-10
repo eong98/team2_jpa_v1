@@ -180,7 +180,11 @@ public class ShopOrderService {
 
     // 주문번호, 회원번호, 이벤트 종류(결제), 매장번호(NULL),
     // 변경 전 종료일(NULL), 변경 후 종료일(NULL), 총결제액, 설명
-    shopOrderLogService.log(saved.getNo(), saved.getMno(), 0, null, null, null, saved.getTotalprice(), "신규 구독 결제");
+    shopOrderLogService.log(saved.getNo(), saved.getMno(), 0, null, null,
+        null, null, saved.getTotalprice(),
+        String.format("신규 구독 결제 · %d대 %d개월 · 결제액 %,d원",
+            saved.getCcnt(), saved.getPmonth(), saved.getTotalprice()), 
+        saved.getCcnt(), saved.getBprice());
 
     // 주문번호, 회원번호, 결제금액, 결제수단
     shopPaymentService.pay(saved.getNo(), saved.getMno(), saved.getTotalprice(), request.getPmethod());
@@ -207,7 +211,7 @@ public class ShopOrderService {
     String today = LocalDate.now().toString();
     Page<Object[]> result = shopOrderRepository.searchAllWithJoin(req.getMno(), req.getWord(), req.getStatus(),
         req.getPmonth(), req.getDateFrom(), req.getDateTo(), today, pageable);
-
+    
     // Page.map을 통해 DTO의 from() 메서드로 가공
     return result.map(row -> {
       ShopOrder order = (ShopOrder) row[0];
@@ -271,7 +275,7 @@ public class ShopOrderService {
     String pname = (String) row[1];
     String sname = (String) row[2];
 
-    return ShopOrderDTO.Response.from(order, pname, sname, null);
+    return ShopOrderDTO.Response.from(order, pname, sname, null, null, null);
   }
 
   /**
@@ -307,7 +311,7 @@ public class ShopOrderService {
     }).map(row -> {
       ShopOrder order = (ShopOrder) row[0];
       String pname = (String) row[1];
-      return ShopOrderDTO.Response.from(order, pname, null, null);
+      return ShopOrderDTO.Response.from(order, pname, null, null, null, null);
     }).collect(Collectors.toList());
   }
 
@@ -350,18 +354,26 @@ public class ShopOrderService {
   }
 
   /**
-   * 관리자용 전체(또는 특정 회원) 구독 내역 검색 + 페이징 조회
+   * 관리자용 전체(또는 특정 회원) 구독내역 조회
    * 
-   * @param c 검색조건 (mno 선택사항 — null이면 전체 회원 대상)
+   * @param 
    */
-//  public Page<ShopOrderDTO.Response> searchAllAdmin(ShopOrderDTO.SearchRequest c, Pageable pageable) {
-//    Page<ShopOrder> result = shopOrderRepository.searchAllAdmin(
-//        c.getMno(), c.getWord(), c.getStatus(), c.getPno(), c.getSno(),
-//        c.getDateType(), c.getDateFrom(), c.getDateTo(),
-//        pageable);
-//
-//    return result.map(ShopOrderDTO.Response::from);
-//  }
+  @Transactional(readOnly = true)
+  public Page<ShopOrderDTO.Response> searchAllOrders(ShopOrderDTO.SearchRequest req, Pageable pageable) {
+    String today = LocalDate.now().toString();
+    Page<Object[]> result = shopOrderRepository.searchAllAdmin(
+        req.getWord(), req.getStatus(),
+        req.getPmonth(), req.getDateFrom(), req.getDateTo(), 
+        today, pageable);
+
+    return result.map(row -> {
+      ShopOrder order = (ShopOrder) row[0];
+      String pname = (String) row[1];
+      String sname = (String) row[2];
+      String id = (String) row[3];
+      return ShopOrderDTO.Response.from(order, pname, sname, id);
+    });
+  }
 
   // --------------------------------------------------
   // 수정
@@ -419,7 +431,11 @@ public class ShopOrderService {
 
     // 주문번호, 회원번호, 이벤트 종류(결제), 매장번호(NULL),
     // 변경 전 종료일(NULL), 변경 후 종료일(NULL), 총결제액, 설명
-    shopOrderLogService.log(saved.getNo(), saved.getMno(), 1, saved.getSno(), null, saved.getEdate(), null, "매장 연결 확정");
+    shopOrderLogService.log(saved.getNo(), saved.getMno(), 1, saved.getSno(), null,
+        null, saved.getEdate(), null,
+        String.format("매장 연결 확정 · %s ~ %s (%d개월)",saved.getSdate(), saved.getEdate(), saved.getPmonth()),
+        saved.getCcnt(), saved.getBprice()
+        );
 
     return ShopOrderDTO.Response.from(saved);
   }
@@ -455,11 +471,11 @@ public class ShopOrderService {
 
     if (today.isAfter(oldEdate))
       throw new IllegalStateException("만료일이 지났습니다.");
-    ; // 만료 후 갱신 불가 (리액트에서 버튼 안나오게 처리)
+    // 만료 후 갱신 불가 (리액트에서 버튼 안나오게 처리)
     long daysLeft = ShopOrderCaculator.daysUntil(today, shopOrder.getEdate());
     if (daysLeft > 7)
       throw new IllegalStateException("갱신 가능 기간이 아닙니다.");
-    ; // 만료 7일 전부터만 가능
+    // 만료 7일 전부터만 가능
 
     int extendMonths = newPmonth != null ? newPmonth : shopOrder.getPmonth();
 
@@ -489,8 +505,13 @@ public class ShopOrderService {
 
     // 주문번호, 회원번호, 이벤트 종류, 매장번호,
     // 변경 전 종료일, 변경 후 종료일, 총결제액, 설명
-    shopOrderLogService.log(saved.getNo(), saved.getMno(), 2, saved.getSno(), beforeEdate, newEdate, extraCharge,
-        "구독 갱신" + (newPmonth != null ? "(기간 변경)" : "(동일조건)"));
+    shopOrderLogService.log(saved.getNo(), saved.getMno(), 2, saved.getSno(), null,
+        beforeEdate, newEdate, extraCharge,
+        String.format("구독 갱신(%s) · %d대 유지 · %s → %s · 추가결제 %,d원",
+            newPmonth != null ? "기간 변경" : "동일조건",
+            saved.getCcnt(), beforeEdate, newEdate, extraCharge),
+         saved.getCcnt(), saved.getBprice()
+        );
 
     return ShopOrderDTO.RenewResult.builder().no(saved.getNo()).ccnt(saved.getCcnt()).totalprice(saved.getTotalprice())
         .edate(saved.getEdate()).build();
@@ -523,8 +544,12 @@ public class ShopOrderService {
 
       // 주문번호, 회원번호, 이벤트 종류(취소), 매장번호,
       // 변경 전 종료일(NULL), 변경 후 종료일(NULL), 총결제액, 설명
-      shopOrderLogService.log(no, shopOrder.getMno(), 3, shopOrder.getSno(), null, null, fullRefund,
-          "매장 연결 전 취소 · 전액 환불");
+   // 매장 미연결 전액환불
+      shopOrderLogService.log(no, shopOrder.getMno(), 3, shopOrder.getSno(), null,
+          null, null, -fullRefund,
+          String.format("매장 연결 전 취소 · 전액 환불 · 환불액 %,d원", fullRefund),
+          shopOrder.getCcnt(), shopOrder.getBprice()
+          );
 
       // 환불 데이터 처리
       if (fullRefund > 0) {
@@ -559,10 +584,16 @@ public class ShopOrderService {
     demoteFromOwnerIfNeeded(shopOrder.getMno());
 
     double usedMonths = ShopOrderCaculator.calcUseMonths(sdate, today);
+    double refundMonths = Math.max(0, shopOrder.getPmonth() - usedMonths);
 
     // 주문번호, 회원번호, 이벤트 종류(결제), 매장번호(NULL),
     // 변경 전 종료일(NULL), 변경 후 종료일(NULL), 총결제액, 설명
-    shopOrderLogService.log(no, shopOrder.getMno(), 3, shopOrder.getSno(), null, null, refundAmount, "구독 취소");
+    shopOrderLogService.log(no, shopOrder.getMno(), 3, shopOrder.getSno(), null,
+        null, null, -refundAmount,
+        String.format("구독 취소 · 사용 %.2f개월 · 환불대상 %.2f개월 · 환불액 %,d원",
+            usedMonths, refundMonths, refundAmount),
+        shopOrder.getCcnt(), shopOrder.getBprice()
+        );
 
     if (refundAmount > 0) {
       ShopPaymentDTO.Response payment = shopPaymentService.refund(no, shopOrder.getMno(), refundAmount);

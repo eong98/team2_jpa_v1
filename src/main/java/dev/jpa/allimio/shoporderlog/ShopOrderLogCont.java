@@ -38,7 +38,7 @@ public class ShopOrderLogCont {
    * 회원 기준 변경 이력 검색 + 페이징 조회
    * GET /shop_order_log/mno/1/search?sno=&action=&dateFrom=&dateTo=&page=0&size=10
    */
-  @GetMapping("{mno}/{ono}")
+  @GetMapping("/list/{mno}/{ono}")
   public ResponseEntity<PageResponse<ShopOrderLogDTO.Response>> search(
       @PathVariable("mno") Long mno,
       @PathVariable("ono") String ono,

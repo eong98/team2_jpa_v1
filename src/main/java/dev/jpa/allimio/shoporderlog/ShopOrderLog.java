@@ -38,6 +38,9 @@ public class ShopOrderLog {
 
   /** 회원번호 (조회 편의용 비정규화) */
   private Long mno;
+  
+  /** 변경신청 번호 (조회 편의용 비정규화) */
+  private Long pno;
 
   /** 이벤트 종류 (0: 결제, 1: 매장연결, 2: 갱신, 3: 취소) */
   private Integer action;
@@ -59,4 +62,9 @@ public class ShopOrderLog {
 
   /** 발생일시 */
   private String cdate;
+
+  /** 구독시 지정한 CCTV 개수 */
+  private Integer ccnt;
+  /** CCTV 1대당 기본단가 (결제 시점 스냅샷) */
+  private Double bprice;
 }

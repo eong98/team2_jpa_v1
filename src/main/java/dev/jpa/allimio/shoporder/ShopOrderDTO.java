@@ -54,6 +54,7 @@ public class ShopOrderDTO {
     private String pname; // 구독권 이름
     private String sname; // 매장 이름
     private Integer pstatus; // 변경신청 상태
+    private String id; // 회원 아이디
     
     /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최소 CCTV 대수 (변경 시 하한선) */
     private Integer minCcnt;
@@ -87,6 +88,17 @@ public class ShopOrderDTO {
         response.setPname(pname);
         response.setSname(sname);
         response.setPstatus(pstatus);
+      }
+      return response;
+    }
+    
+    /** 관리자 조회 */
+    public static Response from(ShopOrder entity, String pname, String sname, String id) {
+      Response response = from(entity);
+      if (response != null) {
+        response.setPname(pname);
+        response.setSname(sname);
+        response.setId(id);
       }
       return response;
     }

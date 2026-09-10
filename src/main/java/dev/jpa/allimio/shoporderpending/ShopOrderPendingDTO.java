@@ -86,6 +86,8 @@ public class ShopOrderPendingDTO {
     // join
     private String sname; // 관리자용 조회
     private String pname; // 미리보기, 변경될 구독권 이름 조회
+    private Integer oldCcnt;
+    private Long sno;
     /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최소 CCTV 대수 (변경 시 하한선) */
     private Integer minCcnt;
     /** 같은 이용기간(pmonth) 내 전체 등급을 통틀은 최대 CCTV 대수 (변경 시 상한선) */
@@ -111,22 +113,25 @@ public class ShopOrderPendingDTO {
     }
     
 
-    public static Response from(ShopOrderPending entity, String pname, String sname, Integer minCcnt, Integer maxCcnt) {
+    public static Response from(ShopOrderPending entity, String pname, String sname, Integer oldCcnt, Integer minCcnt, Integer maxCcnt, Long sno) {
       Response res = from(entity);
       if (res != null) {
         res.setPname(pname);
         res.setSname(sname);
+        res.setOldCcnt(oldCcnt);
         res.setMinCcnt(minCcnt);
         res.setMaxCcnt(maxCcnt);
+        res.setSno(sno);
       }
       return res;
     }
     
-    public static Response from(ShopOrderPending entity, String pname, String sname) {
+    public static Response from(ShopOrderPending entity, String pname, String sname, Integer oldCcnt) {
       Response res = from(entity);
       if (res != null) {
         res.setPname(pname);
         res.setSname(sname);
+        res.setOldCcnt(oldCcnt);
       }
       return res;
     }
@@ -140,6 +145,7 @@ public class ShopOrderPendingDTO {
   @AllArgsConstructor
   @Builder
   public static class SearchRequest {
+    private Long mno;
     private Integer status;
     private String word;
     private String dateFrom;

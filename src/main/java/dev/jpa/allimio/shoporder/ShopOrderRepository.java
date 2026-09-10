@@ -99,7 +99,7 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   @Query("""
       SELECT so, sp.pname, s.title AS sname, pending.status AS pstatus 
       FROM ShopOrder so
-      LEFT JOIN ShopOrderPending pending ON so.no = pending.ono 
+      LEFT JOIN ShopOrderPending pending ON so.no = pending.ono AND pending.status = 0 
       LEFT JOIN ShopPlan sp ON so.pno = sp.no
       LEFT JOIN Shop s ON so.sno = s.no
       WHERE so.mno = :mno
@@ -222,56 +222,64 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, String> {
   
 
   /**
-   * 관리자용 구독 내역 검색 + 페이징 조회. mno 포함 모든 조건이 선택사항이라
-   * mno를 안 넘기면 전체 회원 대상으로 조회됩니다.
+   * [관리자] 전체 회원 구독권 조회
+   * 검색어 : 플랜명, 매장명, 회원아이디
+   * 필터 : 상태, 구독개월, 구매일기준 기간
    */
-//  @Query("""
-//      SELECT so FROM ShopOrder so
-//      WHERE (:mno IS NULL OR so.mno = :mno)
-//        AND (:word IS NULL OR :word = '')
-//        AND (:status IS NULL OR so.status = :status)
-//        AND (:pno IS NULL OR so.pno = :pno)
-//        AND (:sno IS NULL OR so.sno = :sno)
-//        AND (
-//          :dateType IS NULL OR :dateType = ''
-//          OR (:dateType = 'sdate'
-//              AND (:dateFrom IS NULL OR :dateFrom = '' OR so.sdate >= :dateFrom)
-//              AND (:dateTo IS NULL OR :dateTo = '' OR so.sdate <= :dateTo))
-//          OR (:dateType = 'edate'
-//              AND (:dateFrom IS NULL OR :dateFrom = '' OR so.edate >= :dateFrom)
-//              AND (:dateTo IS NULL OR :dateTo = '' OR so.edate <= :dateTo))
-//          OR (:dateType = 'cdate'
-//              AND (:dateFrom IS NULL OR :dateFrom = '' OR SUBSTRING(so.cdate, 1, 10) >= :dateFrom)
-//              AND (:dateTo IS NULL OR :dateTo = '' OR SUBSTRING(so.cdate, 1, 10) <= :dateTo))
-//        )
-//      """)
-//  Page<ShopOrder> searchAllAdmin(
-//      @Param("mno") Long mno,
-//      @Param("word") String word,
-//      @Param("status") Integer status,
-//      @Param("pno") Long pno,
-//      @Param("sno") Long sno,
-//      @Param("dateType") String dateType,
-//      @Param("dateFrom") String dateFrom,
-//      @Param("dateTo") String dateTo,
-//      Pageable pageable);
+  @Query("""
+      SELECT so, sp.pname, s.title AS sname, m.id  
+      FROM ShopOrder so 
+      LEFT JOIN ShopPlan sp ON so.pno = sp.no 
+      LEFT JOIN Shop s ON so.sno = s.no 
+      LEFT JOIN Member m ON so.mno = m.no 
+      WHERE (:word IS NULL OR :word = '' 
+          OR s.title LIKE CONCAT('%', :word, '%') OR sp.pname LIKE CONCAT('%', :word, '%')
+          OR m.id LIKE CONCAT('%', :word, '%')) 
+        AND (:status IS NULL 
+          OR (:status = 1 AND so.status = 1 AND so.edate >= :today)  
+          OR (:status = 3 AND so.status = 1 AND so.edate < :today)  
+          OR (:status IN (0, 2) AND so.status = :status) 
+          )
+        AND (:pmonth IS NULL OR sp.pmonth = :pmonth)
+        AND (:dateFrom IS NULL OR :dateFrom = '' OR SUBSTRING(so.cdate, 1, 10) >= :dateFrom)
+        AND (:dateTo IS NULL OR :dateTo = '' OR SUBSTRING(so.cdate, 1, 10) <= :dateTo) 
+     ORDER BY so.cdate DESC 
+      """)
+  Page<Object[]> searchAllAdmin(
+      @Param("word") String word,
+      @Param("status") Integer status,
+      @Param("pmonth") Integer pmonth,
+      @Param("dateFrom") String dateFrom,
+      @Param("dateTo") String dateTo,
+      @Param("today") String today,
+      Pageable pageable);
+
   
   
   
-  
-  
-  
+  /**
+   * 회원 등급 변경 로직
+   * -- 1. MEMBER 테이블(별칭 m)을 대상으로 MERGE 수행
+   * -- 2. 단일 조건 체크를 위해 가상 테이블 DUAL 사용
+   * -- 3. 매핑 조건: 파라미터로 받은 회원 번호(:no)가 PK(or 회원번호)와 일치하는지 검사
+   * -- 4. 조건에 일치하는 회원 레코드가 존재할 경우 (UPDATE 수행)
+   * -- 5. 해당 회원의 등급(grade)을 전달받은 파라미터값(:grade)으로 수정
+   * 
+   * @param mno
+   * @param grade
+   * @return
+   */
   @Transactional // 데이터 변경 작업을 처리하므로 트랜잭션 범위 내에서 실행되어야 함
-  @Modifying(clearAutomatically = true, flushAutomatically = true) // CUD(INSERT/UPDATE/DELETE) 쿼리 선언
   // - clearAutomatically = true: 쿼리 실행 후 영속성 컨텍스트(1차 캐시)를 강제로 초기화(clear)하여 DB 데이터와의 불일치(Stale Data) 방지
   // - flushAutomatically = true: 쿼리 실행 전 영속성 컨텍스트의 지연 쓰기 데이터(Pending Changes)를 DB에 미리 반영(flush)
+  @Modifying(clearAutomatically = true, flushAutomatically = true) // CUD(INSERT/UPDATE/DELETE) 쿼리 선언
   @Query(value = """
-    MERGE INTO MEMBER m               -- 1. MEMBER 테이블(별칭 m)을 대상으로 MERGE 수행
-      USING DUAL                            -- 2. 단일 조건 체크를 위해 가상 테이블 DUAL 사용
-      ON (m.no = :mno)                     -- 3. 매핑 조건: 파라미터로 받은 회원 번호(:no)가 PK(or 회원번호)와 일치하는지 검사
-      WHEN MATCHED THEN              -- 4. 조건에 일치하는 회원 레코드가 존재할 경우 (UPDATE 수행)
-        UPDATE SET m.grade = :grade    -- 5. 해당 회원의 등급(grade)을 전달받은 파라미터값(:grade)으로 수정
-    """, nativeQuery = true)             //  -- JPA JPQL이 아닌 DB 고유의 SQL 문법을 직접 실행하는 Native Query로 지정
+    MERGE INTO MEMBER m 
+      USING DUAL 
+      ON (m.no = :mno) 
+      WHEN MATCHED THEN 
+        UPDATE SET m.grade = :grade 
+    """, nativeQuery = true) // JPA JPQL이 아닌 DB 고유의 SQL 문법을 직접 실행하는 Native Query로 지정
   int mergeMemberGrade(@Param("mno") Long mno, @Param("grade") Integer grade);
   
   /** 회원 현재 등급 조회 (MEMBER 도메인 파일 안 거치고 직접 조회) */

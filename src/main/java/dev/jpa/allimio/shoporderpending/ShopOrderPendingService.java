@@ -2,7 +2,6 @@ package dev.jpa.allimio.shoporderpending;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.jpa.allimio.cctv.CctvRepository;
-import dev.jpa.allimio.inmenu.InMenu;
 import dev.jpa.allimio.shoporder.ShopOrder;
 import dev.jpa.allimio.shoporder.ShopOrderCaculator;
 import dev.jpa.allimio.shoporder.ShopOrderRepository;
@@ -54,30 +52,28 @@ public class ShopOrderPendingService {
   private static final int STATUS_REJECTED = 1;
   private static final int STATUS_DONE = 2;
 
-  
- /**
- * 특정 주문내역의 변경내용 상세
- * @param ono
- * @return
- */
+  /**
+   * 특정 주문내역의 변경내용 상세
+   * @param ono
+   * @return
+   */
   @Transactional(readOnly = true)
   public ShopOrderPendingDTO.Response findByOno(String ono) {
     List<Object[]> res = shopOrderPendingRepository.findByOnoWithJoin(ono);
-    
+
     Object[] row = res.get(0);
     ShopOrderPending pending = (ShopOrderPending) row[0];
     String pname = (String) row[1];
     String sname = (String) row[2];
-      
-    return ShopOrderPendingDTO.Response.from(pending, pname, sname);
-    
+
+    return ShopOrderPendingDTO.Response.from(pending, pname, sname, null);
   }
 
   /**
-   * 구독권 변경 신청. 대수 변경이 있으면 SHOP_ORDER_PENDING에 승인대기(0) 기간만 변경하는 경우는 승인 절차가 필요
-   * 없으므로, 등록과 동시에 applyChange()를 호출해서 SHOP_ORDER_PENDING을 완료(2) 상태로 만들고
-   * SHOP_ORDER도 그 자리에서 즉시 확정 반영합니다.
-   * 
+   * 구독권 변경 신청. 대수 변경이 있으면 SHOP_ORDER_PENDING에 승인대기(0)로 등록하고,
+   * 기간만 변경하는 경우는 승인 절차가 필요 없으므로 등록과 동시에 applyChange()를 호출해서
+   * SHOP_ORDER_PENDING을 완료(2) 상태로 만들고 SHOP_ORDER도 그 자리에서 즉시 확정 반영합니다.
+   *
    * 신청일~EDATE가 28일 미만이면 불가. 이미 승인대기 중인 신청이 있으면 거부.
    */
   public ShopOrderPendingDTO.ChangeResult save(ShopOrderPendingDTO.Request request) {
@@ -157,19 +153,24 @@ public class ShopOrderPendingService {
           request.getAccountNo(), request.getAccountHolder());
     }
 
+    // 이 시점엔 shopOrder를 아직 전혀 안 건드렸으므로, getCcnt()/getBprice()가 곧 "변경 전" 값
     int diffCcnt = newCcnt - shopOrder.getCcnt();
     if (diffCcnt > 0) {
       long extraCharge = ShopOrderCaculator.calcCcntIncreaseCharge(today, oldEdate, targetPlan.getBprice(), diffCcnt);
 
       shopPaymentService.pay(shopOrder.getNo(), shopOrder.getMno(), extraCharge, request.getPmethod());
 
-      // 주문번호, 회원번호, 이벤트 종류(변경), 매장번호,
-      // 변경 전 종료일(NULL), 변경 후 종료일(NULL), 총결제액, 설명
-      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 4, shopOrder.getSno(), null, null, extraCharge,
-          "구독권 대수 증가 신청(승인대기) · 신청시 즉시결제");
+      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 4, shopOrder.getSno(), saved.getNo(),
+          null, null, extraCharge,
+          String.format("구독권 대수 증가 신청(승인대기) · %d대 → %d대 · 신청시 즉시결제 %,d원",
+              shopOrder.getCcnt(), newCcnt, extraCharge),
+          shopOrder.getCcnt(), shopOrder.getBprice());
     } else {
-      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 4, shopOrder.getSno(), null, null, null,
-          "구독권 대수 감소 신청(승인대기) · 승인 시 환불 예정");
+      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 4, shopOrder.getSno(), saved.getNo(),
+          null, null, null,
+          String.format("구독권 대수 감소 신청(승인대기) · %d대 → %d대 · 승인 시 환불 예정",
+              shopOrder.getCcnt(), newCcnt),
+          shopOrder.getCcnt(), shopOrder.getBprice());
     }
 
     return ShopOrderPendingDTO.ChangeResult.builder().no(saved.getNo().toString()).pending(true).build();
@@ -182,7 +183,12 @@ public class ShopOrderPendingService {
   private void applyChange(ShopOrderPending pending, ShopOrder shopOrder, ShopOrderPendingDTO.Request request,
       long extraCharge, long refund) {
 
+    // shopOrder를 덮어쓰기 전에 "변경 전" 값을 전부 미리 빼둠
     String beforeEdate = shopOrder.getEdate();
+    Integer oldPmonth = shopOrder.getPmonth();
+    Integer oldCcnt = shopOrder.getCcnt();
+    Double oldBprice = shopOrder.getBprice();
+
     shopOrder.setPno(pending.getPno());
     shopOrder.setPmonth(pending.getPmonth());
     shopOrder.setBprice(pending.getBprice());
@@ -204,8 +210,18 @@ public class ShopOrderPendingService {
       shopRefundService.save(savedOrder.getNo(), payment.getNo(), savedOrder.getMno(), refundRequest, refund);
     }
 
-    shopOrderLogService.log(savedOrder.getNo(), savedOrder.getMno(), 5, savedOrder.getSno(), beforeEdate,
-        savedOrder.getEdate(), extraCharge > 0 ? extraCharge : -refund, "구독 기간 변경(즉시 반영)");
+    String memo = extraCharge > 0
+        ? String.format("구독 기간 변경(즉시반영) · %d개월 → %d개월 · %s → %s · 추가결제 %,d원",
+            oldPmonth, savedOrder.getPmonth(), beforeEdate, savedOrder.getEdate(), extraCharge)
+        : refund > 0
+            ? String.format("구독 기간 변경(즉시반영) · %d개월 → %d개월 · %s → %s · 환불액 %,d원",
+                oldPmonth, savedOrder.getPmonth(), beforeEdate, savedOrder.getEdate(), refund)
+            : String.format("구독 기간 변경(즉시반영) · %d개월 → %d개월 · %s → %s (금액 변동 없음)",
+                oldPmonth, savedOrder.getPmonth(), beforeEdate, savedOrder.getEdate());
+
+        shopOrderLogService.log(savedOrder.getNo(), savedOrder.getMno(), 5, savedOrder.getSno(), null,
+            beforeEdate, savedOrder.getEdate(), extraCharge > 0 ? extraCharge : -refund, memo,
+            oldCcnt, oldBprice);
   }
 
   /** 변경 예상 결과 미리보기 (실제 반영 없음) */
@@ -255,8 +271,12 @@ public class ShopOrderPendingService {
       pending.setUdate(Tool.getDate());
       ShopOrderPending saved = shopOrderPendingRepository.save(pending);
 
-      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 4, shopOrder.getSno(), null, null, null,
-          "구독권 변경 신청 반려");
+      // 반려는 SHOP_ORDER 값을 안 건드리므로, shopOrder.getCcnt()/getBprice()가 여전히 "현재(변경 전)" 값
+      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 6, shopOrder.getSno(), saved.getNo(), null, null, null,
+          String.format("구독권 변경 신청 반려 · %d대 → %d대(신청) · 사유: %s",
+              shopOrder.getCcnt(), pending.getCcnt(),
+              request.getMemo() != null ? request.getMemo() : "-"),
+          shopOrder.getCcnt(), shopOrder.getBprice());
 
       return ShopOrderPendingDTO.Response.from(saved);
     }
@@ -272,7 +292,12 @@ public class ShopOrderPendingService {
     LocalDate requestedDate = LocalDate.parse(pending.getCdate().substring(0, 10));
     LocalDate edate = LocalDate.parse(shopOrder.getEdate());
 
-    int diffCcnt = pending.getCcnt() - shopOrder.getCcnt();
+    // shopOrder를 덮어쓰기 전에 "변경 전" 값을 전부 미리 빼둠
+    String beforeEdate = shopOrder.getEdate();
+    Integer oldCcnt = shopOrder.getCcnt();
+    Double oldBprice = shopOrder.getBprice();
+
+    int diffCcnt = pending.getCcnt() - oldCcnt;
     long settlementAmount = 0;
 
     if (diffCcnt > 0) {
@@ -280,11 +305,10 @@ public class ShopOrderPendingService {
           diffCcnt);
       settlementAmount = -overCharged;
     } else if (diffCcnt < 0) {
-      long refund = ShopOrderCaculator.calcCcntDecreaseRefund(today, edate, shopOrder.getBprice(), -diffCcnt);
+      long refund = ShopOrderCaculator.calcCcntDecreaseRefund(today, edate, oldBprice, -diffCcnt);
       settlementAmount = -refund;
     }
 
-    String beforeEdate = shopOrder.getEdate();
     shopOrder.setPno(pending.getPno());
     shopOrder.setPmonth(pending.getPmonth());
     shopOrder.setCcnt(pending.getCcnt());
@@ -304,15 +328,26 @@ public class ShopOrderPendingService {
       shopRefundService.updateAmountForOrder(savedOrder.getNo(), refundAmount);
     }
 
-    shopOrderLogService.log(savedOrder.getNo(), savedOrder.getMno(), 5, savedOrder.getSno(), beforeEdate,
-        savedOrder.getEdate(), settlementAmount, "구독권 변경 승인 완료(대수 확정, 정산 " + settlementAmount + "원)");
+    String memo;
+    if (diffCcnt > 0) {
+      memo = String.format("구독권 변경 승인 완료 · %d대 → %d대 · 정산환불 %,d원 (신청일~승인일 과다청구분)",
+          oldCcnt, pending.getCcnt(), -settlementAmount);
+    } else if (diffCcnt < 0) {
+      memo = String.format("구독권 변경 승인 완료 · %d대 → %d대 · 환불액 %,d원",
+          oldCcnt, pending.getCcnt(), -settlementAmount);
+    } else {
+      memo = String.format("구독권 변경 승인 완료 · %d대 → %d대 (금액 변동 없음)",
+          oldCcnt, pending.getCcnt());
+    }
+
+    shopOrderLogService.log(savedOrder.getNo(), savedOrder.getMno(), 5, savedOrder.getSno(), pending.getNo(), beforeEdate,
+        savedOrder.getEdate(), settlementAmount, memo, pending.getCcnt(), pending.getBprice());
 
     return ShopOrderPendingDTO.Response.from(savedPending);
   }
 
   /**
    * 관리자 변경내역 조회
-   * 
    * @param status
    * @return
    */
@@ -325,9 +360,33 @@ public class ShopOrderPendingService {
       ShopOrderPending pending = (ShopOrderPending) row[0];
       String pname = (String) row[1];
       String sname = (String) row[2];
-      Integer minCcnt = row[3] != null ? ((Number) row[3]).intValue() : null;
-      Integer maxCcnt = row[4] != null ? ((Number) row[4]).intValue() : null;
-      return ShopOrderPendingDTO.Response.from(pending, pname, sname, minCcnt, maxCcnt);
+      Integer oldCcnt = row[3] != null ? ((Number) row[3]).intValue() : null;
+      Integer minCcnt = row[4] != null ? ((Number) row[4]).intValue() : null;
+      Integer maxCcnt = row[5] != null ? ((Number) row[5]).intValue() : null;
+      Long sno = row[6] != null ? ((Number) row[6]).longValue() : null;
+      return ShopOrderPendingDTO.Response.from(pending, pname, sname, oldCcnt, minCcnt, maxCcnt, sno);
+    });
+  }
+
+  /**
+   * 회원별 변경내역 조회
+   * @param status
+   * @return
+   */
+  @Transactional(readOnly = true)
+  public Page<ShopOrderPendingDTO.Response> searchMnoPending(ShopOrderPendingDTO.SearchRequest req, Pageable pageable) {
+    Page<Object[]> res = shopOrderPendingRepository.findByMnoWithJoinSearch(req.getMno(), req.getStatus(), req.getWord(),
+        req.getDateFrom(), req.getDateTo(), pageable);
+
+    return res.map(row -> {
+      ShopOrderPending pending = (ShopOrderPending) row[0];
+      String pname = (String) row[1];
+      String sname = (String) row[2];
+      Integer oldCcnt = row[3] != null ? ((Number) row[3]).intValue() : null;
+      Integer minCcnt = row[4] != null ? ((Number) row[4]).intValue() : null;
+      Integer maxCcnt = row[5] != null ? ((Number) row[5]).intValue() : null;
+      Long sno = row[6] != null ? ((Number) row[6]).longValue() : null;
+      return ShopOrderPendingDTO.Response.from(pending, pname, sname, oldCcnt, minCcnt, maxCcnt, sno);
     });
   }
 }

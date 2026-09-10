@@ -94,5 +94,21 @@ public class ShopOrderPendingCont {
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
   }  
+  
+  /**
+   * 회원용 — 승인대기 목록
+   * GET /shop_order_pending/list/1
+   */
+  @GetMapping("/list/{mno}")
+  public ResponseEntity<PageResponse<ShopOrderPendingDTO.Response>> findMyList(
+      @PathVariable("mno") Long mno,
+      ShopOrderPendingDTO.SearchRequest searchCondition,
+      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
+
+    searchCondition.setMno(mno); // 이 줄 추가
+    Page<ShopOrderPendingDTO.Response> pageResult = shopOrderPendingService.searchMnoPending(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
+
 
 }

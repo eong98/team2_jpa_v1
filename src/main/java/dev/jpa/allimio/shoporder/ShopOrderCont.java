@@ -43,6 +43,11 @@ public class ShopOrderCont {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
+  /**
+   * 회원 등급 조회
+   * @param mno
+   * @return
+   */
   @GetMapping("/grade/{mno}")
   public ResponseEntity<Integer> memberGrade(@PathVariable(name = "mno") Long mno) {
     if (mno == null) {
@@ -162,37 +167,17 @@ public class ShopOrderCont {
   
 
   /**
-   * 관리자용 구독 내역 전체 검색 + 페이징 조회. mno를 넘기면 특정 회원만,
-   * 안 넘기면 전체 회원 대상으로 조회됩니다.
-   * GET /shop_order/list/admin?mno=1&word=ORD&status=0&dateType=cdate&dateFrom=2026-08-01&dateTo=2026-08-31&page=0&size=10
+   * [관리자] 전체 구독내역 목록 
+   * GET /shop_order/list/admin
    */
-//  @GetMapping("/list/admin")
-//  public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchAllAdmin(
-//      ShopOrderDTO.SearchRequest searchCondition,
-//      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
-//
-//    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchAllAdmin(searchCondition, pageable);
-//    return ResponseEntity.ok(PageResponse.of(pageResult));
-//  }
+  @GetMapping("/list/admin")
+  public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchAdmin(
+      ShopOrderDTO.SearchRequest searchCondition,
+      @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-//  /**
-//   * 회원 기준 목록 (페이징 없는 단순 목록, 마이페이지 요약 등에서 사용)
-//   * GET /shop_order/mno/1
-//   */
-//  @GetMapping("/mno/{mno}")
-//  public ResponseEntity<List<ShopOrderDTO.Response>> findByMno(@PathVariable("mno") long mno) {
-//    return ResponseEntity.ok(shopOrderService.findByMno(mno));
-//  }
-//
-//  /**
-//   * 매장 기준 목록
-//   * GET /shop_order/sno/1
-//   */
-//  @GetMapping("/sno/{sno}")
-//  public ResponseEntity<List<ShopOrderDTO.Response>> findBySno(@PathVariable("sno") long sno) {
-//    return ResponseEntity.ok(shopOrderService.findBySno(sno));
-//  }
-
+    Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchAllOrders(searchCondition, pageable);
+    return ResponseEntity.ok(PageResponse.of(pageResult));
+  }
   
   
 
