@@ -128,7 +128,7 @@ COMMIT;
 
 
 ALTER TABLE QA ADD (
-  GUEST_EMAIL VARCHAR2(50)  NULL  -- 비회원 문의 시 답변 알림용 이메일 (선택)
+    VCNT        NUMBER(10,0) DEFAULT 0           NULL
 );
 
 COMMIT;

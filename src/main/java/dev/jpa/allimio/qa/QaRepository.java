@@ -16,16 +16,16 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
   // ⭐ 이전글 / 다음글 조회
   // ==========================================
   /**
-   * 이전글 (현재 글보다 번호가 작은 것 중 가장 가까운 글 = 더 오래된 글)
+   * 이전글 (현재 글보다 날짜가 작은 것 중 가장 가까운 글 = 더 오래된 글)
    * 공개(vmode=Y) & 미삭제(isdel=N) 조건만 대상
    */
-  Optional<Qa> findFirstByNoLessThanAndIsdelAndIsfaqOrderByNoDesc(
+  Optional<Qa> findFirstByNoLessThanAndIsdelAndIsfaqOrderByCdateDesc(
       Long no, String isdel, String isfaq);
 
   /**
-   * 다음글 (현재 글보다 번호가 큰 것 중 가장 가까운 글 = 더 최근 글)
+   * 다음글 (현재 글보다 날짜가 큰 것 중 가장 가까운 글 = 더 최근 글)
    */
-  Optional<Qa> findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByNoAsc(
+  Optional<Qa> findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByCdateAsc(
       Long no, String isdel, String isfaq);
 
   // ==========================================
@@ -35,11 +35,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
    * 내 문의내역 전체조회 + 검색조회
    */
   @Query("""
-      SELECT new dev.jpa.allimio.qa.QaDTO$QaResponse(
-        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
-        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn,
-        q.guestEmail, null, null
-      )
+      SELECT q, m.id 
       FROM Qa q
       LEFT JOIN Member m ON q.mno = m.no
       WHERE q.mno = :mno 
@@ -50,7 +46,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND (:status IS NULL OR q.status = :status) 
       ORDER BY q.cdate DESC 
       """)
-  Page<QaDTO.QaResponse> searchMyQuestions(
+  Page<Object[]> searchMyQuestions(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
@@ -64,13 +60,9 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
    * 회원 문의내역 전체조회 + 검색조회 (관리자용)
    */
   @Query("""
-      SELECT new dev.jpa.allimio.qa.QaDTO$QaResponse(
-        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
-        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn, 
-        q.guestEmail, null, null
-      )
-      FROM Qa q
-      LEFT JOIN Member m ON q.mno = m.no
+      SELECT q, m.id 
+      FROM Qa q 
+      LEFT JOIN Member m ON q.mno = m.no 
       WHERE q.isdel = 'N' 
         AND q.isfaq = 'N' 
         AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) 
@@ -79,7 +71,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND (:mno IS NULL OR q.mno = :mno) 
       ORDER BY q.cdate DESC
       """)
-  Page<QaDTO.QaResponse> searchAllQuestions(
+  Page<Object[]> searchAllQuestions(
       @Param("word") String word,
       @Param("type") Integer type,
       @Param("status") Integer status,
@@ -107,7 +99,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
   /**
    * 게시글 삭제용 (글 번호, 비밀번호, 삭제 여부 일치 조회)
    */
-  Optional<Qa> findByNoAndPwAndIsdel(Long no, String pw, String isdel);
+  Optional<Qa> findByNoAndIsdel(Long no, String isdel);
 
   /**
    * 비회원 검색조회
@@ -129,14 +121,10 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
 
   /** 단건 상세 조회 — 작성자 아이디 포함 */
   @Query("""
-      SELECT NEW dev.jpa.allimio.qa.QaDTO$QaResponse(
-        q.no, q.mno, m.id, q.type, q.title, q.content, q.cdate, q.status,
-        q.ano, q.answer, q.adate, q.isdel, q.vmode, q.vseq, q.isfaq, q.fileyn, 
-        q.guestEmail, null, null
-      )
+      SELECT q, m.id 
       FROM Qa q 
       LEFT JOIN Member m ON m.no = q.mno
       WHERE q.no = :no
       """)
-  Optional<QaDTO.QaResponse> findByIdWithMemberId(@Param("no") Long no);
+  Optional<Object[]> findByIdWithMemberId(@Param("no") Long no);
 }

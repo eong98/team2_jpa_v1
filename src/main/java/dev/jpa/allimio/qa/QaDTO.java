@@ -13,13 +13,14 @@ public class QaDTO {
    * 1:1 문의글 작성 / 수정 요청 DTO
    */
   @Getter
+  @Setter
   @NoArgsConstructor
   @AllArgsConstructor
   @Builder
   public static class QCRequest {
     /** 문의 회원 번호 (FK -> MEMBER.NO) */
     private Long mno;
-    private String id;
+    private String id; // join
     /** 문의 유형 (0: 기타, 1: 관제신청, 2: 영상요청, 3: 장비장애) */
     private int type;
     /** 문의 제목 */
@@ -45,11 +46,11 @@ public class QaDTO {
     
 
     /** 작성 시 입력한 이메일 */
-    private String guestEmail;
+    private String guestEmail; // join
 
     public Qa toEntity() {
       return Qa.builder()
-          .mno(this.mno)
+          .mno(this.mno != null ? this.mno : null)
           .type(this.type)
           .title(this.title)
           .content(this.content)
@@ -66,7 +67,7 @@ public class QaDTO {
 
     /** 수정 시 DTO 내용을 기존 엔티티에 반영 */
     public void applyUpdateTo(Qa qa) {
-      qa.updateQuestion(this.title, this.content, this.vmode, this.type, this.pw, this.fileyn, this.guestEmail);
+      qa.updateQuestion(this.title, this.content, this.vmode, this.type, this.fileyn, this.guestEmail);
     }
   }
 
@@ -115,7 +116,7 @@ public class QaDTO {
     /** 게시글 비밀번호 */
     private String pw;
     /** FAQ 정렬 순서 */
-    private int vseq;
+    private Integer vseq;
 
     /** 자주묻는 질문(FAQ) 여부 */
     @Builder.Default
@@ -146,7 +147,7 @@ public class QaDTO {
 
     /** 수정 시 DTO 내용을 기존 엔티티에 반영 */
     public void applyUpdateTo(Qa qa) {
-      qa.updateFaq(this.title, this.content, this.answer, this.pw, this.vseq, this.type, this.fileyn);
+      qa.updateFaq(this.title, this.content, this.answer, this.vseq, this.type, this.fileyn);
     }
   }
 
@@ -161,8 +162,6 @@ public class QaDTO {
   public static class QaResponse {
     private Long no;
     private Long mno;
-    /** MEMBER.ID — 조인해서 가져온 값. 조인 안 한 조회(fromEntity())에서는 null */
-    private String id;
     private int type;
     private String title;
     private String content;
@@ -174,39 +173,46 @@ public class QaDTO {
     private String isdel;
     private String vmode;
     private Integer vseq;
+    private int vcnt;
     private String isfaq;
     private String fileyn;
     private String guestEmail;
 
     private QaNav prev;
     private QaNav next;
+    /** MEMBER.ID — 조인해서 가져온 값. 조인 안 한 조회(fromEntity())에서는 null */
+    private String id;
 
     public static QaResponse fromEntity(Qa entity) {
-      return fromEntity(entity, null, null);
+      return QaResponse.builder()
+        .no(entity.getNo())
+        .mno(entity.getMno())
+        .type(entity.getType())
+        .title(entity.getTitle())
+        .content(entity.getContent())
+        .cdate(entity.getCdate())
+        .status(entity.getStatus())
+        .ano(entity.getAno())
+        .answer(entity.getAnswer())
+        .adate(entity.getAdate())
+        .isdel(entity.getIsdel())
+        .vmode(entity.getVmode())
+        .vseq(entity.getVseq())
+        .isfaq(entity.getIsfaq())
+        .fileyn(entity.getFileyn())
+        .guestEmail(entity.getGuestEmail())
+        .vcnt(entity.getVcnt())
+        .build();
     }
 
     public static QaResponse fromEntity(Qa entity, QaNav prev, QaNav next) {
-      return QaResponse.builder()
-          .no(entity.getNo())
-          .mno(entity.getMno())
-          .id(null) // 엔티티만으로는 아이디를 모름 — ShopOrderDTO 패턴처럼 별도 오버로드로 채움
-          .type(entity.getType())
-          .title(entity.getTitle())
-          .content(entity.getContent())
-          .cdate(entity.getCdate())
-          .status(entity.getStatus())
-          .ano(entity.getAno())
-          .answer(entity.getAnswer())
-          .adate(entity.getAdate())
-          .isdel(entity.getIsdel())
-          .vmode(entity.getVmode())
-          .vseq(entity.getVseq())
-          .isfaq(entity.getIsfaq())
-          .fileyn(entity.getFileyn())
-          .prev(prev)
-          .next(next)
-          .guestEmail(entity.getGuestEmail())
-          .build();
+      QaResponse res = fromEntity(entity);
+      if (res != null) {
+        res.setPrev(prev);
+        res.setNext(next);
+      }
+      return res;
+      
     }
 
     /**

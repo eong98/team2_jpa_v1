@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,10 @@ public class QaService {
   QaRepository qaRepository;
 
   @Autowired
-  MemberRepository memberRepository; // 이 방식이면 이렇게
+  MemberRepository memberRepository;
+  
+  @Autowired
+  PasswordEncoder pwEncoder;
 
   public QaService() {
     System.out.println("-> QaService created");
@@ -34,7 +38,15 @@ public class QaService {
    * @return
    */
   public Page<QaDTO.QaResponse> getAllQuestions(QaDTO.QaSearchRequest req, Pageable pageable) {
-    return qaRepository.searchAllQuestions(req.getWord(), req.getType(), req.getStatus(), req.getMno(), pageable);
+    Page<Object[]> result = qaRepository.searchAllQuestions(
+        req.getWord(), req.getType(), req.getStatus(), req.getMno(), pageable);
+    
+    return result.map(row -> {
+      Qa qa = (Qa) row[0];
+      String id = (String) row[1];
+
+      return QaDTO.QaResponse.fromEntity(qa, null, null, id);
+    });
   }
 
   /**
@@ -59,7 +71,14 @@ public class QaService {
    * @return
    */
   public Page<QaDTO.QaResponse> getMyQuestions(QaDTO.QaSearchRequest req, Pageable pageable) {
-    return qaRepository.searchMyQuestions(req.getWord(), req.getType(), req.getStatus(), req.getMno(), pageable);
+    Page<Object[]> result = qaRepository.searchMyQuestions(req.getWord(), req.getType(), req.getStatus(), req.getMno(), pageable);
+    
+    return result.map(row -> {
+      Qa qa = (Qa) row[0];
+      String id = (String) row[1];
+
+      return QaDTO.QaResponse.fromEntity(qa, null, null, id);
+    });
   }
 
   /**
@@ -80,6 +99,7 @@ public class QaService {
 
     QaDTO.QaNav prev = null;
     QaDTO.QaNav next = null;
+    qa.increaseVcnt();
 
     if ("N".equals(qa.getIsfaq())) {
       boolean isAdmin = (ano != null && ano > 0);
@@ -97,7 +117,7 @@ public class QaService {
         } else {
           // [비회원 글] 비밀글(vmode='Y')일 때만 비밀번호 검증
           if ("Y".equals(qa.getVmode())) {
-            if (pw == null || !pw.equals(qa.getPw())) {
+            if (pw == null || !pwEncoder.matches(pw, qa.getPw())) {
               throw new IllegalArgumentException("비밀번호가 일치하지 않거나 비회원 문의글 접근 권한이 없습니다.");
             }
           }
@@ -105,10 +125,10 @@ public class QaService {
       }
 
       // 이전글 / 다음글 조회
-      prev = qaRepository.findFirstByNoLessThanAndIsdelAndIsfaqOrderByNoDesc(no, "N", "N")
+      prev = qaRepository.findFirstByNoLessThanAndIsdelAndIsfaqOrderByCdateDesc(no, "N", "N")
           .map(n -> new QaDTO.QaNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getVmode(), n.getCdate())).orElse(null);
 
-      next = qaRepository.findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByNoAsc(no, "N", "N")
+      next = qaRepository.findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByCdateAsc(no, "N", "N")
           .map(n -> new QaDTO.QaNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getVmode(), n.getCdate())).orElse(null);
 
       // 관리자 조회 시 답변 대기(0) -> 확인중(1) 변경
@@ -120,6 +140,7 @@ public class QaService {
     // 작성자 아이디 조회 (회원 글일 때만)
     String id = (qa.getMno() != null) ? memberRepository.findById(qa.getMno()).map(Member::getId).orElse(null) : null;
 
+    
     return QaDTO.QaResponse.fromEntity(qa, prev, next, id);
   }
 
@@ -165,14 +186,40 @@ public class QaService {
    */
   @Transactional
   public QaDTO.QaResponse createQuestion(QaDTO.QCRequest dto) {
-    Qa qa = dto.toEntity();
-    Qa savedQa = qaRepository.save(qa);
+    String guestEmail = null;
+    String id = guestEmail;
+    Long mno = dto.getMno();
+    
+    if (mno == null || "0".equals(String.valueOf(mno))) {
+      // 비회원 문의 등록
+      guestEmail = dto.getGuestEmail();
+      mno = null;
+    } else {
+      // 회원 문의 등록
+      guestEmail = memberRepository.findById(mno).map(Member::getEmail).orElse(null);
+      id = memberRepository.findById(mno).map(Member::getId).orElse(null);
+    }
+    
+    Qa qa = Qa.builder()
+        .mno(mno)
+        .type(dto.getType())
+        .title(dto.getTitle())
+        .content(dto.getContent())
+        .cdate(Tool.getDate())
+        .pw(pwEncoder.encode(dto.getPw()))
+        .vmode(dto.getVmode() != null ? dto.getVmode() : "N")
+        .status(0) // 답변 대기
+        .isdel("N")
+        .isfaq("N")
+        .fileyn(dto.getFileyn())
+        .guestEmail(guestEmail)
+        .build();
+    
+        
+    Qa saved = qaRepository.save(qa);
 
-    // 등록 직후 작성자 ID 조회하여 DTO로 변환
-    String id = savedQa.getMno() != null ? memberRepository.findById(savedQa.getMno()).map(Member::getId).orElse(null)
-        : null;
 
-    return QaDTO.QaResponse.fromEntity(savedQa, null, null, id);
+    return QaDTO.QaResponse.fromEntity(saved, null, null, id);
   }
 
   /**
@@ -187,7 +234,7 @@ public class QaService {
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
     // 2. 비밀번호 검증
-    if (!qa.matchPw(updateDto.getPw())) {
+    if (!pwEncoder.matches(updateDto.getPw(), qa.getPw())) {
       throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
     }
 
@@ -249,7 +296,7 @@ public class QaService {
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
     // 2. 비밀번호 검증
-    if (!qa.matchPw(updateDto.getPw())) {
+    if (!pwEncoder.matches(updateDto.getPw(), qa.getPw())) {
       throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
     }
 
@@ -265,9 +312,14 @@ public class QaService {
    */
   @Transactional
   public void deleteQuestion(QaDTO.DeleteRequest deleteDto) {
-    // 1. 글번호 + 비밀번호 + 미삭제(N) 조건으로 조회
-    Qa qa = qaRepository.findByNoAndPwAndIsdel(deleteDto.getNo(), deleteDto.getPw(), "N")
-        .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않거나 비밀번호가 일치하지 않습니다."));
+    // 1. 글번호 + 미삭제(N) 조건으로 조회
+    
+    Qa qa = qaRepository.findByNoAndIsdel(deleteDto.getNo(), "N")
+        .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다."));
+
+    if (!pwEncoder.matches(deleteDto.getPw(), qa.getPw())) {
+      throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+    }    
 
     if (qa.getIsfaq() == "Y") {
       // 2. 분류 구분이 FAQ 인 경우 실제 데이터 삭제

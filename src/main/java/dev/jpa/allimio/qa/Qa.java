@@ -78,6 +78,14 @@ public class Qa {
   /** 비회원 문의 작성자 이메일 (검색용) */
   private String guestEmail;
 
+
+  /** 조회수 */
+  @Builder.Default
+  private int vcnt = 0;
+  
+  
+  
+  
   public Qa() {
 
   }
@@ -103,7 +111,8 @@ public class Qa {
    */
   @Builder
   public Qa(Long no, Long mno, int type, String title, String content, String cdate, String pw, int status,
-      String isdel, String vmode, int vseq, String isfaq, Long ano, String answer, String adate, String ddate, String fileyn, String guestEmail) {
+      String isdel, String vmode, Integer vseq, String isfaq, Long ano, String answer, String adate, String ddate, String fileyn, String guestEmail,
+      int vcnt) {
     this.no = no;
     this.mno = mno;
     this.type = type;
@@ -122,6 +131,7 @@ public class Qa {
     this.ddate = ddate;
     this.fileyn = fileyn;
     this.guestEmail= guestEmail;
+    this.vcnt = vcnt;
   }
 
   // ==========================================
@@ -130,15 +140,12 @@ public class Qa {
   /**
    * 문의글 작성자가 수정할 때 호출
    */
-  public void updateQuestion(String title, String content, String vmode, int type, String pw, String fileyn, String guestEmail) {
+  public void updateQuestion(String title, String content, String vmode, int type, String fileyn, String guestEmail) {
     this.title = title;
     this.content = content;
     this.vmode = vmode;
     this.type = type;
     this.fileyn = fileyn;
-    if (pw != null && !pw.isBlank()) {
-      this.pw = pw; // 공백이나 빈값이 아닌 새 비밀번호가 입력되었을 때만 업데이트
-    }
     this.guestEmail = guestEmail;
   }
   
@@ -148,13 +155,10 @@ public class Qa {
   /**
    * FAQ 수정할 때 호출
    */
-  public void updateFaq(String title, String content, String answer, String pw, int vseq, int type, String fileyn) {
+  public void updateFaq(String title, String content, String answer, Integer vseq, int type, String fileyn) {
     this.title = title;
     this.content = content;
     this.answer = answer;
-    if (pw != null && !pw.isBlank()) {
-      this.pw = pw; // 공백이나 빈값이 아닌 새 비밀번호가 입력되었을 때만 업데이트
-    }
     this.vseq = vseq;
     this.type = type;
     this.fileyn = fileyn;
@@ -180,6 +184,15 @@ public class Qa {
   public void setStatus(int status) {
       this.status = status;
   }
+  //==========================================
+  //⭐ 조회수 증가 메서드
+  //==========================================
+   /**
+    * 상세 페이지 조회 시 조회수 1 증가
+    */
+   public void increaseVcnt() {
+     this.vcnt += 1;
+   }
 
   // ==========================================
   // ⭐ 문의글 소프트 삭제 메서드
@@ -192,13 +205,5 @@ public class Qa {
     this.ddate = ddate; // 삭제 시점 기록
   }
   
-  /**
-   * 비밀번호 일치 여부 검증 메서드
-   * @param pw
-   * @return
-   */
-  public boolean matchPw(String pw) {
-    return this.pw != null && this.pw.equals(pw);
-  }
 
 }
