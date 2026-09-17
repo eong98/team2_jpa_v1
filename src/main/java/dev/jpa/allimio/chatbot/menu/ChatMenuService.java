@@ -105,14 +105,6 @@ public class ChatMenuService {
   }
 
   /**
-   * 관리자용 — 전체 메뉴 검색 + 페이징.
-   */
-  public Page<ChatMenuDTO.Response> searchAllAdmin(ChatMenuDTO.SearchRequest req, Pageable pageable) {
-    Page<ChatMenu> result = chatMenuRepository.searchAllAdmin(req.getWord(), req.getStep(), req.getUseyn(), pageable);
-    return result.map(ChatMenuDTO.Response::from);
-  }
-
-  /**
    * 관리자용 — 전체 트리 조회 (관리 화면 트리뷰용, 페이징 없음).
    */
   public List<ChatMenuDTO.Response> getFullTree() {

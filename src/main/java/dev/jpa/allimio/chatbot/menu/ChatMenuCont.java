@@ -88,18 +88,6 @@ public class ChatMenuCont {
   }
 
   /**
-   * 관리자용 — 전체 메뉴 검색 + 페이징
-   * GET /chat_menu/list/admin?word=&step=&useyn=&page=0&size=10
-   */
-  @GetMapping("/list/admin")
-  public ResponseEntity<PageResponse<ChatMenuDTO.Response>> searchAllAdmin(
-      ChatMenuDTO.SearchRequest searchCondition,
-      @PageableDefault(size = 20, sort = "no", direction = Sort.Direction.ASC) Pageable pageable) {
-    Page<ChatMenuDTO.Response> pageResult = chatMenuService.searchAllAdmin(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));
-  }
-
-  /**
    * 관리자용 — 전체 트리 조회 (트리뷰 렌더링용)
    * GET /chat_menu/tree/admin
    */

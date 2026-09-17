@@ -71,19 +71,4 @@ public class ChatMenuDTO {
     }
   }
   
-
-  /** 관리자용 검색 조건 */
-  @Getter
-  @Setter
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  public static class SearchRequest {
-    /** 검색어 (선택지 텍스트) */
-    private String word;
-    /** 옵션 단계 필터 */
-    private Integer step;
-    /** 사용여부 필터 */
-    private String useyn;
-  }
 }
