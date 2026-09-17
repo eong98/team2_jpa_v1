@@ -15,6 +15,8 @@ import dev.jpa.allimio.history.login.LoginHistory;
 import dev.jpa.allimio.history.login.LoginHistoryRepository;
 import dev.jpa.allimio.history.update.UpdateHistoryDTO;
 import dev.jpa.allimio.history.update.UpdateHistoryRepository;
+import dev.jpa.allimio.jwt.JwtTokenProvider;
+import dev.jpa.allimio.jwt.RefreshTokenRedisRepository;
 import dev.jpa.allimio.tool.Tool;
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +27,9 @@ public class MemberService {
   private final UpdateHistoryRepository updateHistoryRepository;
   private final LoginHistoryRepository loginHistroyRepository;
   private final PasswordEncoder passwordEncoder;
+  private final JwtTokenProvider jwtTokenProvider;
+  private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+  
   
   /**
    * 아이디 중복 체크
@@ -96,9 +101,17 @@ public class MemberService {
     }
 
     // [성공] 모든 검증 통과
+    String accessToken = jwtTokenProvider.createAccessToken(member.getNo(), "MEMBER", member.getGrade());
+    String refreshToken = jwtTokenProvider.createRefreshToken(member.getNo(), "MEMBER");
+    refreshTokenRedisRepository.save("MEMBER", member.getNo(), refreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
+
+    
     saveLoginLogs(id, 1, null, null, now, ipAddr, member);
     result.put("success", true);
     result.put("user", MemberDTO.from(member)); // Member 엔티티를 DTO로 변환
+    result.put("accessToken", accessToken);
+    result.put("refreshToken", refreshToken);
+    
     return result;
 }
   

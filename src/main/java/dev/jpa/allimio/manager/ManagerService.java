@@ -15,8 +15,8 @@ import dev.jpa.allimio.history.login.LoginHistory;
 import dev.jpa.allimio.history.login.LoginHistoryRepository;
 import dev.jpa.allimio.history.update.UpdateHistoryDTO;
 import dev.jpa.allimio.history.update.UpdateHistoryRepository;
-import dev.jpa.allimio.member.Member;
-import dev.jpa.allimio.member.MemberDTO;
+import dev.jpa.allimio.jwt.JwtTokenProvider;
+import dev.jpa.allimio.jwt.RefreshTokenRedisRepository;
 import dev.jpa.allimio.tool.Tool;
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +27,9 @@ public class ManagerService {
   private final UpdateHistoryRepository updateHistoryRepository;
   private final LoginHistoryRepository loginHistoryRepository;
   private final PasswordEncoder passwordEncoder;
+  private final JwtTokenProvider jwtTokenProvider;
+  private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+  
   
   /**
    * 아이디 중복 체크
@@ -90,9 +93,16 @@ public class ManagerService {
   }
 
   // [성공] 모든 검증 통과
+  String accessToken = jwtTokenProvider.createAccessToken(manager.getNo(), "MANAGER", manager.getGrade());
+  String refreshToken = jwtTokenProvider.createRefreshToken(manager.getNo(), "MANAMGER");
+  refreshTokenRedisRepository.save("MANAGER", manager.getNo(), refreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
+  
   saveLoginLogs(id, 1, null, null, now, ipAddr, manager);
   result.put("success", true);
   result.put("dbms", ManagerDTO.from(manager)); // manager 엔티티를 DTO로 변환
+  result.put("accessToken", accessToken);
+  result.put("refreshToken", refreshToken);
+  
   return result;
   }
   

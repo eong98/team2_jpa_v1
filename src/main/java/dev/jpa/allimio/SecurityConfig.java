@@ -14,14 +14,23 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import dev.jpa.allimio.jwt.JwtAuthenticationFilter;
+import dev.jpa.allimio.jwt.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 //1. 비밀번호 암호화 빈 등록 (BCrypt 방식)
+  
+  private final JwtTokenProvider jwtTokenProvider;
+  
   @Bean
   public PasswordEncoder passwordEncoder() {
       return new BCryptPasswordEncoder();
@@ -58,7 +67,12 @@ public class SecurityConfig {
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
               .anyRequest().permitAll()
 //              .anyRequest().authenticated()  -> 개발 완료후 전환
-          );
+          )
+          
+          .addFilterBefore(
+              new JwtAuthenticationFilter(jwtTokenProvider), 
+              UsernamePasswordAuthenticationFilter.class
+              );
 
       return http.build();
   }
