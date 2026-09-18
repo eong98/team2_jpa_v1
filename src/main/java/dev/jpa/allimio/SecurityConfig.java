@@ -61,12 +61,14 @@ public class SecurityConfig {
                   "/v1/user/login",
                   "/v1/user/save",
                   "/v1/user/check/{id}",
-                  "/v1/dbms/login"
+                  "/v1/dbms/login",
+                  "/auth/reissue"
               ).permitAll()
               
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
-              .anyRequest().permitAll()
-//              .anyRequest().authenticated()  -> 개발 완료후 전환
+//              .requestMatchers("/v1/user/mypage").authenticated()
+//              .anyRequest().permitAll()
+              .anyRequest().authenticated()  // -> 개발 완료후 전환
           )
           
           .addFilterBefore(
