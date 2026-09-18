@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface ChatSessionRepository extends JpaRepository<ChatSession, String> {
@@ -44,4 +46,15 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
       WHERE s.no = :no
       """)
   List<Object[]> findByIdWithMenu(@Param("no") String no);
+  
+  /**
+   * 채팅방 읽음처리
+   * @param no
+   * @param readat
+   * @return
+   */
+  @Modifying
+  @Transactional
+  @Query("UPDATE ChatSession s SET s.readat = :readat WHERE s.no = :no")
+  int updateReadAt(@Param("no") String no, @Param("readat") String readat);
 }

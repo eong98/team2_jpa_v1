@@ -145,6 +145,9 @@ public class ChatSessionDTO {
     private Integer sreason;
     /** 불만족 사유 기타 직접입력 */
     private String smemo;
+    private String stitle;
+    private String readat;
+    private Integer endflow;
     
     /** 현재 위치한 메뉴명 (join) — 채팅방 헤더 타이틀 등에 사용 */
     private String cnoLabel;
@@ -166,6 +169,9 @@ public class ChatSessionDTO {
           .satisfy(entity.getSatisfy())
           .sreason(entity.getSreason())
           .smemo(entity.getSmemo())
+          .stitle(entity.getStitle())
+          .readat(entity.getReadat())
+          .endflow(entity.getEndflow())
           .build();
     }
  
@@ -187,10 +193,12 @@ public class ChatSessionDTO {
     /** 세션식별키 (UUID) */
     private String no;
     /** 대표 타이틀 — 옵션형이면 현재 메뉴명, AI상담이면 "AI 상담" */
-    private String title;
+    private String stitle;
     /** 진행모드 (0 옵션형진행중, 1 AI상담진행중, 2 종료) */
     private Integer cmode;
     /** 마지막 활동 시각 — 목록 정렬 기준 */
     private String udate;
+    /** 마지막으로 읽은 시각. udate보다 이전(또는 NULL)이면 안읽음 상태 */
+    private String readat;
   }
 }

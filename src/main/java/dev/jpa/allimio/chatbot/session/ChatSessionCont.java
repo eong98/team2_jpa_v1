@@ -55,6 +55,13 @@ public class ChatSessionCont {
       @RequestParam(value = "gno", required = false) String gno) {
     return ResponseEntity.ok(chatSessionService.getList(mno, gno));
   }
+  
+  /** 채팅방 읽음 처리 (채팅방 진입 시 호출) */
+//  @PutMapping("/{no}/read")
+//  public ResponseEntity<Void> markAsRead(@PathVariable("no") String no) {
+//    chatSessionService.markAsRead(no);
+//    return ResponseEntity.ok().build();
+//  }
  
   /** 옵션 선택 */
   @PutMapping("/{no}/select")

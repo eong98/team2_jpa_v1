@@ -75,6 +75,25 @@ public class ChatSessionService {
   
 
   /**
+   *  사용자 상담진행 대기 상수
+   * 0: 만족도평가, 1: 불만족이유, 2: 불만족 이유 작성, 3: 관리자 문의노출, 4: AI 답변실패
+  */
+  private static final int ENDFLOW_ASK_SATISFY = 0;
+  private static final int ENDFLOW_ASK_UNSATISFY_REASON = 1;
+  private static final int ENDFLOW_ASK_UNSATISFY_MEMO = 2;
+  private static final int ENDFLOW_ASK_ESCALATE_CONFIRM = 3;
+  private static final int ENDFLOW_FAIL_AI_ANSWER= 4;
+  
+  
+  /**
+   * 채팅방을 읽음 처리. 세션 조회(진입) 시점에 호출되어 READAT을 현재 시각으로 갱신합니다.
+   */
+  @Transactional
+  public void markAsRead(String no) {
+    chatSessionRepository.updateReadAt(no, Tool.getDate());
+  }
+ 
+  /**
    * 세션 생성. 최상위 옵션 클릭 또는 "AI에게 바로 물어보기" 클릭 시점에만 호출됩니다.
    * cmode=1(AI상담)로 생성하는 경우, greeting이 있으면 인사말까지 로그로 남깁니다.
    */
@@ -92,6 +111,7 @@ public class ChatSessionService {
         .channel(req.getChannel() != null ? req.getChannel() : 10)
         .cdate(now)
         .udate(now)
+        .readat(now)
         .build();
     ChatSession saved = chatSessionRepository.save(session);
  
@@ -112,6 +132,9 @@ public class ChatSessionService {
     Object[] row = result.get(0);
     ChatSession session = (ChatSession) row[0];
     String cnoLabel = (String) row[1];
+    
+    markAsRead(session.getNo());
+    
     return ChatSessionDTO.Response.from(session, cnoLabel);
   }
  
@@ -123,6 +146,9 @@ public class ChatSessionService {
     Optional<ChatSession> optional = mno != null
         ? chatSessionRepository.findActiveByMno(mno)
         : chatSessionRepository.findActiveByGno(gno);
+    
+    markAsRead(optional.get().getNo());
+    
     return optional.map(ChatSessionDTO.Response::from).orElse(null);
   }
  
@@ -144,12 +170,12 @@ public class ChatSessionService {
    * @return
    */
   private ChatSessionDTO.Summary toSummary(ChatSession session) {
-    String title = "AI 상담";
+    String title = "AI 상담"; 
     if (session.getCmode() == MODE_OPTION && session.getCno() != null) {
       title = chatMenuRepository.findById(session.getCno()).map(m -> m.getLabel()).orElse("상담");
     }
     return ChatSessionDTO.Summary.builder()
-        .no(session.getNo()).title(title).cmode(session.getCmode()).udate(session.getUdate()).build();
+        .no(session.getNo()).stitle(title).cmode(session.getCmode()).udate(session.getUdate()).readat(session.getReadat()).build();
   }
  
   /**
@@ -164,6 +190,7 @@ public class ChatSessionService {
  
     session.setCno(cno);
     session.setUdate(Tool.getDate());
+    session.setReadat(Tool.getDate());
  
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     logs.add(log(no, SENDER_USER, MTYPE_MENU_SELECT, menu.getLabel(), cno));
@@ -195,6 +222,7 @@ public class ChatSessionService {
     session.setCmode(MODE_AI);
     session.setCno(null);
     session.setUdate(Tool.getDate());
+    session.setReadat(Tool.getDate());
 
     logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, startAi, null));
     logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, greeting, null));
@@ -214,6 +242,7 @@ public class ChatSessionService {
     session.setCmode(MODE_OPTION);
     session.setCno(null);
     session.setUdate(Tool.getDate());
+    session.setReadat(Tool.getDate());
  
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     logs.add(log(no, SENDER_USER, MTYPE_BACK, "다른 질문하기", null));
@@ -236,11 +265,13 @@ public class ChatSessionService {
     ChatSession session = getSession(no);
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     String sysMsg = req.getSystemMessage();
+    session.setReadat(Tool.getDate());
  
     switch (req.getAction()) {
       case END -> {
         logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, "상담 종료", null));
         logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        session.setEndflow(ENDFLOW_ASK_SATISFY);
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case SATISFY -> {
@@ -251,8 +282,10 @@ public class ChatSessionService {
         // 만족 선택시 상담 종료
         if (satisfy == 1) {
           closeSession(session, 0, 1, null, null);
+          session.setEndflow(null); // 종료됐으니 대기상태 해제
           return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
         }
+        session.setEndflow(ENDFLOW_ASK_UNSATISFY_REASON);
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case UNSATISFY_REASON -> {
@@ -261,21 +294,25 @@ public class ChatSessionService {
         
         // 불만족 사유 : 기타
         if (req.getSreason() == 9) {
+          session.setEndflow(ENDFLOW_ASK_UNSATISFY_MEMO); // 추가
           return ChatSessionDTO.ActionResult.builder().logs(logs).build();
         }
         closeSession(session, 0, 0, req.getSreason(), null);
+        session.setEndflow(null);
         return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
       }
       case UNSATISFY_MEMO -> {
         logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getSmemo(), null));
         logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         closeSession(session, 0, 0, 9, req.getSmemo());
+        session.setEndflow(null);
         return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
       }
       case ESCALATE -> {
         // 버튼 클릭 자체를 사용자 발화로 기록
         logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null)); 
         logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        session.setEndflow(ENDFLOW_ASK_ESCALATE_CONFIRM); // 추가
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case ESCALATE_CONFIRM -> {
@@ -283,9 +320,11 @@ public class ChatSessionService {
         // TODO: confirmed일 때 대화로그 기반 AI요약 → QA 등록화면 진입 연동
         if (req.getGoQa()) {
           closeSession(session, 1, null, null, null);
+          session.setEndflow(null); // 추가
           return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
         }
-        
+
+        session.setEndflow(null); // 아니오 선택 시 대기상태 해제, 대화 계속
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       default -> throw new IllegalArgumentException("알 수 없는 액션입니다: " + req.getAction());
@@ -299,6 +338,7 @@ public class ChatSessionService {
   @Transactional
   public ChatSessionDTO.ActionResult aiChat(String no, String message) {
     getSession(no);
+    getSession(no).setReadat(Tool.getDate());
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, message, null));
  
@@ -307,6 +347,7 @@ public class ChatSessionService {
     boolean needsAdmin = true;
  
     logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, answer, null));
+    getSession(no).setEndflow(needsAdmin ? ENDFLOW_FAIL_AI_ANSWER : null);
  
     return ChatSessionDTO.ActionResult.builder().logs(logs).needsAdmin(needsAdmin).build();
   }
@@ -324,10 +365,12 @@ public class ChatSessionService {
     session.setCmode(MODE_CLOSED);
     session.setClosedat(now);
     session.setUdate(now);
+    session.setReadat(Tool.getDate());
     session.setCreason(creason);
     session.setSatisfy(satisfy);
     session.setSreason(sreason);
     session.setSmemo(smemo);
+    session.setEndflow(null);
   }
  
   private ChatSession getSession(String no) {

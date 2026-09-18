@@ -40,6 +40,9 @@ public class ChatSession {
   /** 진행모드 (0: 옵션형 진행중, 1: AI상담 진행중, 2: 종료) */
   @Builder.Default
   private Integer cmode = 0;
+  
+  /** 현재 대기중인 세션 상태 (0: 만족도평가, 1: 불만족이유, 2: 불만족 이유 작성, 3: 관리자 문의노출) */
+  private Integer endflow;
 
   /** 접속 채널 (10: WEB, 20: MOBILE) */
   @Builder.Default
@@ -70,4 +73,10 @@ public class ChatSession {
 
   /** 불만족 사유 기타 직접입력 */
   private String smemo;
+  
+  /** AI 요약 타이틀 */
+  private String stitle;
+  
+  /** 사용자가 마지막으로 이 채팅방을 읽은 시각 (안읽음 표시 판단용) */
+  private String readat;
 }
