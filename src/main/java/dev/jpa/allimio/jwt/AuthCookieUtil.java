@@ -49,8 +49,8 @@ public class AuthCookieUtil {
         // → XSS로 Token이 탈취되는 위험을 줄인다.
         cookie.setHttpOnly(true);
 
-        // HTTPS 연결에서만 Cookie를 전송하도록 설정
-        cookie.setSecure(true);
+        // HTTPS 연결에서만 Cookie를 전송하도록 설정 -> HTTPS 배포시 TRUE로
+        cookie.setSecure(false);
 
         // 사이트 전체 경로에서 Cookie를 사용할 수 있도록 설정
         cookie.setPath("/");
@@ -83,8 +83,8 @@ public class AuthCookieUtil {
         // JavaScript에서 Refresh Token을 읽지 못하도록 설정
         cookie.setHttpOnly(true);
 
-        // HTTPS 연결에서만 Cookie를 전송하도록 설정
-        cookie.setSecure(true);
+        // HTTPS 연결에서만 Cookie를 전송하도록 설정 -> HTTPS 배포시 TRUE로
+        cookie.setSecure(false);
 
         // 사이트 전체 경로에서 Cookie를 사용할 수 있도록 설정
         cookie.setPath("/");

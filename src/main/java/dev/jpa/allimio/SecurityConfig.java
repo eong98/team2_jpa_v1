@@ -62,7 +62,8 @@ public class SecurityConfig {
                   "/v1/user/save",
                   "/v1/user/check/{id}",
                   "/v1/dbms/login",
-                  "/auth/reissue"
+                  "/auth/reissue",
+                  "/auth/logout"
               ).permitAll()
               
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
@@ -94,9 +95,8 @@ public class SecurityConfig {
       
       config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-      config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type", "*"));
+      config.setAllowedHeaders(Arrays.asList( "Cache-Control", "Content-Type", "*"));
       config.setAllowCredentials(true);
-      config.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
 
       UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
       source.registerCorsConfiguration("/**", config);

@@ -26,8 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
 
     /**
-     * 필터의 핵심 로직을 수행하는 메서드.
-     * 요청 헤더에서 JWT를 추출하고, 검증 성공 시 SecurityContext에 사용자 인증 정보를 세팅합니다.
+     * HTTP 요청 헤더에서 JWT를 파싱해 순수 토큰 문자열만 반환하는 헬퍼 메서드.
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
