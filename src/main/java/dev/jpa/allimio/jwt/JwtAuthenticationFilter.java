@@ -80,6 +80,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (bearer != null && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);
         }
+        
+        // HttpOnly Cookie에서 토큰이 존재하는지 확인
+        if (request.getCookies() != null) {
+          
+          // 요청에 포함된 모든 쿠키 확인
+          for(jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+            
+              // 토큰 일치하는지 확인
+              if (AuthCookieUtil.ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                  // 일치하면 토큰 return
+                  return cookie.getValue();
+              }
+          }
+        }
+        
+        // 토큰이 존재하지 않으면 null
         return null;
     }
 }
