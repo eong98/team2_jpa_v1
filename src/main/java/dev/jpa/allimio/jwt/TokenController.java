@@ -35,7 +35,8 @@ public class TokenController {
         String newAccessToken = jwtTokenProvider.createAccessToken(no, role, grade);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(no, role);
 
-        // Refresh Token Rotation: 재발급마다 새로 교체 저장 (탈취 대응)
+        // Refresh Token Rotation: 재발급마다 새로 교체 저장 (탈취 대응), 
+        // RTR 방식 -> refresh 토큰이 탈취당하면 해킹 피해가 커지므로 accessToken을 재발급 받을때마다 refreshToken도 재발급받음, 시간은 유지
         refreshTokenRedisRepository.save(role, no, newRefreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
 
         return ResponseEntity.ok(new TokenRes(newAccessToken, newRefreshToken));
