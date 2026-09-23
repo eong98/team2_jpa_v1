@@ -73,13 +73,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @return "Bearer "를 제거한 JWT 문자열 (헤더가 없거나 형식이 맞지 않으면 null)
      */
     private String resolveToken(HttpServletRequest request) {
-        // "Authorization" 헤더 값 조회 (형식: "Bearer eyJhbGciOi...")
-        String bearer = request.getHeader("Authorization");
-
-        // 표준 Bearer 스키마를 준수하는지 확인 후 접두사(7글자)를 잘라내고 토큰 본문만 추출
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
-        }
         
         // HttpOnly Cookie에서 토큰이 존재하는지 확인
         if (request.getCookies() != null) {
