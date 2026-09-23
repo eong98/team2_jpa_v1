@@ -116,7 +116,9 @@ public class ChatSessionService {
     ChatSession saved = chatSessionRepository.save(session);
  
     List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(saved.getNo(), SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
+    if (greeting != null && !greeting.isBlank()) {  // null/빈 문자열이면 로그 자체를 생략
+      logs.add(log(saved.getNo(), SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
+    }
     
  
     return ChatSessionDTO.ActionResult.builder().no(saved.getNo()).logs(logs).build();
@@ -141,13 +143,13 @@ public class ChatSessionService {
   /**
    * 진행 중인 세션 확인. 회원이면 mno, 비회원이면 gno로 조회합니다.
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public ChatSessionDTO.Response findActive(Long mno, String gno) {
     Optional<ChatSession> optional = mno != null
         ? chatSessionRepository.findActiveByMno(mno)
         : chatSessionRepository.findActiveByGno(gno);
     
-    markAsRead(optional.get().getNo());
+    optional.ifPresent(session -> session.setReadat(Tool.getDate()));
     
     return optional.map(ChatSessionDTO.Response::from).orElse(null);
   }
@@ -170,12 +172,21 @@ public class ChatSessionService {
    * @return
    */
   private ChatSessionDTO.Summary toSummary(ChatSession session) {
-    String title = "AI 상담"; 
-    if (session.getCmode() == MODE_OPTION && session.getCno() != null) {
+    String title;
+    if (session.getStitle() != null && !session.getStitle().isBlank()) {
+      title = session.getStitle(); // AI요약 제목이 있으면 최우선
+    } else if (session.getCmode() == MODE_OPTION && session.getCno() != null) {
       title = chatMenuRepository.findById(session.getCno()).map(m -> m.getLabel()).orElse("상담");
+    } else {
+      title = "AI 상담";
     }
     return ChatSessionDTO.Summary.builder()
-        .no(session.getNo()).stitle(title).cmode(session.getCmode()).udate(session.getUdate()).readat(session.getReadat()).build();
+        .no(session.getNo())
+        .stitle(title)
+        .cmode(session.getCmode())
+        .udate(session.getUdate())
+        .readat(session.getReadat())
+        .build();
   }
  
   /**
@@ -205,55 +216,24 @@ public class ChatSessionService {
     return ChatSessionDTO.ActionResult.builder()
         .logs(logs).nextOptions(nextOptions).hasChildren(menu.getHasChildren()).build();
   }
- 
-  /**
-   * AI 상담 전환. no가 null이면 새 세션을 생성하며 시작하고, 있으면 모드만 전환합니다.
-   * "AI 상담" 버튼 클릭 로그 + 인사말까지 저장합니다. (구분선은 저장하지 않음 — 프론트 전용 표시)
-   * @param no null이면 새 세션 생성
-   * @param greeting 프론트 SYSTEM_MESSAGES에서 고른 인사말 텍스트 그대로
-   */
-  @Transactional
-  public ChatSessionDTO.ActionResult startAiConsult(String no, String startAi, String greeting) {
-    ChatSession session = getSession(no);
- 
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_MENU_SELECT, "AI 상담", null));
- 
-    session.setCmode(MODE_AI);
-    session.setCno(null);
-    session.setUdate(Tool.getDate());
-    session.setReadat(Tool.getDate());
 
-    logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, startAi, null));
-    logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, greeting, null));
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
-  }
- 
   /**
    * 다른 질문하기(처음으로). 옵션형 모드로 복귀.
-   * (AI상담 종료 구분선은 저장하지 않음 — 프론트가 화면에만 표시)
    */
   @Transactional
-  public ChatSessionDTO.ActionResult backToIntro(String no, String endAi, String greeting) {
-    ChatSession session = getSession(no);
-    boolean wasAi = session.getCmode() == MODE_AI;
- 
-    session.setCmode(MODE_OPTION);
-    session.setCno(null);
-    session.setUdate(Tool.getDate());
-    session.setReadat(Tool.getDate());
- 
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_BACK, "다른 질문하기", null));
-    
-    if (wasAi) {
-      logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, endAi, null)); // 구분선도 저장
-    }
-    
-    logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
+  public ChatSessionDTO.ActionResult backToIntro(String no, String greeting) { // endAi 파라미터 제거
+   ChatSession session = getSession(no);
+  
+   session.setCmode(MODE_OPTION);
+   session.setCno(null);
+   session.setUdate(Tool.getDate());
+   session.setReadat(Tool.getDate());
+  
+   List<ChatLogDTO.Response> logs = new ArrayList<>();
+   logs.add(log(no, SENDER_USER, MTYPE_BACK, "다른 질문하기", null));
+   logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null)); // 구분선 로직 제거됨
+  
+   return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
   }
 
   /**
@@ -331,27 +311,7 @@ public class ChatSessionService {
     }
   }
  
-  /**
-   * AI 자유질문. 사용자 메시지 저장 + (임시 목업) AI 응답 저장.
-   * TODO: 실제 RAG/LLM 연동 시 이 안의 answer/needsAdmin 계산 로직만 교체하면 됩니다.
-   */
-  @Transactional
-  public ChatSessionDTO.ActionResult aiChat(String no, String message) {
-    getSession(no);
-    getSession(no).setReadat(Tool.getDate());
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, message, null));
- 
-    // TODO: 실제 RAG/LLM 응답 API 연동
-    String answer = "죄송합니다, 정확한 답변을 찾지 못했습니다.";
-    boolean needsAdmin = true;
- 
-    logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, answer, null));
-    getSession(no).setEndflow(needsAdmin ? ENDFLOW_FAIL_AI_ANSWER : null);
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).needsAdmin(needsAdmin).build();
-  }
- 
+  
   /**
    * 세션 종료
    * @param session
