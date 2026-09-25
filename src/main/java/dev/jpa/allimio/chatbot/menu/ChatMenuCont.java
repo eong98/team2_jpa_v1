@@ -1,12 +1,9 @@
 package dev.jpa.allimio.chatbot.menu;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,8 +14,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import dev.jpa.allimio.tool.PageResponse;
 
 @RestController
 @RequestMapping("/chat_menu")
@@ -62,8 +57,13 @@ public class ChatMenuCont {
    * POST /chat_menu
    */
   @PostMapping
-  public ResponseEntity<ChatMenuDTO.Response> create(@RequestBody ChatMenuDTO.Request request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(chatMenuService.create(request));
+  public ResponseEntity<?> create(@RequestBody ChatMenuDTO.Request request) {
+    try {
+      return ResponseEntity.status(HttpStatus.CREATED).body(chatMenuService.create(request));
+    } catch (IllegalStateException e) {
+      // 최상위 메뉴 6개 초과
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+    }
   }
 
   /**
@@ -78,7 +78,18 @@ public class ChatMenuCont {
   }
 
   /**
-   * 관리자용 — 메뉴 삭제
+   * 관리자용 — 공개/비공개(USEYN) 토글
+   * PUT /chat_menu/5/useyn  body: { "useyn": "Y" }
+   */
+  @PutMapping("/{no}/useyn")
+  public ResponseEntity<ChatMenuDTO.Response> toggleUseyn(
+      @PathVariable("no") Long no,
+      @RequestBody Map<String, String> body) {
+    return ResponseEntity.ok(chatMenuService.toggleUseyn(no, body.get("useyn")));
+  }
+
+  /**
+   * 관리자용 — 메뉴 삭제 (하위 선택지까지 일괄 삭제)
    * DELETE /chat_menu/5
    */
   @DeleteMapping("/{no}")

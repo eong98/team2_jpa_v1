@@ -29,6 +29,16 @@ public interface ChatMenuRepository extends JpaRepository<ChatMenu, Long> {
    * (하위 선택지 없으면 다른질문하기/AI상담/종료 버튼 노출).
    */
   boolean existsByPnoAndUseyn(Long pno, String useyn);
+
+  /**
+   * 특정 부모의 하위 선택지 전체(공개/비공개 무관) — 하위메뉴 일괄삭제용
+   */
+  List<ChatMenu> findByPno(Long pno);
+
+  /**
+   * 관리자가 등록한 최상위 메뉴 개수 — 최상위 메뉴 최대 6개 제한 확인용
+   */
+  long countByPnoIsNullAndAiyn(String aiyn);
   
 
   /**
