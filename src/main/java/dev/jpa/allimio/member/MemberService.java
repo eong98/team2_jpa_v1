@@ -102,7 +102,7 @@ public class MemberService {
 
     // [성공] 모든 검증 통과
     String accessToken = jwtTokenProvider.createAccessToken(member.getNo(), "MEMBER", member.getGrade());
-    String refreshToken = jwtTokenProvider.createRefreshToken(member.getNo(), "MEMBER");
+    String refreshToken = jwtTokenProvider.createRefreshToken(member.getNo(), "MEMBER", member.getGrade());
     refreshTokenRedisRepository.save("MEMBER", member.getNo(), refreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
 
     
