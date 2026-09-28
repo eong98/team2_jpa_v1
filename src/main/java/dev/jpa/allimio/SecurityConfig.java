@@ -63,6 +63,8 @@ public class SecurityConfig {
                   "/v1/user/save",
                   "/v1/user/check/{id}",
                   "/v1/dbms/login",
+                  "v1/user/find-id",
+                  "v1/user/reset/email",
                   "/auth/reissue",
                   "/auth/logout",      
                   "/chat_session/**",
@@ -73,8 +75,17 @@ public class SecurityConfig {
               
               // 관리자 권한만 접근 가능
               .requestMatchers(
-                  "/v1/dbms/**" 
+                  "/v1/dbms/**",                // 관리자 메뉴 전체
+                  "/v1/user/find",               // 전체 회원 목록
+                  "/v1/user/update/manager/**",  // 관리자가 회원 수정
+                  "/v1/user/ban/**",             // 강제 탈퇴
+                  "/history/**"                  // 로그인/수정 이력
                   ).hasRole("MANAGER")
+              
+              // 각 메뉴들의 등록/수정/삭제는 관리자만  -> 임시로 넣어둠 추후 수정
+              .requestMatchers(HttpMethod.POST,   "/notice/**", "/inmenu/**", "/shopmenu/**", "/cctv_issue_code/**", "/shop_plan/**").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.PUT,    "/notice/**", "/inmenu/**", "/shopmenu/**", "/cctv_issue_code/**", "/shop_plan/**").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.DELETE, "/notice/**", "/inmenu/**", "/shopmenu/**", "/cctv_issue_code/**", "/shop_plan/**").hasRole("MANAGER")
               
               // 회원 권한만 접근 가능
               .requestMatchers(
@@ -83,15 +94,14 @@ public class SecurityConfig {
               
               
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
-//              .requestMatchers("/v1/user/mypage").authenticated()
-              .anyRequest().permitAll()
-//              .anyRequest().authenticated()  // -> 개발 완료후 전환
+//              .anyRequest().permitAll()
+              .anyRequest().authenticated()  // -> 개발 완료후 전환
           )
           .exceptionHandling(ex -> ex
               .authenticationEntryPoint((req, res, e) ->
                   res.sendError(HttpServletResponse.SC_UNAUTHORIZED))   // 토큰 없음/만료 → 401
               .accessDeniedHandler((req, res, e) ->
-                  res.sendError(HttpServletResponse.SC_FORBIDDEN))      // role 불일치 → 403
+                  res.sendError(HttpServletResponse.SC_FORBIDDEN))      // role(권한) 불일치 → 403
           )
           
           .addFilterBefore(

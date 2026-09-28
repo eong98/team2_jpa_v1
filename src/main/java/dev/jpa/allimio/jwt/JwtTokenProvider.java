@@ -27,8 +27,8 @@ public class JwtTokenProvider {
     private SecretKey secretKey;
 
     // Access Token 유효 시간: 30분 (밀리초 단위)
-//    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 60 * 30;
-    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 10;
+    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 60 * 30;
+//    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 10;
     // Refresh Token 유효 시간: 14일 (밀리초 단위)
     private static final long REFRESH_TOKEN_EXPIRE = 1000L * 60 * 60 * 24 * 14;
 
@@ -72,9 +72,10 @@ public class JwtTokenProvider {
      * @param role 사용자 권한 구분
      * @return 서명된 JWT Refresh Token 문자열
      */
-    public String createRefreshToken(Long no, String role) {
+    public String createRefreshToken(Long no, String role, Integer grade) {
         Claims claims = Jwts.claims().setSubject(String.valueOf(no));
         claims.put("role", role);
+        claims.put("grade", grade);
 
         Date now = new Date();
         return Jwts.builder()

@@ -53,7 +53,7 @@ public class TokenController {
 
         // 새로운 Token 생성
         String newAccessToken = jwtTokenProvider.createAccessToken(no, role, grade);
-        String newRefreshToken = jwtTokenProvider.createRefreshToken(no, role);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(no, role, grade);
 
         // Refresh Token Rotation
         refreshTokenRedisRepository.save(role, no, newRefreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
