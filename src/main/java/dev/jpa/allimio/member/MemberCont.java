@@ -209,4 +209,20 @@ public class MemberCont {
     
     return ResponseEntity.ok(check);
   }
+  
+  public record FindIdRequest(String email, String phone) {}
+
+  /**
+   * 아이디 찾기
+   * http://10.1.205.120:9102/v1/user/find-id  { email, phone }
+   */
+  @PostMapping(path = "/find-id")
+  public ResponseEntity<Map<String, Object>> findId(@RequestBody FindIdRequest req) {
+    List<String> ids = memberService.findMaskedIds(req.email(), req.phone());
+
+    if (ids.isEmpty()) {
+      return ResponseEntity.ok(Map.of("success", false, "message", "일치하는 회원 정보가 없습니다."));
+    }
+    return ResponseEntity.ok(Map.of("success", true, "ids", ids));
+  }
 }

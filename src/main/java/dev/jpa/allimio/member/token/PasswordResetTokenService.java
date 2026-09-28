@@ -80,21 +80,19 @@ public class PasswordResetTokenService {
   }
   
   /** 패스워드 변경 */
+  @Transactional
   public void resetPassword(String token, String newPassword) {
-    // 토큰 검증
-    PasswordResetToken resetToken = validateToken(token);
+    if (newPassword == null || newPassword.length() < 8) {
+      throw new IllegalArgumentException("비밀번호는 8자 이상이어야 합니다.");
+    }
 
-    // 토큰에 연결된 회원 조회
+    PasswordResetToken resetToken = validateToken(token);
     Member member = resetToken.getMember();
 
-    // PasswordEncoder를 사용하여 새 비밀번호 암호화 후 변경
-    String encodedPassword = passwordEncoder.encode(newPassword);
-    member.setPassword(encodedPassword); // 프로젝트 엔티티의 비밀번호 세터/메서드명에 맞게 조정
-    
+    member.setPassword(passwordEncoder.encode(newPassword));
     saveUpdateLogs(member);
 
-    // 사용이 완료된 토큰 삭제 (1회성 사용 보장)
-    tokenRepository.delete(resetToken);
+    tokenRepository.delete(resetToken); // 1회용
   }
   
   /** 비밀번호 변경 로그 */
