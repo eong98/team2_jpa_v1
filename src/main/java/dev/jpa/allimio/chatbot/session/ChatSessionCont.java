@@ -56,13 +56,6 @@ public class ChatSessionCont {
     return ResponseEntity.ok(chatSessionService.getList(mno, gno));
   }
   
-  /** 채팅방 읽음 처리 (채팅방 진입 시 호출) */
-//  @PutMapping("/{no}/read")
-//  public ResponseEntity<Void> markAsRead(@PathVariable("no") String no) {
-//    chatSessionService.markAsRead(no);
-//    return ResponseEntity.ok().build();
-//  }
- 
   /** 옵션 선택 */
   @PutMapping("/{no}/select")
   public ResponseEntity<ChatSessionDTO.ActionResult> selectMenu(
@@ -70,22 +63,14 @@ public class ChatSessionCont {
     return ResponseEntity.ok(chatSessionService.selectMenu(no, request.getCno()));
   }
  
-  /** 이미 있는 세션을 AI 상담 모드로 전환 (세션 없는 신규 시작은 POST /chat_session을 씀) */
-  @PutMapping("/{no}/ai-start")
-  public ResponseEntity<ChatSessionDTO.ActionResult> startAiConsult(
-      @PathVariable("no") String no,
-      @RequestParam(value = "startAi", required = false) String startAi, 
-      @RequestParam(value = "greeting", required = false) String greeting) {
-    return ResponseEntity.ok(chatSessionService.startAiConsult(no, startAi, greeting));
-  }
+
  
   /** 다른 질문하기(처음으로) */
   @PutMapping("/{no}/back-intro")
   public ResponseEntity<ChatSessionDTO.ActionResult> backToIntro(
       @PathVariable("no") String no,
-      @RequestParam(value = "endAi", required = false) String endAi, 
       @RequestParam(value = "greeting", required = false) String greeting) {
-    return ResponseEntity.ok(chatSessionService.backToIntro(no, endAi, greeting));
+    return ResponseEntity.ok(chatSessionService.backToIntro(no, greeting));
   }
  
   /** 종료/만족도/불만족사유/기타메모/관리자연결요청/관리자연결확인 통합 처리 */
@@ -95,10 +80,4 @@ public class ChatSessionCont {
     return ResponseEntity.ok(chatSessionService.step(no, request));
   }
  
-  /** AI 자유질문 */
-  @PostMapping("/{no}/ai-chat")
-  public ResponseEntity<ChatSessionDTO.ActionResult> aiChat(
-      @PathVariable("no") String no, @RequestBody ChatSessionDTO.AiChatRequest request) {
-    return ResponseEntity.ok(chatSessionService.aiChat(no, request.getMessage()));
-  }
 }

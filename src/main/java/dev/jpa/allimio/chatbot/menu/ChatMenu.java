@@ -45,10 +45,6 @@ public class ChatMenu {
   /** 이 선택지 클릭 시 노출할 답변 (최상위 STEP1은 보통 NULL) */
   private String answer;
 
-  /** RAG검색여부 - 이 노드 도달 시 RAG 검색도 같이 수행할지 (Y/N) */
-  @Builder.Default
-  private String userag = "N";
-
   /** 노출순서 - 같은 부모 안에서의 노출 순서 */
   @Builder.Default
   private Integer vseq = 0;
@@ -59,4 +55,17 @@ public class ChatMenu {
 
   /** 등록일시 */
   private String cdate;
+
+  /** AI관리여부 - AI(옵션형메뉴 자동생성)가 만든 노드면 Y, 관리자가 직접 등록한 노드면 N.
+   *  [AI 옵션생성]을 다시 실행하면 AIYN='Y'인 노드만 삭제 후 재생성됨. */
+  @Builder.Default
+  private String aiyn = "N";
+
+  /**
+   * 사용여부(USEYN)만 토글할 때 호출 (Notice.changeTopFix()와 동일한 패턴).
+   * 관리자가 옵션메뉴관리 화면에서 공개/비공개 버튼을 누르면 이 메서드로 처리한다.
+   */
+  public void changeUseyn(String useyn) {
+    this.useyn = useyn;
+  }
 }

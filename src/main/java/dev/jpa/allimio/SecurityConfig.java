@@ -64,8 +64,11 @@ public class SecurityConfig {
                   "/v1/user/check/{id}",
                   "/v1/dbms/login",
                   "/auth/reissue",
-                  "/auth/logout"
-                  
+                  "/auth/logout",      
+                  "/chat_session/**",
+                  "/chat_menu/**",
+                  "/chat_log/**",
+                  "/api/chatbot/**"
               ).permitAll()
               
               // 관리자 권한만 접근 가능
@@ -81,8 +84,8 @@ public class SecurityConfig {
               
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
 //              .requestMatchers("/v1/user/mypage").authenticated()
-//              .anyRequest().permitAll()
-              .anyRequest().authenticated()  // -> 개발 완료후 전환
+              .anyRequest().permitAll()
+//              .anyRequest().authenticated()  // -> 개발 완료후 전환
           )
           .exceptionHandling(ex -> ex
               .authenticationEntryPoint((req, res, e) ->
