@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import dev.jpa.allimio.jwt.JwtAuthenticationFilter;
 import dev.jpa.allimio.jwt.JwtTokenProvider;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -56,7 +57,7 @@ public class SecurityConfig {
               // 브라우저의 OPTIONS 프리플라이트 요청 전부 허용
               .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
               
-              // 로그인, 회원가입, 비밀번호 찾기/재설정, 토큰 재발급 등 인증 없이 접근할 URL
+              // 로그인, 회원가입, 비밀번호 기/재설정, 토큰 재발급 등 인증 없이 접근할 URL
               .requestMatchers(
                   "/v1/user/login",
                   "/v1/user/save",
@@ -64,12 +65,30 @@ public class SecurityConfig {
                   "/v1/dbms/login",
                   "/auth/reissue",
                   "/auth/logout"
+                  
               ).permitAll()
+              
+              // 관리자 권한만 접근 가능
+              .requestMatchers(
+                  "/v1/dbms/**" 
+                  ).hasRole("MANAGER")
+              
+              // 회원 권한만 접근 가능
+              .requestMatchers(
+                  "/v1/user/**" 
+                  ).hasRole("MEMBER")
+              
               
               // 개발/테스트 단계이므로 우선 모든 요청 허용 (추후 JWT 인증 필터 적용)
 //              .requestMatchers("/v1/user/mypage").authenticated()
 //              .anyRequest().permitAll()
               .anyRequest().authenticated()  // -> 개발 완료후 전환
+          )
+          .exceptionHandling(ex -> ex
+              .authenticationEntryPoint((req, res, e) ->
+                  res.sendError(HttpServletResponse.SC_UNAUTHORIZED))   // 토큰 없음/만료 → 401
+              .accessDeniedHandler((req, res, e) ->
+                  res.sendError(HttpServletResponse.SC_FORBIDDEN))      // role 불일치 → 403
           )
           
           .addFilterBefore(
