@@ -102,7 +102,7 @@ public class MemberService {
 
     // [성공] 모든 검증 통과
     String accessToken = jwtTokenProvider.createAccessToken(member.getNo(), "MEMBER", member.getGrade());
-    String refreshToken = jwtTokenProvider.createRefreshToken(member.getNo(), "MEMBER");
+    String refreshToken = jwtTokenProvider.createRefreshToken(member.getNo(), "MEMBER", member.getGrade());
     refreshTokenRedisRepository.save("MEMBER", member.getNo(), refreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
 
     
@@ -281,6 +281,24 @@ public class MemberService {
  public MemberDTO findWithNoWithoutPassword (Long memberno) {
    
    return memberRepository.findWithNoWithoutPassword(memberno).orElseThrow();
+ }
+ 
+ /** 가입 시 입력한 이메일 + 전화번호로 아이디 찾기 (끝 3자리 마스킹) */
+ public List<String> findMaskedIds(String email, String phone) {
+   if (email == null || phone == null) return List.of();
+
+   String normalizedPhone = phone.replaceAll("[^0-9]", ""); // 010-1234-5678 / 01012345678 모두 허용
+
+   return memberRepository.findIdsByEmailAndPhone(email.trim(), normalizedPhone).stream()
+       .map(m -> maskId(m.getId()))
+       .toList();
+ }
+
+ /** 끝 3자리를 ***로 가림. 3글자 이하면 그대로 노출 */
+ public static String maskId(String id) {
+   if (id == null) return "";
+   if (id.length() <= 3) return id;
+   return id.substring(0, id.length() - 3) + "***";
  }
  
  

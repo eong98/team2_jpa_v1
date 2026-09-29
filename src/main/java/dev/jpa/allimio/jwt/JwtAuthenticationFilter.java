@@ -26,8 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
 
     /**
-     * 필터의 핵심 로직을 수행하는 메서드.
-     * 요청 헤더에서 JWT를 추출하고, 검증 성공 시 SecurityContext에 사용자 인증 정보를 세팅합니다.
+     * HTTP 요청 헤더에서 JWT를 파싱해 순수 토큰 문자열만 반환하는 헬퍼 메서드.
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -73,13 +72,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @return "Bearer "를 제거한 JWT 문자열 (헤더가 없거나 형식이 맞지 않으면 null)
      */
     private String resolveToken(HttpServletRequest request) {
-        // "Authorization" 헤더 값 조회 (형식: "Bearer eyJhbGciOi...")
-        String bearer = request.getHeader("Authorization");
-
-        // 표준 Bearer 스키마를 준수하는지 확인 후 접두사(7글자)를 잘라내고 토큰 본문만 추출
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
+        
+        // HttpOnly Cookie에서 토큰이 존재하는지 확인
+        if (request.getCookies() != null) {
+          
+          // 요청에 포함된 모든 쿠키 확인
+          for(jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+            
+              // 토큰 일치하는지 확인
+              if (AuthCookieUtil.ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                  // 일치하면 토큰 return
+                  return cookie.getValue();
+              }
+          }
         }
+        
+        // 토큰이 존재하지 않으면 null
         return null;
     }
 }

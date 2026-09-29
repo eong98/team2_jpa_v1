@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.jwt.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -91,12 +93,40 @@ public class MemberCont {
   @PostMapping(path="/login")
   public ResponseEntity<Map<String, Object>> login(
       @RequestBody MemberDTO memberDTO,
-      HttpServletRequest request){
+      HttpServletRequest request,
+      HttpServletResponse response){
      // ip주소 추출
      String ipAddr = request.getRemoteAddr();
     
      Map<String, Object> loginResult = memberService.login(memberDTO.getId(), memberDTO.getPassword(), ipAddr);
      
+  // 로그인에 성공한 경우에만 Cookie를 생성.
+     if (Boolean.TRUE.equals(loginResult.get("success"))) {
+
+         // MemberService에서 생성한 Access Token 가져오기
+         String accessToken = (String) loginResult.get("accessToken");
+
+         // MemberService에서 생성한 Refresh Token 가져오기
+         String refreshToken = (String) loginResult.get("refreshToken");
+
+         // Access Token을 HttpOnly Cookie에 저장
+         AuthCookieUtil.addAccessTokenCookie(response, accessToken, 10);
+         
+         // Refresh Token을 HttpOnly Cookie에 저장
+         AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, 60 * 60 * 24 * 14);
+
+         // Access Token과 Refresh Token을 JSON 응답에서 제거, react로 토큰정보를 넘겨주지 않기 위함.
+         loginResult.remove("accessToken");
+         loginResult.remove("refreshToken");
+     }
+
+     // 로그인 성공 시:
+     // {
+     //     "success": true,
+     //     "user": { ... }
+     // }
+     //
+     // Token은 JSON이 아니라 HttpOnly Cookie로 전달된다.
      return ResponseEntity.ok(loginResult);
   }
 
@@ -178,5 +208,21 @@ public class MemberCont {
     }
     
     return ResponseEntity.ok(check);
+  }
+  
+  public record FindIdRequest(String email, String phone) {}
+
+  /**
+   * 아이디 찾기
+   * http://10.1.205.120:9102/v1/user/find-id  { email, phone }
+   */
+  @PostMapping(path = "/find-id")
+  public ResponseEntity<Map<String, Object>> findId(@RequestBody FindIdRequest req) {
+    List<String> ids = memberService.findMaskedIds(req.email(), req.phone());
+
+    if (ids.isEmpty()) {
+      return ResponseEntity.ok(Map.of("success", false, "message", "일치하는 회원 정보가 없습니다."));
+    }
+    return ResponseEntity.ok(Map.of("success", true, "ids", ids));
   }
 }

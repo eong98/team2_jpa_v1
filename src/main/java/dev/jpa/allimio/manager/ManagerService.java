@@ -94,7 +94,7 @@ public class ManagerService {
 
   // [성공] 모든 검증 통과
   String accessToken = jwtTokenProvider.createAccessToken(manager.getNo(), "MANAGER", manager.getGrade());
-  String refreshToken = jwtTokenProvider.createRefreshToken(manager.getNo(), "MANAMGER");
+  String refreshToken = jwtTokenProvider.createRefreshToken(manager.getNo(), "MANAGER", manager.getGrade());
   refreshTokenRedisRepository.save("MANAGER", manager.getNo(), refreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
   
   saveLoginLogs(id, 1, null, null, now, ipAddr, manager);

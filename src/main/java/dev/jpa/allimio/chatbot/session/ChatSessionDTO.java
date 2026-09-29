@@ -200,5 +200,6 @@ public class ChatSessionDTO {
     private String udate;
     /** 마지막으로 읽은 시각. udate보다 이전(또는 NULL)이면 안읽음 상태 */
     private String readat;
+    private Integer endflow; // 이게 있는지 확인 필요
   }
 }

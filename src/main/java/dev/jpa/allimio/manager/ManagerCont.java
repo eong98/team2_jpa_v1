@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.jwt.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -88,11 +90,26 @@ public class ManagerCont {
  @PostMapping(path="/login")
  public ResponseEntity<Map<String, Object>> login(
      @RequestBody ManagerDTO managerDTO,
-     HttpServletRequest request){
+     HttpServletRequest request,
+     HttpServletResponse response){
+   
      // ip주소 추출
      String ipAddr = request.getRemoteAddr();
    
     Map<String, Object> loginResult = managerService.login(managerDTO.getId(), managerDTO.getPassword(), ipAddr);
+    
+ // 로그인 성공 시에만 토큰을 HttpOnly Cookie로 저장 (MemberCont와 동일)
+        if (Boolean.TRUE.equals(loginResult.get("success"))) {
+          String accessToken = (String) loginResult.get("accessToken");
+          String refreshToken = (String) loginResult.get("refreshToken");
+    
+          AuthCookieUtil.addAccessTokenCookie(response, accessToken, 10);
+          AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, 60 * 60 * 24 * 14);
+    
+          // 토큰은 쿠키로만 전달하고 JSON 응답에서는 제거
+          loginResult.remove("accessToken");
+          loginResult.remove("refreshToken");
+        }
     return ResponseEntity.ok(loginResult);
  }
 

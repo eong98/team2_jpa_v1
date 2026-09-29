@@ -72,9 +72,10 @@ public class JwtTokenProvider {
      * @param role 사용자 권한 구분
      * @return 서명된 JWT Refresh Token 문자열
      */
-    public String createRefreshToken(Long no, String role) {
+    public String createRefreshToken(Long no, String role, Integer grade) {
         Claims claims = Jwts.claims().setSubject(String.valueOf(no));
         claims.put("role", role);
+        claims.put("grade", grade);
 
         Date now = new Date();
         return Jwts.builder()

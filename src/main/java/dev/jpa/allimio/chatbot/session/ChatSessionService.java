@@ -116,7 +116,9 @@ public class ChatSessionService {
     ChatSession saved = chatSessionRepository.save(session);
  
     List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(saved.getNo(), SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
+    if (greeting != null && !greeting.isBlank()) {  // null/빈 문자열이면 로그 자체를 생략
+      addIfPresent(logs, log(saved.getNo(), SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
+    }
     
  
     return ChatSessionDTO.ActionResult.builder().no(saved.getNo()).logs(logs).build();
@@ -125,7 +127,7 @@ public class ChatSessionService {
   /**
    * 세션 상세 조회 (현재 위치한 메뉴명까지 조인).
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public ChatSessionDTO.Response findById(String no) {
     List<Object[]> result = chatSessionRepository.findByIdWithMenu(no);
     if (result.isEmpty()) throw new IllegalArgumentException("존재하지 않는 세션입니다. no=" + no);
@@ -141,13 +143,14 @@ public class ChatSessionService {
   /**
    * 진행 중인 세션 확인. 회원이면 mno, 비회원이면 gno로 조회합니다.
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public ChatSessionDTO.Response findActive(Long mno, String gno) {
+    if (mno == null && (gno == null || gno.isBlank())) return null;
     Optional<ChatSession> optional = mno != null
-        ? chatSessionRepository.findActiveByMno(mno)
-        : chatSessionRepository.findActiveByGno(gno);
+        ? chatSessionRepository.findFirstByMnoAndCmodeNotOrderByUdateDesc(mno, MODE_CLOSED)
+        : chatSessionRepository.findFirstByGnoAndCmodeNotOrderByUdateDesc(gno, MODE_CLOSED);
     
-    markAsRead(optional.get().getNo());
+    optional.ifPresent(session -> session.setReadat(Tool.getDate()));
     
     return optional.map(ChatSessionDTO.Response::from).orElse(null);
   }
@@ -157,6 +160,7 @@ public class ChatSessionService {
    */
   @Transactional(readOnly = true)
   public List<ChatSessionDTO.Summary> getList(Long mno, String gno) {
+    if (mno == null && (gno == null || gno.isBlank())) return List.of();
     List<ChatSession> sessions = mno != null
         ? chatSessionRepository.findByMnoOrderByCmodeAscUdateDesc(mno)
         : chatSessionRepository.findByGnoOrderByCmodeAscUdateDesc(gno);
@@ -170,12 +174,22 @@ public class ChatSessionService {
    * @return
    */
   private ChatSessionDTO.Summary toSummary(ChatSession session) {
-    String title = "AI 상담"; 
-    if (session.getCmode() == MODE_OPTION && session.getCno() != null) {
+    String title;
+    if (session.getStitle() != null && !session.getStitle().isBlank()) {
+      title = session.getStitle(); // AI요약 제목이 있으면 최우선
+    } else if (session.getCmode() == MODE_OPTION && session.getCno() != null) {
       title = chatMenuRepository.findById(session.getCno()).map(m -> m.getLabel()).orElse("상담");
+    } else {
+      title = "AI 상담";
     }
     return ChatSessionDTO.Summary.builder()
-        .no(session.getNo()).stitle(title).cmode(session.getCmode()).udate(session.getUdate()).readat(session.getReadat()).build();
+        .no(session.getNo())
+        .stitle(title)
+        .cmode(session.getCmode())
+        .udate(session.getUdate())
+        .readat(session.getReadat())
+        .endflow(session.getEndflow()) // 이게 있는지 확인 필요
+        .build();
   }
  
   /**
@@ -184,7 +198,8 @@ public class ChatSessionService {
    */
   @Transactional
   public ChatSessionDTO.ActionResult selectMenu(String no, Long cno) {
-    ChatSession session = getSession(no);
+    ChatSession session = getOpenSession(no);
+    if (cno == null) throw new IllegalArgumentException("선택한 메뉴 번호가 없습니다.");
  
     ChatMenuDTO.Response menu = chatMenuService.selectMenu(cno);
  
@@ -193,10 +208,10 @@ public class ChatSessionService {
     session.setReadat(Tool.getDate());
  
     List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_MENU_SELECT, menu.getLabel(), cno));
+    addIfPresent(logs, log(no, SENDER_USER, MTYPE_MENU_SELECT, menu.getLabel(), cno));
  
     String answer = menu.getAnswer() != null && !menu.getAnswer().isBlank() ? menu.getAnswer() : "서비스 준비 중입니다.";
-    logs.add(log(no, SENDER_SYSTEM, MTYPE_ANSWER, answer, cno));
+    addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_ANSWER, answer, cno));
  
     List<ChatMenuDTO.Response> nextOptions = menu.getHasChildren()
         ? chatMenuService.getChildren(cno)
@@ -205,55 +220,24 @@ public class ChatSessionService {
     return ChatSessionDTO.ActionResult.builder()
         .logs(logs).nextOptions(nextOptions).hasChildren(menu.getHasChildren()).build();
   }
- 
-  /**
-   * AI 상담 전환. no가 null이면 새 세션을 생성하며 시작하고, 있으면 모드만 전환합니다.
-   * "AI 상담" 버튼 클릭 로그 + 인사말까지 저장합니다. (구분선은 저장하지 않음 — 프론트 전용 표시)
-   * @param no null이면 새 세션 생성
-   * @param greeting 프론트 SYSTEM_MESSAGES에서 고른 인사말 텍스트 그대로
-   */
-  @Transactional
-  public ChatSessionDTO.ActionResult startAiConsult(String no, String startAi, String greeting) {
-    ChatSession session = getSession(no);
- 
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_MENU_SELECT, "AI 상담", null));
- 
-    session.setCmode(MODE_AI);
-    session.setCno(null);
-    session.setUdate(Tool.getDate());
-    session.setReadat(Tool.getDate());
 
-    logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, startAi, null));
-    logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, greeting, null));
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
-  }
- 
   /**
    * 다른 질문하기(처음으로). 옵션형 모드로 복귀.
-   * (AI상담 종료 구분선은 저장하지 않음 — 프론트가 화면에만 표시)
    */
   @Transactional
-  public ChatSessionDTO.ActionResult backToIntro(String no, String endAi, String greeting) {
-    ChatSession session = getSession(no);
-    boolean wasAi = session.getCmode() == MODE_AI;
- 
-    session.setCmode(MODE_OPTION);
-    session.setCno(null);
-    session.setUdate(Tool.getDate());
-    session.setReadat(Tool.getDate());
- 
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_BACK, "다른 질문하기", null));
-    
-    if (wasAi) {
-      logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, endAi, null)); // 구분선도 저장
-    }
-    
-    logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null));
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
+  public ChatSessionDTO.ActionResult backToIntro(String no, String greeting) { // endAi 파라미터 제거
+   ChatSession session = getOpenSession(no);
+  
+   session.setCmode(MODE_OPTION);
+   session.setCno(null);
+   session.setUdate(Tool.getDate());
+   session.setReadat(Tool.getDate());
+  
+   List<ChatLogDTO.Response> logs = new ArrayList<>();
+   addIfPresent(logs, log(no, SENDER_USER, MTYPE_BACK, "다른 질문하기", null));
+   addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, greeting, null)); // 구분선 로직 제거됨
+  
+   return ChatSessionDTO.ActionResult.builder().logs(logs).cmode(session.getCmode()).build();
   }
 
   /**
@@ -262,22 +246,25 @@ public class ChatSessionService {
    */
   @Transactional
   public ChatSessionDTO.ActionResult step(String no, ChatSessionDTO.StepRequest req) {
-    ChatSession session = getSession(no);
+    if (req.getAction() == null) throw new IllegalArgumentException("action 값이 없습니다.");
+    // 이미 종료된 세션에 다시 요청(버튼 연타, 다른 탭) → 로그 중복/재종료 방지
+    ChatSession session = getOpenSession(no);
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     String sysMsg = req.getSystemMessage();
     session.setReadat(Tool.getDate());
  
     switch (req.getAction()) {
       case END -> {
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, "상담 종료", null));
-        logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, "상담 종료", null));
+        addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         session.setEndflow(ENDFLOW_ASK_SATISFY);
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case SATISFY -> {
+        if (req.getSatisfy() == null) throw new IllegalArgumentException("만족도 값이 없습니다.");
         int satisfy = req.getSatisfy();
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
-        logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
+        addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         
         // 만족 선택시 상담 종료
         if (satisfy == 1) {
@@ -289,9 +276,10 @@ public class ChatSessionService {
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case UNSATISFY_REASON -> {
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
-        logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
+        addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         
+        if (req.getSreason() == null) throw new IllegalArgumentException("불만족 사유 값이 없습니다.");
         // 불만족 사유 : 기타
         if (req.getSreason() == 9) {
           session.setEndflow(ENDFLOW_ASK_UNSATISFY_MEMO); // 추가
@@ -302,23 +290,23 @@ public class ChatSessionService {
         return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
       }
       case UNSATISFY_MEMO -> {
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getSmemo(), null));
-        logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getSmemo(), null));
+        addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         closeSession(session, 0, 0, 9, req.getSmemo());
         session.setEndflow(null);
         return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
       }
       case ESCALATE -> {
         // 버튼 클릭 자체를 사용자 발화로 기록
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null)); 
-        logs.add(log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null)); 
+        addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, sysMsg, null));
         session.setEndflow(ENDFLOW_ASK_ESCALATE_CONFIRM); // 추가
         return ChatSessionDTO.ActionResult.builder().logs(logs).build();
       }
       case ESCALATE_CONFIRM -> {
-        logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
+        addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT, req.getLabel(), null));
         // TODO: confirmed일 때 대화로그 기반 AI요약 → QA 등록화면 진입 연동
-        if (req.getGoQa()) {
+        if (Boolean.TRUE.equals(req.getGoQa())) {
           closeSession(session, 1, null, null, null);
           session.setEndflow(null); // 추가
           return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
@@ -331,27 +319,7 @@ public class ChatSessionService {
     }
   }
  
-  /**
-   * AI 자유질문. 사용자 메시지 저장 + (임시 목업) AI 응답 저장.
-   * TODO: 실제 RAG/LLM 연동 시 이 안의 answer/needsAdmin 계산 로직만 교체하면 됩니다.
-   */
-  @Transactional
-  public ChatSessionDTO.ActionResult aiChat(String no, String message) {
-    getSession(no);
-    getSession(no).setReadat(Tool.getDate());
-    List<ChatLogDTO.Response> logs = new ArrayList<>();
-    logs.add(log(no, SENDER_USER, MTYPE_FREE_TEXT, message, null));
- 
-    // TODO: 실제 RAG/LLM 응답 API 연동
-    String answer = "죄송합니다, 정확한 답변을 찾지 못했습니다.";
-    boolean needsAdmin = true;
- 
-    logs.add(log(no, SENDER_AI, MTYPE_AI_ANSWER, answer, null));
-    getSession(no).setEndflow(needsAdmin ? ENDFLOW_FAIL_AI_ANSWER : null);
- 
-    return ChatSessionDTO.ActionResult.builder().logs(logs).needsAdmin(needsAdmin).build();
-  }
- 
+  
   /**
    * 세션 종료
    * @param session
@@ -377,9 +345,24 @@ public class ChatSessionService {
     return chatSessionRepository.findById(no)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 세션입니다. no=" + no));
   }
+
+  /** 내용이 비어 저장을 생략한 로그(null)는 응답 목록에서 제외 */
+  private static void addIfPresent(List<ChatLogDTO.Response> logs, ChatLogDTO.Response log) {
+    if (log != null) logs.add(log);
+  }
+
+  /** 진행 중인 세션만 — 종료된 세션에 대한 선택/단계 요청은 409로 거부 */
+  private ChatSession getOpenSession(String no) {
+    ChatSession session = getSession(no);
+    if (session.getCmode() != null && session.getCmode() == MODE_CLOSED) {
+      throw new IllegalStateException("이미 종료된 상담입니다.");
+    }
+    return session;
+  }
  
   /** CHAT_LOG.SNO(FK)에 값을 채워 로그를 저장하는 헬퍼. */
   private ChatLogDTO.Response log(String no, int sender, int mtype, String content, Long cno) {
+    if (content == null || content.isBlank()) return null;
     return chatLogService.create(ChatLogDTO.Request.builder()
         .sno(no).sender(sender).mtype(mtype).content(content).cno(cno).build());
   }

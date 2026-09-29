@@ -51,5 +51,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
          "FROM Member u " +
          "WHERE u.id = :id AND u.password = :password") 
   public Optional<MemberDTO> longinDTO(@Param("id") String id, @Param("password") String password);
+  
+  /** 이메일 + 전화번호(하이픈 제거 후 비교)로 아이디 조회. 탈퇴(status 0) 계정 제외 */
+  @Query("SELECT m FROM Member m " +
+         "WHERE m.email = :email AND REPLACE(m.phone, '-', '') = :phone AND TRIM(m.status) <> '0'")
+  public List<Member> findIdsByEmailAndPhone(@Param("email") String email, @Param("phone") String phone);
 
 }

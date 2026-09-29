@@ -27,14 +27,12 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
    * 회원이 지금 진행 중인 세션(MODE != 2)이 있는지 확인.
    * 챗봇을 다시 열었을 때 "이어서 볼지, 새로 시작할지" 판단용.
    */
-  @Query("SELECT s FROM ChatSession s WHERE s.mno = :mno AND s.cmode <> 2 ORDER BY s.udate DESC")
-  Optional<ChatSession> findActiveByMno(@Param("mno") Long mno);
+  Optional<ChatSession> findFirstByMnoAndCmodeNotOrderByUdateDesc(Long mno, Integer cmode);
 
   /**
    * 비회원이 지금 진행 중인 세션(MODE != 2)이 있는지 확인.
    */
-  @Query("SELECT s FROM ChatSession s WHERE s.gno = :gno AND s.cmode <> 2 ORDER BY s.udate DESC")
-  Optional<ChatSession> findActiveByGno(@Param("gno") String gno);
+  Optional<ChatSession> findFirstByGnoAndCmodeNotOrderByUdateDesc(String gno, Integer cmode);
 
   /**
    * 현재 메뉴명(cnoLabel)까지 조인해서 세션 상세 조회.
@@ -57,4 +55,12 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
   @Transactional
   @Query("UPDATE ChatSession s SET s.readat = :readat WHERE s.no = :no")
   int updateReadAt(@Param("no") String no, @Param("readat") String readat);
+
+  /**
+   * 메뉴 삭제 전 참조 해제 — CHAT_SESSION.CNO가 CHAT_MENU를 FK로 참조하므로,
+   * 지울 메뉴에 머물러 있던 세션의 CNO를 NULL로 바꿔야 삭제가 가능하다.
+   */
+  @Modifying
+  @Query("UPDATE ChatSession s SET s.cno = null WHERE s.cno IN :nos")
+  int clearCno(@Param("nos") List<Long> nos);
 }
