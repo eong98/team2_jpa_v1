@@ -26,11 +26,12 @@ public class JwtTokenProvider {
     // JJWT에서 HMAC-SHA 알고리즘 암호화 및 서명 검증에 사용할 SecretKey 객체
     private SecretKey secretKey;
 
-    // Access Token 유효 시간: 30분 (밀리초 단위)
-    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 60 * 30;
-//    private static final long ACCESS_TOKEN_EXPIRE = 1000L * 10;
-    // Refresh Token 유효 시간: 14일 (밀리초 단위)
-    private static final long REFRESH_TOKEN_EXPIRE = 1000L * 60 * 60 * 24 * 14;
+    // 토큰 유효 시간(초) - application.properties에서 관리
+    @Value("${jwt.access-token-expire-seconds}")
+    private long accessTokenExpireSeconds;
+    
+    @Value("${jwt.refresh-token-expire-seconds}")
+    private long refreshTokenExpireSeconds;
 
     /**
      * 의존성 주입이 완료된 후 실행되는 초기화 메서드.
@@ -59,7 +60,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setClaims(claims) // 데이터 페이로드 설정
                 .setIssuedAt(now)  // 토큰 발행 시간 (iat)
-                .setExpiration(new Date(now.getTime() + ACCESS_TOKEN_EXPIRE)) // 만료 시간 (exp)
+                .setExpiration(new Date(now.getTime() + accessTokenExpireSeconds * 1000)) // 만료 시간 (exp)
                 .signWith(secretKey, SignatureAlgorithm.HS256) // 비밀키 및 HS256 알고리즘 서명
                 .compact(); // 압축 및 직렬화하여 JWT 문자열 완성
     }
@@ -81,7 +82,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_EXPIRE)) // 14일 유효
+                .setExpiration(new Date(now.getTime() + refreshTokenExpireSeconds * 1000)) // 14일 유효
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -91,7 +92,17 @@ public class JwtTokenProvider {
      * 주로 Redis에 Refresh Token 저장 시 TTL(Time-To-Live) 설정용으로 사용됩니다.
      */
     public long getRefreshTokenExpireMillis() {
-        return REFRESH_TOKEN_EXPIRE;
+        return refreshTokenExpireSeconds * 1000;
+    }
+    
+    /** Access Token 쿠키 유지 시간(초) */
+    public int getAccessTokenExpireSeconds() {
+        return (int) accessTokenExpireSeconds;
+    }
+    
+    /** Refresh Token 쿠키 유지 시간(초) */
+    public int getRefreshTokenExpireSeconds() {
+        return (int) refreshTokenExpireSeconds;
     }
 
     /**

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.jwt.JwtTokenProvider;
 import dev.jpa.allimio.jwt.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberCont {
   private final MemberService memberService;
   private final PasswordEncoder passwordEncoder;
+  private final JwtTokenProvider jwtTokenProvider;
 
   // 임시 DTO 생성
   public record IdCheckResponse(boolean available) {
@@ -110,10 +112,10 @@ public class MemberCont {
          String refreshToken = (String) loginResult.get("refreshToken");
 
          // Access Token을 HttpOnly Cookie에 저장
-         AuthCookieUtil.addAccessTokenCookie(response, accessToken, 10);
+         AuthCookieUtil.addAccessTokenCookie(response, accessToken, jwtTokenProvider.getAccessTokenExpireSeconds());
          
          // Refresh Token을 HttpOnly Cookie에 저장
-         AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, 60 * 60 * 24 * 14);
+         AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, jwtTokenProvider.getRefreshTokenExpireSeconds());
 
          // Access Token과 Refresh Token을 JSON 응답에서 제거, react로 토큰정보를 넘겨주지 않기 위함.
          loginResult.remove("accessToken");

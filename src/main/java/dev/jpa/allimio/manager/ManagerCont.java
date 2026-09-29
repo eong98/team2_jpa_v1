@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import dev.jpa.allimio.jwt.JwtTokenProvider;
 import dev.jpa.allimio.jwt.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/v1/dbms")
 public class ManagerCont {
   private final ManagerService managerService;
+  private final JwtTokenProvider jwtTokenProvider;
 
 //임시 DTO 생성
  public record IdCheckResponse(boolean available) {
@@ -103,8 +105,8 @@ public class ManagerCont {
           String accessToken = (String) loginResult.get("accessToken");
           String refreshToken = (String) loginResult.get("refreshToken");
     
-          AuthCookieUtil.addAccessTokenCookie(response, accessToken, 10);
-          AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, 60 * 60 * 24 * 14);
+          AuthCookieUtil.addAccessTokenCookie(response, accessToken, jwtTokenProvider.getAccessTokenExpireSeconds());
+          AuthCookieUtil.addRefreshTokenCookie(response, refreshToken, jwtTokenProvider.getRefreshTokenExpireSeconds());
     
           // 토큰은 쿠키로만 전달하고 JSON 응답에서는 제거
           loginResult.remove("accessToken");

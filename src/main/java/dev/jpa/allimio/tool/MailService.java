@@ -21,7 +21,7 @@ public class MailService {
   
   public void sendPasswordResetMail(String toEmail, String token) {
     String subject = "[all-im-io] 비밀번호 재설정 안내";
-    String frontendUrl = "http://10.1.205.120:9102";
+    String frontendUrl = "http://10.1.205.120:5174";   // 배포시 프론트 주소로 변경
     
     // token에 특수문자가 섞였을때 깨지지않게 인코딩
     String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);

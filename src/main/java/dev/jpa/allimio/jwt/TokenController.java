@@ -59,10 +59,10 @@ public class TokenController {
         refreshTokenRedisRepository.save(role, no, newRefreshToken, jwtTokenProvider.getRefreshTokenExpireMillis());
 
         // 새로운 Token을 HttpOnly Cookie에 저장
-        AuthCookieUtil.addAccessTokenCookie(response, newAccessToken, 10);
-        AuthCookieUtil.addRefreshTokenCookie(response, newRefreshToken, 60 * 60 * 24 * 14);
+        AuthCookieUtil.addAccessTokenCookie(response, newAccessToken, jwtTokenProvider.getAccessTokenExpireSeconds());
+        AuthCookieUtil.addRefreshTokenCookie(response, newRefreshToken, jwtTokenProvider.getRefreshTokenExpireSeconds());
 
-        return ResponseEntity.ok().build();
+            return ResponseEntity.ok().build();
     }
 
     @PostMapping("/logout")
