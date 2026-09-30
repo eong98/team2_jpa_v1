@@ -74,8 +74,8 @@ public class AiIssueMapService {
 
     return new AiIssueMapDTO(
         item.getNo(),
-        item.getMno(),
         item.getSmno(),
+        item.getCino(),
         item.getXpos(),
         item.getYpos(),
         item.getColor(),

@@ -14,6 +14,8 @@ import java.time.format.DateTimeFormatter;
 import dev.jpa.allimio.sendlog.SendLog;
 import dev.jpa.allimio.sendlog.SendLogRepository;
 
+import org.springframework.beans.factory.annotation.Value;
+
 /**
  * 회원 이슈 알림 Service
  *
@@ -34,6 +36,9 @@ public class NotificationService {
     private final MemberRepository memberRepository;
     private final MailService mailService;
     private final SendLogRepository sendLogRepository;
+    
+    @Value("${ai.server.url}")
+    private String aiServerUrl;
 
     /**
      * 생성자 주입
@@ -215,7 +220,6 @@ public class NotificationService {
         notification.setReadyn("Y");
     }
     
-    
     /**
      * 알림 이메일 발송
      */
@@ -260,39 +264,35 @@ public class NotificationService {
             // ----------------------------------------
             // 이슈 위치 이미지 URL 생성
             // ----------------------------------------
-            // NOTIFICATION.ASMNO에 연결된
-            // AIISSUEMAP.FSAVED 값을 조회한다.
-            //
-            // 도면이 없는 경우에는 ASMNO가 NULL이므로
-            // 이미지 URL도 NULL 상태로 유지한다.
-            // ----------------------------------------
             String imageUrl = null;
 
             Long asmno = notification.getAimapno();
 
+            // AI 이슈맵이 존재하는 경우
             if (asmno != null) {
 
-                // AIISSUEMAP.NO = ASMNO 조건으로
-                // 생성된 이슈 이미지 파일명 조회
+                // AIISSUEMAP.NO = ASMNO 기준으로
+                // 생성된 이미지 파일명 조회
                 String fsaved = notificationRepository
                         .findFsavedByAsmno(asmno)
                         .orElse(null);
 
-                // 실제 파일명이 존재하는 경우에만
-                // FastAPI 이미지 조회 URL 생성
+                // 파일명이 존재하는 경우에만 이미지 URL 생성
                 if (fsaved != null && !fsaved.isBlank()) {
+
                     imageUrl =
-                            "http://10.1.205.118:11200/api/shopmap/image/"
+                            aiServerUrl
+                            + "/api/aiissuemap/image/"
                             + fsaved;
                 }
             }
-             
-            // 이메일 발송
+
+            // 4. 이메일 발송
             mailService.sendNotificationMail(
-                email,
-                notification.getAtitle(),
-                notification.getContent(),
-                imageUrl
+                    email,
+                    notification.getAtitle(),
+                    notification.getContent(),
+                    imageUrl
             );
 
             // 5. 성공

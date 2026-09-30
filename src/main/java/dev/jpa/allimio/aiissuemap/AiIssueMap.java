@@ -39,14 +39,14 @@ public class AiIssueMap {
   private long no;
 
   /**
-   * 회원번호
-   */
-  private long mno;
-
-  /**
    * 원본 매장 도면 번호
    */
   private long smno;
+
+  /**
+   * CCTV 이슈 번호
+   */
+  private long cino;
 
   /**
    * 이슈 X 좌표
