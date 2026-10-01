@@ -5,7 +5,8 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('MEMBER')")
 @RequestMapping("/invite")
 public class InviteCodeCont {
   private final InviteCodeService codeService;
@@ -26,8 +28,10 @@ public class InviteCodeCont {
    */
   @PostMapping(path="/create/{shopno}")
   public ResponseEntity<String> createCode(
-      @PathVariable("shopno") Long shopno){
-    String code = codeService.createCode(shopno);
+          @PathVariable("shopno") Long shopno,
+          @AuthenticationPrincipal Long mno){  
+            
+        String code = codeService.createCode(shopno, mno);
     
     return ResponseEntity.ok(code);
   }
@@ -39,9 +43,10 @@ public class InviteCodeCont {
    */
   @PostMapping(path="/accept")
   public ResponseEntity<?> inviteMember(
-      @RequestBody Request request){
+      @RequestBody Request request,
+      @AuthenticationPrincipal Long mno){
     try {
-      codeService.invite(request.getCode(), request.getMno());
+      codeService.invite(request.getCode(), mno);
       return ResponseEntity.ok(Map.of("success", true));
   } catch (IllegalArgumentException | IllegalStateException e) {
       // 서비스에서 던진 "이미 만료된 초대코드입니다" 등의 메시지를 그대로 전달

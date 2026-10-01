@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.jpa.allimio.shop.Shop;
 import dev.jpa.allimio.shop.ShopRepository;
 import dev.jpa.allimio.shopmember.ShopMemberDTO;
 import dev.jpa.allimio.shopmember.ShopMemberRepository;
@@ -29,7 +31,14 @@ public class InviteCodeService {
    * @return
    */
   @Transactional
-  public String createCode(Long shopno) {
+  public String createCode(Long shopno, Long mno) {
+    // 본인 소유 매장인지 확인 (다른 점주 매장의 초대코드 발급 방지)
+       Shop shop = shopRepository.findById(shopno)
+       .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 매장입니다."));
+      if (shop.getMno() != mno) {
+          throw new AccessDeniedException("본인 매장만 초대코드를 발급할 수 있습니다.");
+        }
+    
       String now = Tool.getDate();
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
       String expiryDate = LocalDateTime.parse(now, formatter).plusMinutes(15).format(formatter);
