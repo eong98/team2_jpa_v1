@@ -70,7 +70,8 @@ public class SecurityConfig {
                   "/chat_session/**",
                   "/chat_menu/**",
                   "/chat_log/**",
-                  "/api/chatbot/**"
+                  "/api/chatbot/**",
+                  "/shop_plan/list"
               ).permitAll()
               
               // 관리자 권한만 접근 가능
