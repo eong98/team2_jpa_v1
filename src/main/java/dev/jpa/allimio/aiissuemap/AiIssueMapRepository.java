@@ -18,7 +18,6 @@ public interface AiIssueMapRepository
   List<AiIssueMap> findBySmno(long smno);
 
   /**
-   * 회원번호로 AI 이슈 도면 조회
+   * CCTV 이슈 번호로 AI 이슈 도면 조회
    */
-  List<AiIssueMap> findByMno(long mno);
 }

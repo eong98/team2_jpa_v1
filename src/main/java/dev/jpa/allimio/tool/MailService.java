@@ -60,36 +60,62 @@ public class MailService {
       String imageUrl
   ) {
       String subject = "[all-im-io] " + title;
-      
-      // 이슈 이미지가 있을 때만 이미지 보기 버튼 생성
-      String imageButton = "";
+
+      // 이슈 이미지가 있을 때만 메일 본문에 표시
+      String imageContent = "";
 
       if (imageUrl != null && !imageUrl.isBlank()) {
-          imageButton =
-              "<p style='margin-top:20px;'>"
+
+          imageContent =
+              "<div style='margin-top:20px;'>"
+              + "<p style='font-weight:bold;'>이슈 발생 위치</p>"
+
+              // 이미지 바로 표시
+              + "<img src='" + imageUrl + "' "
+              + "alt='이슈 발생 위치' "
+              + "style='display:block; "
+              + "max-width:600px; "
+              + "width:100%; "
+              + "height:auto; "
+              + "border:1px solid #ddd; "
+              + "border-radius:6px;' />"
+
+              // 이미지가 차단됐을 경우를 대비한 링크
+              + "<p style='margin-top:12px;'>"
               + "<a href='" + imageUrl + "' "
-              + "style='display:inline-block; "
-              + "padding:10px 18px; "
-              + "background-color:#333; "
-              + "color:#fff; "
-              + "text-decoration:none; "
-              + "border-radius:5px;'>"
-              + "이슈 위치 이미지 보기"
+              + "style='color:#2563eb; text-decoration:none;'>"
+              + "이슈 위치 이미지 크게 보기"
               + "</a>"
-              + "</p>";
+              + "</p>"
+
+              + "</div>";
       }
 
       String htmlContent =
-          "<div style='font-family: Arial, sans-serif; padding: 20px;'>"
+          "<div style='font-family:Arial,sans-serif; "
+          + "padding:20px; "
+          + "max-width:650px;'>"
+
           + "<h2>" + title + "</h2>"
-          + "<p>" + content + "</p>"
-          + imageButton
+
+          + "<p style='line-height:1.6;'>"
+          + content
+          + "</p>"
+
+          + imageContent
+
           + "</div>";
 
       try {
+
           MimeMessage message = mailSender.createMimeMessage();
+
           MimeMessageHelper helper =
-              new MimeMessageHelper(message, true, "UTF-8");
+              new MimeMessageHelper(
+                  message,
+                  true,
+                  "UTF-8"
+              );
 
           helper.setTo(toEmail);
           helper.setSubject(subject);
@@ -98,8 +124,17 @@ public class MailService {
           mailSender.send(message);
 
       } catch (MessagingException e) {
-          log.error("이슈 알림 메일 발송 실패: {}", toEmail, e);
-          throw new RuntimeException("알림 메일 발송에 실패했습니다.", e);
+
+          log.error(
+              "이슈 알림 메일 발송 실패: {}",
+              toEmail,
+              e
+          );
+
+          throw new RuntimeException(
+              "알림 메일 발송에 실패했습니다.",
+              e
+          );
       }
   }
 }

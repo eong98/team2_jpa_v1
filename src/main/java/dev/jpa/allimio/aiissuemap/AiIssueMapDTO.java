@@ -18,9 +18,9 @@ public class AiIssueMapDTO {
 
   private long no;
 
-  private long mno;
-
   private long smno;
+
+  private long cino;
 
   private Double xpos;
 
