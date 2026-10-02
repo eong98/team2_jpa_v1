@@ -119,21 +119,6 @@ public class NotificationController {
 
         return ResponseEntity.noContent().build();
     }
-  
-    
-    /**
-     * 알림 이메일 발송
-     *
-     * POST /api/notifications/{no}/email
-     */
-    @PostMapping("/{no}/email")
-    public ResponseEntity<String> sendNotificationMail(
-            @PathVariable("no") Long no) {
-
-        notificationService.sendNotificationMail(no);
-
-        return ResponseEntity.ok("메일 발송 완료");
-    }
     
     
 }
