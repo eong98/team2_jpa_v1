@@ -129,6 +129,19 @@ public interface NotificationRepository
                 ) AS EMAIL_STATUS,
 
                 (
+                    SELECT S.MESSAGE
+                    FROM SENDLOG S
+                    WHERE S.NNO = N.NO
+                      AND S.CHANNEL = 'EMAIL'
+                      AND S.NO = (
+                          SELECT MAX(S2.NO)
+                          FROM SENDLOG S2
+                          WHERE S2.NNO = N.NO
+                            AND S2.CHANNEL = 'EMAIL'
+                      )
+                ) AS EMAIL_MESSAGE,
+
+                (
                     SELECT CASE
                              WHEN S.STATUS = 1 THEN 'SENT'
                              ELSE 'FAILED'
@@ -142,7 +155,20 @@ public interface NotificationRepository
                           WHERE S2.NNO = N.NO
                             AND S2.CHANNEL = 'SMS'
                       )
-                ) AS SMS_STATUS
+                ) AS SMS_STATUS,
+
+                (
+                    SELECT S.MESSAGE
+                    FROM SENDLOG S
+                    WHERE S.NNO = N.NO
+                      AND S.CHANNEL = 'SMS'
+                      AND S.NO = (
+                          SELECT MAX(S2.NO)
+                          FROM SENDLOG S2
+                          WHERE S2.NNO = N.NO
+                            AND S2.CHANNEL = 'SMS'
+                      )
+                ) AS SMS_MESSAGE
 
             FROM NOTIFICATION N
             LEFT JOIN MEMBER M

@@ -167,15 +167,25 @@ public class NotificationService {
                                 ? null
                                 : row[12].toString(),
 
-                        // 이메일 발송 상태
-                        row[13] == null
-                                ? null
-                                : row[13].toString(),
+                             // 이메일 발송 상태
+                                row[13] == null
+                                        ? null
+                                        : row[13].toString(),
 
-                        // 문자 발송 상태
-                        row[14] == null
-                                ? null
-                                : row[14].toString()
+                                // 이메일 발송 결과 메시지
+                                row[14] == null
+                                        ? null
+                                        : row[14].toString(),
+
+                                // 문자 발송 상태
+                                row[15] == null
+                                        ? null
+                                        : row[15].toString(),
+
+                                // 문자 발송 결과 메시지
+                                row[16] == null
+                                        ? null
+                                        : row[16].toString()
                 ))
                 .toList();
     }
