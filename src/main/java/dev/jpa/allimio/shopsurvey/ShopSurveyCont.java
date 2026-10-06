@@ -41,6 +41,8 @@ import lombok.RequiredArgsConstructor;
  *   DELETE /shop_survey/{svno}                삭제
  *   GET    /shop_survey/{svno}/responses      응답 목록
  *   GET    /shop_survey/{svno}/stats          문항별 집계
+ *   POST   /shop_survey/{svno}/summary        AI 요약 + 긍정/부정 점수
+ *   (responses / stats / summary 는 ?from=yyyy-MM-dd&to=yyyy-MM-dd 응답일 필터 지원)
  *
  * [고객, 비로그인] SecurityConfig에서 /shop_survey/public/** permitAll
  *   GET    /shop_survey/public/{qrid}         설문 조회
@@ -156,9 +158,11 @@ public class ShopSurveyCont {
   public ResponseEntity<PageResponse<ShopSurveyAnswerDTO.Response>> responses(
       Authentication authentication,
       @PathVariable("svno") Long svno,
+      @RequestParam(name = "from", required = false) String from,
+      @RequestParam(name = "to", required = false) String to,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "10") int size) {
-    return ResponseEntity.ok(surveyService.responses(ownerNo(authentication), svno, page, size));
+    return ResponseEntity.ok(surveyService.responses(ownerNo(authentication), svno, from, to, page, size));
   }
 
   /**
@@ -168,8 +172,23 @@ public class ShopSurveyCont {
   @GetMapping("/{svno}/stats")
   public ResponseEntity<ShopSurveyAnswerDTO.Stats> stats(
       Authentication authentication,
-      @PathVariable("svno") Long svno) {
-    return ResponseEntity.ok(surveyService.stats(ownerNo(authentication), svno));
+      @PathVariable("svno") Long svno,
+      @RequestParam(name = "from", required = false) String from,
+      @RequestParam(name = "to", required = false) String to) {
+    return ResponseEntity.ok(surveyService.stats(ownerNo(authentication), svno, from, to));
+  }
+  
+ /**
+   * AI 요약 + 긍정/부정 점수 (0 ~ 10)
+   * POST /shop_survey/{svno}/summary?from=&to=
+   */
+  @PostMapping("/{svno}/summary")
+  public ResponseEntity<ShopSurveyAnswerDTO.Summary> summary(
+      Authentication authentication,
+      @PathVariable("svno") Long svno,
+      @RequestParam(name = "from", required = false) String from,
+      @RequestParam(name = "to", required = false) String to) {
+    return ResponseEntity.ok(surveyService.summarize(ownerNo(authentication), svno, from, to));
   }
 
   // =====================================================================

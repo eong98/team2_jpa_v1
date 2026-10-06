@@ -26,16 +26,19 @@ public interface ShopSurveyAnswerOptionRepository
   List<ShopSurveyAnswerOption> findByResponseNos(@Param("srnos") List<Long> srnos);
 
   /**
-   * 보기별 선택 수 집계
+   * 보기별 선택 수 집계 (응답일시 기간 필터)
    * 결과: [0] 보기번호(Long), [1] 선택 수(Long)
-   * 한 번도 선택되지 않은 보기도 0으로 나오도록 LEFT JOIN
+   * 한 번도 선택되지 않은 보기는 결과에 없으므로 Service에서 0으로 채웁니다.
    */
   @Query("SELECT o.no, COUNT(ao.answer) " +
-         "FROM ShopSurveyOption o " +
-         "JOIN o.question q " +
-         "JOIN q.survey s " +
-         "LEFT JOIN ShopSurveyAnswerOption ao ON ao.option = o " +
-         "WHERE s.no = :svno " +
-         "GROUP BY o.no")
-  List<Object[]> countBySvno(@Param("svno") Long svno);
+      "FROM ShopSurveyAnswerOption ao " +
+               "JOIN ao.option o " +
+               "JOIN ao.answer a " +
+               "JOIN a.response r " +
+               "JOIN r.survey s " +
+               "WHERE s.no = :svno " +
+               "AND (:from IS NULL OR r.cdate >= :from) " +
+               "AND (:to IS NULL OR r.cdate <= :to) " +
+               "GROUP BY o.no")
+  List<Object[]> countBySvno(@Param("svno") Long svno, @Param("from") String from, @Param("to") String to);
 }

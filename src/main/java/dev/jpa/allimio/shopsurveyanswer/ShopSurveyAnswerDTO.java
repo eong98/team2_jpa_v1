@@ -197,4 +197,31 @@ public class ShopSurveyAnswerDTO {
     /** 선택 수 */
     private Long count;
   }
+  
+//==========================================
+// [점주 AI 요약]
+// ==========================================
+
+  /**
+   * AI 요약 결과 (FastAPI 응답 + 분석 대상 응답 수)
+   */
+  @Setter
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @ToString
+  @Builder
+  public static class Summary {
+    /** 전체 응답 요약 */
+    private String summary;
+
+    /** 긍정/부정 점수 (0 = 매우 부정, 5 = 중립, 10 = 매우 긍정) */
+    private Double score;
+
+    /** 점수 판단 근거 (한두 문장) */
+    private String reason;
+
+    /** 분석에 사용한 응답 수 */
+    private Long responseCount;
+  }
 }

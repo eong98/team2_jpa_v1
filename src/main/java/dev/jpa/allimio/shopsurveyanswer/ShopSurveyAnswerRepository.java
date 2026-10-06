@@ -38,15 +38,18 @@ public interface ShopSurveyAnswerRepository extends JpaRepository<ShopSurveyAnsw
   List<Attach> findAttachByResponseNos(@Param("srnos") List<Long> srnos);
 
   /**
-   * 문항별 답 수 / 평균 점수 집계
+   * 문항별 답 수 / 평균 점수 집계 (응답일시 기간 필터)
    * 결과: [0] 문항번호(Long), [1] 답 수(Long), [2] 평균 점수(Double, SCALE 외 null)
-   * 답이 0건인 문항도 나오도록 LEFT JOIN
+   * 답이 0건인 문항은 결과에 없으므로 Service에서 0으로 채웁니다.  
    */
   @Query("SELECT q.no, COUNT(a.no), AVG(a.scale) " +
-         "FROM ShopSurveyQuestion q " +
-         "JOIN q.survey s " +
-         "LEFT JOIN ShopSurveyAnswer a ON a.question = q " +
-         "WHERE s.no = :svno " +
-         "GROUP BY q.no")
-  List<Object[]> countAndAvgBySvno(@Param("svno") Long svno);
+      "FROM ShopSurveyAnswer a " +
+               "JOIN a.question q " +
+               "JOIN a.response r " +
+               "JOIN r.survey s " +
+               "WHERE s.no = :svno " +
+               "AND (:from IS NULL OR r.cdate >= :from) " +
+               "AND (:to IS NULL OR r.cdate <= :to) " +
+               "GROUP BY q.no")
+  List<Object[]> countAndAvgBySvno(@Param("svno") Long svno, @Param("from") String from, @Param("to") String to);
 }

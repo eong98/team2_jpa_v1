@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -65,6 +66,7 @@ public class ShopSurveyService {
   private final ShopSurveyAnswerOptionRepository answerOptionRepository;
   private final AttachService attachService;
   private final ObjectMapper objectMapper;
+  private final ShopSurveyAiClient aiClient;
 
   /** ATTACH.TNAME (관리자메뉴/매장메뉴에 같은 TNAME으로 등록되어 있어야 TNO가 채워짐) */
   public static final String ATTACH_TNAME = "SHOP_SURVEY_ANSWER";
@@ -87,6 +89,11 @@ public class ShopSurveyService {
   private static final int DESCRIPTION_BYTES = 1000;
   private static final int LABEL_BYTES = 300;
   private static final int CONTENT_BYTES = 3000;
+  
+  /** AI 요약에 넘길 최대 응답 수 / 서술형 답변 수 (최신순) - 프롬프트 길이 제한 */
+  private static final int SUMMARY_MAX_RESPONSES = 300;
+  private static final int SUMMARY_MAX_TEXTS = 200;
+  private static final int SUMMARY_TEXT_LENGTH = 300;
 
   /** 임시저장 제목이 비었을 때 기본값 (TITLE NOT NULL) */
   private static final String DEFAULT_TITLE = "제목 없음";
@@ -289,11 +296,14 @@ public class ShopSurveyService {
    * 응답 목록 (최신순, 응답별 문항 답 + 선택 보기 + 첨부 사진 포함)
    * 현재 페이지 응답 번호로 답/보기/사진을 각각 한 번씩만 조회합니다.
    */
-  public PageResponse<ShopSurveyAnswerDTO.Response> responses(Long mno, Long svno, int page, int size) {
+  public PageResponse<ShopSurveyAnswerDTO.Response> responses(Long mno, Long svno, String fromDate, String toDate,int page, int size) {
     getOwnedSurvey(svno, mno);
+    
+    String from = startOfDay(fromDate);
+    String to = endOfDay(toDate);
 
     Page<ShopSurveyResponse> responsePage =
-        responseRepository.findPageBySvno(svno, PageRequest.of(page, size));
+        responseRepository.findPageBySvno(svno, from, to, PageRequest.of(page, size));
     List<Long> srnos = responsePage.getContent().stream().map(ShopSurveyResponse::getNo).toList();
 
     // 응답번호 → 응답 DTO
@@ -349,18 +359,21 @@ public class ShopSurveyService {
   /**
    * 문항별 집계 (답 수, 점수 평균, 보기별 선택 수)
    */
-  public ShopSurveyAnswerDTO.Stats stats(Long mno, Long svno) {
+  public ShopSurveyAnswerDTO.Stats stats(Long mno, Long svno, String fromDate, String toDate) {
     getOwnedSurvey(svno, mno);
+    
+    String from = startOfDay(fromDate);
+    String to = endOfDay(toDate);
 
     // 문항번호 → [답 수, 평균]
     Map<Long, Object[]> answerStat = new HashMap<>();
-    for (Object[] row : answerRepository.countAndAvgBySvno(svno)) {
+    for (Object[] row : answerRepository.countAndAvgBySvno(svno, from, to)) {
       answerStat.put((Long) row[0], row);
     }
 
     // 보기번호 → 선택 수
     Map<Long, Long> optionCount = new HashMap<>();
-    for (Object[] row : answerOptionRepository.countBySvno(svno)) {
+    for (Object[] row : answerOptionRepository.countBySvno(svno, from, to)) {
       optionCount.put((Long) row[0], (Long) row[1]);
     }
 
@@ -398,10 +411,100 @@ public class ShopSurveyService {
 
     return ShopSurveyAnswerDTO.Stats.builder()
         .svno(svno)
-        .totalResponses(responseRepository.countBySvno(svno))
+        .totalResponses(responseRepository.countBySvnoInRange(svno, from, to))
         .questions(questionStats)
         .build();
   }
+  
+  /**
+   * AI 요약 (요약 + 긍정/부정 점수, LLM 1회 호출)
+   *
+   * 기간 내 응답을 모아 FastAPI로 보냅니다.
+   * - 점수형/객관식: 문항별 집계(평균, 보기별 선택 수)만 전달 → 응답이 많아도 프롬프트가 짧음
+   * - 서술형: 최신 응답부터 SUMMARY_MAX_TEXTS개까지 원문 전달 (길면 잘라서)
+   *
+   * LLM 응답을 기다리는 동안 DB 커넥션을 잡고 있지 않도록 트랜잭션 밖에서 실행합니다.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public ShopSurveyAnswerDTO.Summary summarize(Long mno, Long svno, String fromDate, String toDate) {
+    ShopSurvey survey = getOwnedSurvey(svno, mno);
+    String from = startOfDay(fromDate);
+    String to = endOfDay(toDate);
+
+    long total = responseRepository.countBySvnoInRange(svno, from, to);
+    if (total == 0) {
+      throw new IllegalStateException("요약할 응답이 없습니다.");
+    }
+
+    // 1. 문항별 집계 (기간 필터 적용된 stats 재사용)
+    ShopSurveyAnswerDTO.Stats stats = stats(mno, svno, fromDate, toDate);
+    List<Map<String, Object>> questionStats = new ArrayList<>();
+    for (ShopSurveyAnswerDTO.QuestionStat q : stats.getQuestions()) {
+      Map<String, Object> row = new LinkedHashMap<>();
+      row.put("question", q.getTitle());
+      row.put("type", q.getAtype());
+      row.put("answerCount", q.getAnswerCount());
+      if ("SCALE".equals(q.getAtype())) {
+        row.put("scaleAvg", q.getScaleAvg());
+        row.put("scaleMax", SCALE_MAX.intValue());
+      }
+      if (!q.getOptions().isEmpty()) {
+        List<Map<String, Object>> opts = new ArrayList<>();
+        for (ShopSurveyAnswerDTO.OptionStat o : q.getOptions()) {
+          opts.add(Map.of("label", o.getLabel(), "count", o.getCount()));
+        }
+        row.put("options", opts);
+      }
+      questionStats.add(row);
+    }
+
+    // 2. 서술형 답변 (최신 응답 SUMMARY_MAX_RESPONSES건 안에서)
+    List<Long> srnos = responseRepository
+        .findPageBySvno(svno, from, to, PageRequest.of(0, SUMMARY_MAX_RESPONSES))
+        .getContent().stream().map(ShopSurveyResponse::getNo).toList();
+
+    List<Map<String, Object>> texts = new ArrayList<>();
+    for (ShopSurveyAnswer a : answerRepository.findByResponseNos(srnos)) {
+      if (texts.size() >= SUMMARY_MAX_TEXTS) break;
+      String content = a.getContent();
+      if (content == null || content.isBlank()) continue;
+      if (content.length() > SUMMARY_TEXT_LENGTH) content = content.substring(0, SUMMARY_TEXT_LENGTH) + "…";
+      texts.add(Map.of("question", a.getQuestion().getTitle(), "answer", content));
+    }
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("shopTitle", survey.getShop().getTitle());
+    payload.put("surveyTitle", survey.getTitle());
+    payload.put("totalResponses", total);
+    payload.put("questions", questionStats);
+    payload.put("textAnswers", texts);
+
+    ShopSurveyAnswerDTO.Summary result = aiClient.summarize(payload);
+    result.setResponseCount(total);
+    return result;
+  }
+  
+  //=====================================================================
+  // [내부] 날짜 필터
+  // =====================================================================
+
+   /** 'yyyy-MM-dd' → 'yyyy-MM-dd 00:00:00' (빈 값이면 null = 제한 없음) */
+   private String startOfDay(String date) {
+     return isBlank(date) ? null : checkDate(date) + " 00:00:00";
+   }
+  
+   /** 'yyyy-MM-dd' → 'yyyy-MM-dd 23:59:59' (빈 값이면 null = 제한 없음) */
+   private String endOfDay(String date) {
+     return isBlank(date) ? null : checkDate(date) + " 23:59:59";
+   }
+  
+   private String checkDate(String date) {
+     String d = date.trim();
+     if (!d.matches("\\d{4}-\\d{2}-\\d{2}")) {
+       throw new IllegalArgumentException("날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
+     }
+     return d;
+   }
 
   // =====================================================================
   // [고객] 설문 조회 / 제출 (비로그인)
