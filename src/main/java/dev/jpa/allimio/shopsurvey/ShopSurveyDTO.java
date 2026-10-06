@@ -60,6 +60,9 @@ public class ShopSurveyDTO {
 
   /** 응답 수 (조회 전용, 1건 이상이면 수정 잠금) */
   private Long responseCount;
+  
+  /** AI생성여부 0:직접작성 / 1:AI관여. 폼에서 AI를 한 번이라도 쓰면 1로 보냄 */
+  private Integer aiyn;
 
   /** 문항 목록 */
   @Builder.Default

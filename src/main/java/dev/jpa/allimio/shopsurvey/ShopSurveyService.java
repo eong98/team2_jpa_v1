@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -177,6 +178,7 @@ public class ShopSurveyService {
     survey.setTitle(title);
     survey.setDescription(form.getDescription());
     survey.setDraft(writeDraft(form));
+    survey.setAiyn(mergeAiyn(survey.getAiyn(), form.getAiyn()));
 
     return surveyRepository.save(survey).getNo();
   }
@@ -240,6 +242,7 @@ public class ShopSurveyService {
 
     survey.setTitle(form.getTitle().trim());
     survey.setDescription(form.getDescription());
+    survey.setAiyn(mergeAiyn(survey.getAiyn(), form.getAiyn()));
     survey.setUdate(Tool.getDate());
     ShopSurvey saved = surveyRepository.save(survey);
 
@@ -531,6 +534,100 @@ public class ShopSurveyService {
      }
      return d;
    }
+   
+// =====================================================================
+  // [점주] AI 설문 자동작성
+  // =====================================================================
+
+  /** 참고 설문 최대 개수 / 요청 문장 최대 길이 */
+  private static final int AI_MAX_REFERENCES = 5;
+  private static final int AI_MAX_REQUEST_LENGTH = 500;
+  private static final Set<String> AI_MODES = Set.of("create", "revise", "trend");
+
+  /**
+   * AI 설문 자동작성 (FastAPI LangGraph 에이전트 중계)
+   *
+   * Spring은 권한만 확인하고 번호를 넘깁니다.
+   * - 매장이 로그인 점주 소유인지
+   * - 참고 설문(refSvnos)이 모두 이 점주의 같은 매장 설문인지
+   * FastAPI는 확인된 설문번호로 문항/약한 항목을 DB에서 직접 읽습니다.
+   *
+   * LLM 응답을 기다리는 동안 DB 커넥션을 잡지 않도록 트랜잭션 밖에서 실행합니다.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public Map<String, Object> generateWithAi(Long mno, ShopSurveyAiDTO.Request req) {
+    if (req == null || req.getMode() == null || !AI_MODES.contains(req.getMode())) {
+      throw new IllegalArgumentException("AI 요청 종류가 올바르지 않습니다.");
+    }
+    Shop shop = getOwnedShop(req.getSno(), mno);
+
+    String mode = req.getMode();
+    String request = req.getRequest() == null ? "" : req.getRequest().trim();
+    if (!"trend".equals(mode) && request.isEmpty()) {
+      throw new IllegalArgumentException("AI에게 요청할 내용을 입력해주세요.");
+    }
+    if (request.length() > AI_MAX_REQUEST_LENGTH) {
+      throw new IllegalArgumentException("요청 내용은 " + AI_MAX_REQUEST_LENGTH + "자까지 입력할 수 있습니다.");
+    }
+
+    // 참고 설문: 중복 제거 후 최대 5개, 전부 이 점주의 같은 매장 설문인지 확인
+    List<Long> refSvnos = new ArrayList<>();
+    if ("create".equals(mode) && req.getRefSvnos() != null) {
+      for (Long svno : new LinkedHashSet<>(req.getRefSvnos())) {
+        if (svno == null) continue;
+        ShopSurvey ref = getOwnedSurvey(svno, mno);
+        if (ref.getShop().getNo() != shop.getNo()) { // Shop.no는 long(기본형)
+          throw new SecurityException("다른 매장의 설문은 참고할 수 없습니다.");
+        }
+        refSvnos.add(svno);
+        if (refSvnos.size() >= AI_MAX_REFERENCES) break;
+      }
+    }
+
+    if (!"create".equals(mode)) {
+      ShopSurveyDTO form = req.getCurrentForm();
+      if (form == null || form.getQuestions() == null || form.getQuestions().isEmpty()) {
+        throw new IllegalArgumentException("수정할 문항이 없습니다. 먼저 문항을 만들어주세요.");
+      }
+    }
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("mode", mode);
+    payload.put("request", request);
+    payload.put("shopTitle", shop.getTitle());
+    payload.put("industry", req.getIndustry());
+    payload.put("refSvnos", refSvnos);
+    payload.put("currentForm", "create".equals(mode) ? null : toAiForm(req.getCurrentForm()));
+
+    return aiClient.generate(payload);
+  }
+
+  /** 폼 → AI 입력 형식 (번호/정렬순서 같은 화면용 값은 빼고 내용만) */
+  private Map<String, Object> toAiForm(ShopSurveyDTO form) {
+    List<Map<String, Object>> questions = new ArrayList<>();
+    for (ShopSurveyDTO.Question q : form.getQuestions()) {
+      if (q == null) continue;
+      List<Map<String, Object>> options = new ArrayList<>();
+      if (q.getOptions() != null && isChoice(q.getAtype())) {
+        for (ShopSurveyDTO.Option o : q.getOptions()) {
+          if (o != null && !isBlank(o.getLabel())) options.add(Map.of("label", o.getLabel().trim()));
+        }
+      }
+      Map<String, Object> row = new LinkedHashMap<>();
+      row.put("title", q.getTitle() == null ? "" : q.getTitle().trim());
+      row.put("atype", ATYPES.contains(q.getAtype()) ? q.getAtype() : "SHORT");
+      row.put("requiredyn", isZeroOrOne(q.getRequiredyn()) ? q.getRequiredyn() : 0);
+      row.put("fileyn", isZeroOrOne(q.getFileyn()) ? q.getFileyn() : 0);
+      row.put("options", options);
+      questions.add(row);
+    }
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("title", form.getTitle() == null ? "" : form.getTitle().trim());
+    result.put("description", form.getDescription() == null ? "" : form.getDescription().trim());
+    result.put("questions", questions);
+    return result;
+  }
 
   // =====================================================================
   // [고객] 설문 조회 / 제출 (비로그인)
@@ -710,6 +807,14 @@ public class ShopSurveyService {
     dto.setQrid(survey.getQrid());
     dto.setCdate(survey.getCdate());
     dto.setUdate(survey.getUdate());
+    dto.setAiyn(survey.getAiyn() != null ? survey.getAiyn() : 0);
+    }
+  
+  /**
+   * AI생성여부 합치기: 기존 값이나 이번 요청 중 하나라도 1이면 1 (한 번 AI가 관여하면 계속 1)
+   */
+  private int mergeAiyn(Integer current, Integer requested) {    boolean ai = (current != null && current == 1) || (requested != null && requested == 1);
+    return ai ? 1 : 0;
   }
 
   /** 문항/보기 저장 (정렬순서는 배열 순서로 다시 매김) */
