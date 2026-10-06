@@ -223,5 +223,9 @@ public class ShopSurveyAnswerDTO {
 
     /** 분석에 사용한 응답 수 */
     private Long responseCount;
+    
+    /** 약한 항목 (DB 저장용, AI 자동작성 때 참고) */
+    @Builder.Default
+    private List<String> weakPoints = new ArrayList<>();
   }
 }

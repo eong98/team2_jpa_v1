@@ -11,6 +11,8 @@ import dev.jpa.allimio.shopsurveyquestion.ShopSurveyQuestion;
 import dev.jpa.allimio.shopsurveyquestion.ShopSurveyQuestionRepository;
 import dev.jpa.allimio.shopsurveyresponse.ShopSurveyResponse;
 import dev.jpa.allimio.shopsurveyresponse.ShopSurveyResponseRepository;
+import dev.jpa.allimio.shopsurveysummary.ShopSurveySummary;
+import dev.jpa.allimio.shopsurveysummary.ShopSurveySummaryRepository;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -67,6 +69,7 @@ public class ShopSurveyService {
   private final AttachService attachService;
   private final ObjectMapper objectMapper;
   private final ShopSurveyAiClient aiClient;
+  private final ShopSurveySummaryRepository summaryRepository;
 
   /** ATTACH.TNAME (관리자메뉴/매장메뉴에 같은 TNAME으로 등록되어 있어야 TNO가 채워짐) */
   public static final String ATTACH_TNAME = "SHOP_SURVEY_ANSWER";
@@ -424,6 +427,7 @@ public class ShopSurveyService {
    * - 서술형: 최신 응답부터 SUMMARY_MAX_TEXTS개까지 원문 전달 (길면 잘라서)
    *
    * LLM 응답을 기다리는 동안 DB 커넥션을 잡고 있지 않도록 트랜잭션 밖에서 실행합니다.
+   * 결과(요약, 점수, 약한 항목)는 SHOP_SURVEY_SUMMARY에 설문당 1개로 덮어써서 저장합니다.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public ShopSurveyAnswerDTO.Summary summarize(Long mno, Long svno, String fromDate, String toDate) {
@@ -481,7 +485,29 @@ public class ShopSurveyService {
 
     ShopSurveyAnswerDTO.Summary result = aiClient.summarize(payload);
     result.setResponseCount(total);
+    
+ // 3. 저장 (같은 설문이면 덮어쓰기) - AI 자동작성 참고용
+    saveSummary(svno, result);
+    
     return result;
+  }
+  
+  /**
+   * AI 요약 결과 저장 (SVNO가 PK라 save()가 INSERT 또는 UPDATE)
+   * 저장에 실패해도 점주에게 보여줄 요약은 이미 나왔으므로 화면 응답은 그대로 돌려줍니다.
+   */
+  private void saveSummary(Long svno, ShopSurveyAnswerDTO.Summary result) {
+    try {
+      List<String> weak = result.getWeakPoints() != null ? result.getWeakPoints() : List.of();
+      summaryRepository.save(ShopSurveySummary.builder()
+          .svno(svno)
+          .summary(result.getSummary())
+          .score(BigDecimal.valueOf(result.getScore()))
+          .weakpoints(objectMapper.writeValueAsString(weak))
+          .build());
+    } catch (Exception e) {
+      log.warn("매장 설문 AI 요약 저장 실패 svno={}", svno, e);
+    }
   }
   
   //=====================================================================
