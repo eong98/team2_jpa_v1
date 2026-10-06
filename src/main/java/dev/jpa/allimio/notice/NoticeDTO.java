@@ -52,7 +52,8 @@ public class NoticeDTO {
     
     // 수정
     public void applyUpdateTo(Notice notice) {
-      notice.updateNotice(this.type, this.title, this.content, Tool.getDate(), this.pw, this.fixyn, this.fileyn, this.vmode, this.vseq);
+      // 비밀번호(this.pw)는 본인 확인용 — 평문으로 덮어쓰지 않도록 null 전달 (저장된 암호화 값 유지)
+      notice.updateNotice(this.type, this.title, this.content, Tool.getDate(), null, this.fixyn, this.fileyn, this.vmode, this.vseq);
     }
   }
   

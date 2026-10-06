@@ -203,7 +203,8 @@ public class Tool {
     // System.out.println("-> preview() ext_filename: " + ext_filename);
     
     // 축소 이미지 조합 /upDir/mt_t.jpg
-    File dest = new File(upDir + "/" + _dest + "_t " + ext_filename);
+    // 261002 _t 뒤에 공백들어간거 삭제함
+    File dest = new File(upDir + "/" + _dest + "_t" + ext_filename);
     // System.out.println("-> preview() dest: " + dest);
  
     Image srcImg = null;

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.jpa.allimio.tool.Tool;
@@ -11,6 +12,10 @@ import dev.jpa.allimio.tool.Tool;
 @Service
 @Transactional(readOnly = true)
 public class NoticeService {
+  /** 게시글 비밀번호 암호화 (SecurityConfig의 BCryptPasswordEncoder) */
+  @Autowired
+  private PasswordEncoder pwEncoder;
+
   @Autowired
   NoticeRepository noticeRepository;
   
@@ -78,6 +83,10 @@ public class NoticeService {
   @Transactional
   public Long createNotice(NoticeDTO.NCRequest dto) {
     Notice notice = dto.toEntity();
+    // 게시글 비밀번호는 문의사항(QaService)과 같이 BCrypt로 암호화해서 저장
+    if (dto.getPw() != null && !dto.getPw().isBlank()) {
+      notice.changePw(pwEncoder.encode(dto.getPw()));
+    }
     Notice savedNotice = noticeRepository.save(notice);
     return savedNotice.getNo();
   }
@@ -93,7 +102,7 @@ public class NoticeService {
 
     // 비밀번호 입력값이 있는 경우 검증
     if (updateDto.getPw() != null && !updateDto.getPw().isBlank()) {
-      if (!notice.matchPw(updateDto.getPw())) {
+      if (notice.getPw() == null || !pwEncoder.matches(updateDto.getPw(), notice.getPw())) {
         throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
       }
     }
@@ -107,7 +116,10 @@ public class NoticeService {
    */
   @Transactional
   public void deleteNotice(NoticeDTO.DeleteRequest deleteDto) {
-    Notice notice = noticeRepository.findByNoAndPwAndIsdel(deleteDto.getNo(), deleteDto.getPw(), "N")
+    // 암호화된 비밀번호는 DB 조건(=)으로 비교할 수 없으므로 글을 찾은 뒤 pwEncoder.matches로 확인
+    Notice notice = noticeRepository.findById(deleteDto.getNo())
+        .filter(n -> "N".equals(n.getIsdel()))
+        .filter(n -> deleteDto.getPw() != null && n.getPw() != null && pwEncoder.matches(deleteDto.getPw(), n.getPw()))
         .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않거나 비밀번호가 일치하지 않습니다."));
 
     notice.delete(Tool.getDate());

@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -76,6 +77,27 @@ public class SecurityConfig {
                   "/shop_plan/list",
                   "/shop_survey/public/**"
               ).permitAll()
+              
+           // Swagger / OpenAPI 관련 경로 전체 허용
+              .requestMatchers(
+                  "/swagger-ui/**",
+                  "/swagger-ui.html",
+                  "/api-docs/**",
+                  "/swagger-resources/**",
+                  "/webjars/**",
+                  // 서버 오류 페이지 — 막혀 있으면 허용된 API에서 난 오류(500)도 전부 401로 보여 원인을 알 수 없음
+                  "/error"
+              ).permitAll()
+
+              // 비회원 고객센터(/board) — 문의 목록/상세/등록/수정/삭제, 첨부파일 보기
+              // (수정·삭제·비밀글 열람은 서버에서 게시글 비밀번호로 검증)
+              .requestMatchers(HttpMethod.GET, 
+                  "/qa/list", "/qa/guest/list", "/qa/faq", "/qa/{no}",
+                  "/notice/list", "/notice/{no}",
+                  "/attach/read/{no}", "/attach/list/{bno}").permitAll()
+              .requestMatchers(HttpMethod.POST, "/qa", "/qa/{no}/verify", "/attach/create").permitAll()
+              .requestMatchers(HttpMethod.PUT, "/qa/{no}").permitAll()
+              .requestMatchers(HttpMethod.DELETE, "/qa", "/attach/delete_by_bno/{bno}", "/attach/delete/{no}").permitAll()
               
               // 관리자 권한만 접근 가능
               .requestMatchers(

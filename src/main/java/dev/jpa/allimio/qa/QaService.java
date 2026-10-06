@@ -279,7 +279,10 @@ public class QaService {
   @Transactional
   public Long createFAQ(QaDTO.FaqCRequest dto) {
     Qa qa = dto.toEntity();
-    System.out.println(qa.getIsfaq());
+    // 문의 등록과 같이 BCrypt로 암호화해서 저장 (예전엔 평문 저장 → 수정·삭제 때 matches 비교가 항상 실패)
+    if (dto.getPw() != null && !dto.getPw().isBlank()) {
+      qa.changePw(pwEncoder.encode(dto.getPw()));
+    }
     Qa savedQa = qaRepository.save(qa);
     return savedQa.getNo();
   }

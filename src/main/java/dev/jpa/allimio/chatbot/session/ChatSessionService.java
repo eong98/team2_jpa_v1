@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,13 @@ public class ChatSessionService {
   private static final int MODE_AI = 1;
   /** 상담 종료 */
   private static final int MODE_CLOSED = 2;
+
+  /** 마지막 활동 후 이 시간(분) 동안 반응이 없으면 상담 자동 종료 */
+  public static final int SESSION_IDLE_MINUTES = 30;
+  /** 비회원 gno를 이 기간(일) 동안 쓰지 않으면 만료 (React ChatGuest.ts와 같은 값) */
+  private static final int GUEST_EXPIRE_DAYS = 30;
+  /** CHAT_SESSION.UDATE 형식 (Tool.getDate()와 같음) — 문자열 비교로 기간 판단 */
+  private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
  
   /** MTYPE(메시지 유형) 상수 (CHAT_LOG.MTYPE)  */
   /** 옵션 선택지 선택 */
@@ -83,6 +92,12 @@ public class ChatSessionService {
   private static final int ENDFLOW_ASK_UNSATISFY_MEMO = 2;
   private static final int ENDFLOW_ASK_ESCALATE_CONFIRM = 3;
   private static final int ENDFLOW_FAIL_AI_ANSWER= 4;
+  /** FastAPI가 쓰는 값 — 5: 대화 요약 중, 6: AI 응답 생성 중 (chatbot/chat_constants.py) */
+  private static final int ENDFLOW_SUMMARIZING = 5;
+  private static final int ENDFLOW_AI_RESPONDING = 6;
+
+  /** 다른 창(탭·기기)에서 상담이 먼저 진행돼 예전 화면에서 누른 동작을 거부할 때 (409) */
+  private static final String STALE_MESSAGE = "다른 창에서 상담이 진행되어 화면을 최신 상태로 바꿨습니다.";
   
   
   /**
@@ -146,6 +161,7 @@ public class ChatSessionService {
   @Transactional
   public ChatSessionDTO.Response findActive(Long mno, String gno) {
     if (mno == null && (gno == null || gno.isBlank())) return null;
+    if (mno == null && isGuestExpired(gno)) return null; // 만료된 비회원 gno — 이전 기록 노출 안 함
     Optional<ChatSession> optional = mno != null
         ? chatSessionRepository.findFirstByMnoAndCmodeNotOrderByUdateDesc(mno, MODE_CLOSED)
         : chatSessionRepository.findFirstByGnoAndCmodeNotOrderByUdateDesc(gno, MODE_CLOSED);
@@ -161,6 +177,7 @@ public class ChatSessionService {
   @Transactional(readOnly = true)
   public List<ChatSessionDTO.Summary> getList(Long mno, String gno) {
     if (mno == null && (gno == null || gno.isBlank())) return List.of();
+    if (mno == null && isGuestExpired(gno)) return List.of(); // 만료된 비회원 gno — 이전 기록 노출 안 함
     List<ChatSession> sessions = mno != null
         ? chatSessionRepository.findByMnoOrderByCmodeAscUdateDesc(mno)
         : chatSessionRepository.findByGnoOrderByCmodeAscUdateDesc(gno);
@@ -200,6 +217,12 @@ public class ChatSessionService {
   public ChatSessionDTO.ActionResult selectMenu(String no, Long cno) {
     ChatSession session = getOpenSession(no);
     if (cno == null) throw new IllegalArgumentException("선택한 메뉴 번호가 없습니다.");
+    // 다른 창에서 AI 상담으로 바뀌었거나 종료 절차(만족도 등)가 진행 중이면, 예전 화면의 옵션 클릭은 거부
+    if (Integer.valueOf(MODE_AI).equals(session.getCmode())
+        || isOneOf(session.getEndflow(), ENDFLOW_ASK_SATISFY, ENDFLOW_ASK_UNSATISFY_REASON,
+            ENDFLOW_ASK_UNSATISFY_MEMO, ENDFLOW_SUMMARIZING, ENDFLOW_AI_RESPONDING)) {
+      throw new IllegalStateException(STALE_MESSAGE);
+    }
  
     ChatMenuDTO.Response menu = chatMenuService.selectMenu(cno);
  
@@ -228,8 +251,11 @@ public class ChatSessionService {
   public ChatSessionDTO.ActionResult backToIntro(String no, String greeting) { // endAi 파라미터 제거
    ChatSession session = getOpenSession(no);
   
+   // 화면에서 "다른 질문하기"는 대기 없음 / 관리자 연결 확인 / AI 답변 실패 상태에서만 보임
+   requireEndflow(session, null, ENDFLOW_ASK_ESCALATE_CONFIRM, ENDFLOW_FAIL_AI_ANSWER);
    session.setCmode(MODE_OPTION);
    session.setCno(null);
+   session.setEndflow(null); // 처음으로 돌아가면 관리자 연결 확인 등 대기 상태도 해제 (화면과 같게)
    session.setUdate(Tool.getDate());
    session.setReadat(Tool.getDate());
   
@@ -249,6 +275,16 @@ public class ChatSessionService {
     if (req.getAction() == null) throw new IllegalArgumentException("action 값이 없습니다.");
     // 이미 종료된 세션에 다시 요청(버튼 연타, 다른 탭) → 로그 중복/재종료 방지
     ChatSession session = getOpenSession(no);
+    // 다른 창에서 이미 다음 단계로 넘어갔으면(예: 만족도 이미 선택) 예전 화면의 버튼은 거부 → 화면이 새로 불러옴
+    switch (req.getAction()) {
+      case END -> requireEndflow(session, null, ENDFLOW_ASK_ESCALATE_CONFIRM, ENDFLOW_FAIL_AI_ANSWER);
+      case SATISFY -> requireEndflow(session, ENDFLOW_ASK_SATISFY);
+      case UNSATISFY_REASON -> requireEndflow(session, ENDFLOW_ASK_UNSATISFY_REASON);
+      case UNSATISFY_MEMO -> requireEndflow(session, ENDFLOW_ASK_UNSATISFY_MEMO);
+      case ESCALATE -> requireEndflow(session, null, ENDFLOW_FAIL_AI_ANSWER);
+      case ESCALATE_CONFIRM -> requireEndflow(session, ENDFLOW_ASK_ESCALATE_CONFIRM);
+      default -> { }
+    }
     List<ChatLogDTO.Response> logs = new ArrayList<>();
     String sysMsg = req.getSystemMessage();
     session.setReadat(Tool.getDate());
@@ -352,6 +388,28 @@ public class ChatSessionService {
   }
 
   /** 진행 중인 세션만 — 종료된 세션에 대한 선택/단계 요청은 409로 거부 */
+  /** 현재 ENDFLOW가 허용 목록에 없으면 409 (null도 목록에 넣을 수 있음 = 대기 상태 없음) */
+  private void requireEndflow(ChatSession session, Integer... allowed) {
+    for (Integer a : allowed) {
+      if (java.util.Objects.equals(a, session.getEndflow())) {
+        return;
+      }
+    }
+    throw new IllegalStateException(STALE_MESSAGE);
+  }
+
+  private boolean isOneOf(Integer value, int... candidates) {
+    if (value == null) {
+      return false;
+    }
+    for (int c : candidates) {
+      if (value == c) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private ChatSession getOpenSession(String no) {
     ChatSession session = getSession(no);
     if (session.getCmode() != null && session.getCmode() == MODE_CLOSED) {
@@ -367,12 +425,35 @@ public class ChatSessionService {
         .sno(no).sender(sender).mtype(mtype).content(content).cno(cno).build());
   }
  
-  /** 방치 세션 자동종료 (배치/타임아웃 감지용) */
+  /** 방치 세션 자동종료 (ChatSessionScheduler가 호출) — 종료 사유 2: 자동종료 */
   @Transactional
   public void autoClose(String no) {
     ChatSession session = chatSessionRepository.findById(no).orElse(null);
     if (session == null || session.getCmode() == MODE_CLOSED) return;
+    log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE,
+        SESSION_IDLE_MINUTES + "분 동안 응답이 없어 상담이 자동으로 종료되었습니다.", null);
     closeSession(session, 2, null, null, null);
+  }
+
+  /** 마지막 활동 후 SESSION_IDLE_MINUTES분이 지난 열린 세션 번호 목록 */
+  @Transactional(readOnly = true)
+  public List<String> findIdleSessionNos() {
+    String cutoff = LocalDateTime.now().minusMinutes(SESSION_IDLE_MINUTES).format(DATE_FMT);
+    return chatSessionRepository.findByCmodeNotAndUdateLessThan(MODE_CLOSED, cutoff).stream()
+        .map(ChatSession::getNo)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * 비회원 식별값(gno) 만료 여부 — 그 gno로 GUEST_EXPIRE_DAYS일 동안 활동이 없으면 만료.
+   * gno는 "가지고 있으면 그 비회원의 상담 기록을 볼 수 있는" 값이라, 브라우저(ChatGuest.ts)뿐 아니라
+   * 서버에서도 기한을 둬서 오래된 gno 값을 복사해 쓰는 경우를 막습니다.
+   */
+  private boolean isGuestExpired(String gno) {
+    String cutoff = LocalDateTime.now().minusDays(GUEST_EXPIRE_DAYS).format(DATE_FMT);
+    return chatSessionRepository.findFirstByGnoOrderByUdateDesc(gno)
+        .map(s -> s.getUdate() != null && s.getUdate().compareTo(cutoff) < 0)
+        .orElse(false);
   }
 }
  

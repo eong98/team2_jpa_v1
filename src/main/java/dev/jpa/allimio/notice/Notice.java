@@ -182,8 +182,12 @@ public class Notice {
    * @param pw
    * @return
    */
-  public boolean matchPw(String pw) {
-    return this.pw != null && this.pw.equals(pw);
+  /**
+   * 게시글 비밀번호 설정 — 반드시 암호화(BCrypt)된 값을 넘김 (NoticeService에서 pwEncoder.encode)
+   * 확인은 NoticeService에서 pwEncoder.matches()로 함 (평문 비교 금지)
+   */
+  public void changePw(String encodedPw) {
+    this.pw = encodedPw;
   }
 
 }

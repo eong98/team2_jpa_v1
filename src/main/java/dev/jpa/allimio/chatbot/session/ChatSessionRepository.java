@@ -23,6 +23,12 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
    */
   List<ChatSession> findByGnoOrderByCmodeAscUdateDesc(String gno);
 
+  /** 비회원(gno)의 가장 최근 활동 세션 — gno 만료 판단용 */
+  Optional<ChatSession> findFirstByGnoOrderByUdateDesc(String gno);
+
+  /** 방치 세션: 종료되지 않았고 마지막 활동(UDATE)이 기준 시각보다 이전 — 자동 종료 배치용 */
+  List<ChatSession> findByCmodeNotAndUdateLessThan(Integer cmode, String udate);
+
   /**
    * 회원이 지금 진행 중인 세션(MODE != 2)이 있는지 확인.
    * 챗봇을 다시 열었을 때 "이어서 볼지, 새로 시작할지" 판단용.

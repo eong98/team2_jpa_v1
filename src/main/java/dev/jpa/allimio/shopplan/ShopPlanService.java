@@ -1,7 +1,7 @@
 package dev.jpa.allimio.shopplan;
 
-import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,7 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-//import dev.jpa.allimio.shoporder.ShopOrderRepository;
+import dev.jpa.allimio.paystats.PayStatsRepository;
 import dev.jpa.allimio.tool.Tool;
 
 @Service
@@ -20,8 +20,9 @@ public class ShopPlanService {
   @Autowired
   ShopPlanRepository shopPlanRepository;
   
-//  @Autowired
-//  ShopOrderRepository shopOrderRepository;
+  /** 구독권별 결제 건수 (구독권 결제 통계와 같은 기준: SHOP_PAYMENT 결제완료) */
+  @Autowired
+  PayStatsRepository payStatsRepository;
 
   public ShopPlanService() {
 
@@ -59,41 +60,42 @@ public class ShopPlanService {
 
   /**
    * 판매중인 구독권 전체 목록 (사용자 결제화면용).
-   * SHOP_ORDER 집계 결과를 붙여서, 같은 이용기간(pmonth) 그룹 안에서
-   * 주문 건수가 가장 많은 구독권에 popular=true를 표시합니다.
+   * 구독권 결제 통계(SHOP_PAYMENT 결제완료 건수)를 붙여서, 같은 이용기간(pmonth) 그룹 안에서
+   * 결제 건수가 가장 많은 구독권에 popular=true(인기)를 표시합니다.
+   * 결제가 아직 하나도 없는 그룹은 인기 표시 없이 관리자 추천(isreco)만 보입니다.
    */
-//  public List<ShopPlanDTO.Response> findAllList() {
-    public List<ShopPlan> findAllList() {
+  public List<ShopPlanDTO.Response> findAllList() {
     List<ShopPlan> list = shopPlanRepository.findByIssellOrderByMincctv("Y");
 
-    // pno -> 주문건수 맵
-//    Map<Long, Long> countMap = shopOrderRepository.countByPno().stream()
-//        .collect(Collectors.toMap(
-//            ShopOrderRepository.PnoCountProjection::getPno,
-//            ShopOrderRepository.PnoCountProjection::getCnt));
-//
-//    List<ShopPlanDTO.Response> responses = list.stream()
-//        .map(ShopPlan -> {
-//          ShopPlanDTO.Response r = ShopPlanDTO.Response.from(ShopPlan);
-//          r.setOrderCount(countMap.getOrDefault(ShopPlan.getNo(), 0L));
-//          return r;
-//        })
-//        .collect(Collectors.toList());
-//
-//    // pmonth별로 묶어서 그룹 내 최댓값(주문건수 1위)에 popular=true
-//    Map<Integer, Optional<ShopPlanDTO.Response>> topByMonth = responses.stream()
-//        .collect(Collectors.groupingBy(
-//            ShopPlanDTO.Response::getPmonth,
-//            Collectors.maxBy(Comparator.comparingLong(ShopPlanDTO.Response::getOrderCount))));
-//
-//    topByMonth.values().forEach(opt -> opt.ifPresent(top -> {
-//      if (top.getOrderCount() > 0) { // 주문이 아예 없으면 인기 배지 안 붙임
-//        top.setPopular(true);
-//      }
-//    }));
+    // pno -> 결제완료 건수
+    Map<Long, Long> countMap = new HashMap<>();
+    for (Object[] row : payStatsRepository.paidCountByPlanAll()) {
+      if (row[0] != null) {
+        countMap.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+      }
+    }
 
-//    return responses;
-    return list;
+    List<ShopPlanDTO.Response> responses = list.stream()
+        .map(plan -> {
+          ShopPlanDTO.Response r = ShopPlanDTO.Response.from(plan);
+          r.setOrderCount(countMap.getOrDefault(plan.getNo(), 0L));
+          return r;
+        })
+        .collect(Collectors.toList());
+
+    // pmonth별로 묶어서 그룹 내 결제 건수 1위에 popular=true
+    Map<Integer, Optional<ShopPlanDTO.Response>> topByMonth = responses.stream()
+        .collect(Collectors.groupingBy(
+            ShopPlanDTO.Response::getPmonth,
+            Collectors.maxBy(Comparator.comparingLong(ShopPlanDTO.Response::getOrderCount))));
+
+    topByMonth.values().forEach(opt -> opt.ifPresent(top -> {
+      if (top.getOrderCount() > 0) { // 결제가 아예 없으면 인기 배지 안 붙임
+        top.setPopular(true);
+      }
+    }));
+
+    return responses;
   }
 
   /**
@@ -130,6 +132,10 @@ public class ShopPlanService {
       shopPlan.setDescription(request.getDescription());
       if (request.getIssell() != null) {
         shopPlan.setIssell(request.getIssell());
+      }
+      // 추천 여부 — 예전엔 수정 시 저장하지 않아 추천 설정이 반영되지 않았음
+      if (request.getIsreco() != null) {
+        shopPlan.setIsreco(request.getIsreco());
       }
 
       ShopPlan savedEntity = shopPlanRepository.save(shopPlan);
