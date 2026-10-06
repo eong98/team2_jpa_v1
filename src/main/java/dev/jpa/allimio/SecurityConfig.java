@@ -19,6 +19,7 @@ import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 import dev.jpa.allimio.jwt.JwtAuthenticationFilter;
 import dev.jpa.allimio.jwt.JwtTokenProvider;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 //1. 비밀번호 암호화 빈 등록 (BCrypt 방식)
@@ -72,7 +74,8 @@ public class SecurityConfig {
                   "/chat_menu/**",
                   "/chat_log/**",
                   "/api/chatbot/**",
-                  "/shop_plan/list"
+                  "/shop_plan/list",
+                  "/shop_survey/public/**"
               ).permitAll()
               
            // Swagger / OpenAPI 관련 경로 전체 허용

@@ -62,6 +62,12 @@ public class NotificationAdminDTO {
     /** 이메일 발송 상태 */
     private String emailStatus;
 
+    /** 이메일 발송 결과 메시지 */
+    private String emailMessage;
+
     /** 문자 발송 상태 */
     private String smsStatus;
+
+    /** 문자 발송 결과 메시지 */
+    private String smsMessage;
 }

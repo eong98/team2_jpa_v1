@@ -4,55 +4,38 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import dev.jpa.allimio.member.Member;
-import dev.jpa.allimio.member.MemberRepository;
-import dev.jpa.allimio.tool.MailService;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
-import dev.jpa.allimio.sendlog.SendLog;
-import dev.jpa.allimio.sendlog.SendLogRepository;
-
-import org.springframework.beans.factory.annotation.Value;
 
 /**
  * 회원 이슈 알림 Service
  *
  * Controller와 Repository 사이에서
- * 알림 관련 실제 기능을 처리한다.
+ * 알림 관련 기능을 처리한다.
  *
  * 기능
  * 1. 회원별 알림 목록 조회
  * 2. 알림 상세 조회
  * 3. 안 읽은 알림 개수 조회
- * 4. 알림 읽음 처리
+ * 4. 관리자 전체 알림 발송 내역 조회
+ * 5. 알림 읽음 처리
+ *
+ * 알림 생성 및 이메일/SMS 발송은
+ * FastAPI(Python)에서 처리한다.
  */
 @Service
 @Transactional(readOnly = true)
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final MemberRepository memberRepository;
-    private final MailService mailService;
-    private final SendLogRepository sendLogRepository;
-    
-    @Value("${ai.server.url}")
-    private String aiServerUrl;
+
 
     /**
      * 생성자 주입
      */
     public NotificationService(
-            NotificationRepository notificationRepository,
-            MemberRepository memberRepository,
-            MailService mailService,
-            SendLogRepository sendLogRepository) {
+            NotificationRepository notificationRepository) {
+
         this.notificationRepository = notificationRepository;
-        this.memberRepository = memberRepository;
-        this.mailService = mailService;
-        this.sendLogRepository = sendLogRepository;
-        
     }
 
 
@@ -109,6 +92,8 @@ public class NotificationService {
      *
      * NOTIFICATION + MEMBER + SENDLOG 조회 결과를
      * NotificationAdminDTO로 변환한다.
+     *
+     * SENDLOG 자체 저장은 FastAPI(Python)에서 처리한다.
      */
     public List<NotificationAdminDTO> getAdminNotifications() {
 
@@ -182,18 +167,29 @@ public class NotificationService {
                                 ? null
                                 : row[12].toString(),
 
-                        // 이메일 발송 상태
-                        row[13] == null
-                                ? null
-                                : row[13].toString(),
+                             // 이메일 발송 상태
+                                row[13] == null
+                                        ? null
+                                        : row[13].toString(),
 
-                        // 문자 발송 상태
-                        row[14] == null
-                                ? null
-                                : row[14].toString()
+                                // 이메일 발송 결과 메시지
+                                row[14] == null
+                                        ? null
+                                        : row[14].toString(),
+
+                                // 문자 발송 상태
+                                row[15] == null
+                                        ? null
+                                        : row[15].toString(),
+
+                                // 문자 발송 결과 메시지
+                                row[16] == null
+                                        ? null
+                                        : row[16].toString()
                 ))
                 .toList();
     }
+
 
     /**
      * 알림 읽음 처리
@@ -218,114 +214,5 @@ public class NotificationService {
         }
 
         notification.setReadyn("Y");
-    }
-    
-    /**
-     * 알림 이메일 발송
-     */
-    @Transactional
-    public void sendNotificationMail(Long notificationNo) {
-
-        // 1. 알림 조회
-        Notification notification = notificationRepository
-                .findById(notificationNo)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "해당 알림을 찾을 수 없습니다."
-                        )
-                );
-
-        // 2. 회원 조회
-        Member member = memberRepository
-                .findById(notification.getMno())
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "알림 수신 회원을 찾을 수 없습니다."
-                        )
-                );
-
-        // 3. 이메일 확인
-        String email = member.getEmail();
-
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException(
-                    "회원 이메일이 등록되어 있지 않습니다."
-            );
-        }
-
-        String now = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
-        try {
-
-            // 발송 중
-            notification.setStatus("SENDING");
-
-            // ----------------------------------------
-            // 이슈 위치 이미지 URL 생성
-            // ----------------------------------------
-            String imageUrl = null;
-
-            Long asmno = notification.getAimapno();
-
-            // AI 이슈맵이 존재하는 경우
-            if (asmno != null) {
-
-                // AIISSUEMAP.NO = ASMNO 기준으로
-                // 생성된 이미지 파일명 조회
-                String fsaved = notificationRepository
-                        .findFsavedByAsmno(asmno)
-                        .orElse(null);
-
-                // 파일명이 존재하는 경우에만 이미지 URL 생성
-                if (fsaved != null && !fsaved.isBlank()) {
-
-                    imageUrl =
-                            aiServerUrl
-                            + "/api/aiissuemap/image/"
-                            + fsaved;
-                }
-            }
-
-            // 4. 이메일 발송
-            mailService.sendNotificationMail(
-                    email,
-                    notification.getAtitle(),
-                    notification.getContent(),
-                    imageUrl
-            );
-
-            // 5. 성공
-            notification.setStatus("SENT");
-
-            // 6. 성공 로그 저장
-            SendLog sendLog = SendLog.builder()
-                    .nno(notification.getNo())
-                    .channel("EMAIL")
-                    .status(1)
-                    .message("이메일 발송 성공")
-                    .cdate(now)
-                    .build();
-
-            sendLogRepository.save(sendLog);
-
-        } catch (Exception e) {
-
-            // 실패 상태
-            notification.setStatus("FAILED");
-
-            // 실패 로그 저장
-            SendLog sendLog = SendLog.builder()
-                    .nno(notification.getNo())
-                    .channel("EMAIL")
-                    .status(0)
-                    .message(e.getMessage())
-                    .cdate(now)
-                    .build();
-
-            sendLogRepository.save(sendLog);
-
-            throw e;
-        }
     }
 }
