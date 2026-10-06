@@ -67,14 +67,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
       Long no, String isdel, String vmode);
   
   
-  /***
-   * 게시글 삭제용
-   * 글 번호(no), 비밀번호(pw), 삭제여부(isdel='N')가 모두 일치하는 게시글 조회
-   * @param no
-   * @param pw
-   * @param isdel
-   * @return
-   */
-  Optional<Notice> findByNoAndPwAndIsdel(Long no, String pw, String isdel);
+  // 게시글 비밀번호는 BCrypt로 암호화 저장 → DB 조건(=)으로 비교할 수 없어서
+  // 예전 findByNoAndPwAndIsdel(평문 비교)은 삭제함. 삭제 확인은 NoticeService.deleteNotice에서 pwEncoder.matches로 처리
 
 }

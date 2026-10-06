@@ -26,9 +26,30 @@ public class AttachCont {
    * GET /attach/list/10
    */
   @GetMapping(path = "/list/{bno}")
-  public ResponseEntity<List<AttachDTO>> list(@PathVariable("bno") Long bno) {
-    List<AttachDTO> list = this.attachService.getAttachList(bno);
+  public ResponseEntity<List<AttachDTO>> list(
+      @PathVariable("bno") Long bno,
+      @RequestParam(name = "tname", required = false) String tname) { // 게시판 구분 (QA, NOTICE …)
+    List<AttachDTO> list = this.attachService.getAttachList(bno, tname);
     return ResponseEntity.ok(list);
+  }
+
+  /**
+   * 첨부파일 저장 경로 사용 가능 여부 — 글 저장 전에 화면에서 확인 (안 되면 글도 저장하지 않고 안내)
+   * GET /attach/check → { available, message }
+   */
+  @GetMapping(path = "/check")
+  public ResponseEntity<java.util.Map<String, Object>> checkStorage() {
+    boolean available = this.attachService.isStorageAvailable();
+    return ResponseEntity.ok(java.util.Map.of(
+        "available", available,
+        "message", available ? "" : AttachService.STORAGE_UNAVAILABLE_MESSAGE));
+  }
+
+  /** 저장 경로 오류 → 503 + { message } (화면 오류 모달에 그대로 표시) */
+  @ExceptionHandler(AttachService.AttachStorageException.class)
+  public ResponseEntity<java.util.Map<String, Object>> handleStorage(AttachService.AttachStorageException e) {
+    return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+        .body(java.util.Map.of("success", false, "message", e.getMessage()));
   }
 
   /**
@@ -95,8 +116,10 @@ public class AttachCont {
    * DELETE /attach/delete_by_bno/10
    */
   @DeleteMapping(path = "/delete_by_bno/{bno}")
-  public ResponseEntity<Integer> deleteByBno(@PathVariable("bno") Long bno) {
-    this.attachService.deleteByTnoAndBno(bno);
+  public ResponseEntity<Integer> deleteByBno(
+      @PathVariable("bno") Long bno,
+      @RequestParam(name = "tname", required = false) String tname) { // 게시판 구분 (QA, NOTICE …)
+    this.attachService.deleteByTnoAndBno(bno, tname);
     return ResponseEntity.ok(1);
   }
 }

@@ -31,10 +31,11 @@ public interface AttachRepository extends JpaRepository<Attach, Long> {
     Optional<Long> findTnoByTname(@Param("tname") String tname);
 
     /**
-     * bno로 등록된 attach 레코드 중 하나에서 tno만 조회
+     * bno로 등록된 attach 레코드의 tno 목록
+     * (게시판마다 글번호가 따로 매겨져서 공지 1번·문의 1번처럼 여러 게시판이 나올 수 있음 — 하나로 가정하면 안 됨)
      */
     @Query("SELECT DISTINCT a.tno FROM Attach a WHERE a.bno = :bno")
-    Optional<Long> findTnoByBno(@Param("bno") Long bno);
+    List<Long> findTnosByBno(@Param("bno") Long bno);
 
     // ==========================================
     // [등록한 게시판 내부에서 조회/삭제]

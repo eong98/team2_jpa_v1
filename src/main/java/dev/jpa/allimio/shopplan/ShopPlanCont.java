@@ -65,12 +65,10 @@ public class ShopPlanCont {
    * GET /shop_plan/list
    */
   @GetMapping(path = "/list")
-  public ResponseEntity<List<ShopPlan>> getList() {
-    List<ShopPlan> list = shopPlanService.findAllList();
+  public ResponseEntity<List<ShopPlanDTO.Response>> getList() {
+    // 구독권 + 결제 건수(orderCount) + 인기 여부(popular)
+    List<ShopPlanDTO.Response> list = shopPlanService.findAllList();
     return ResponseEntity.ok(list);
-//    public ResponseEntity<List<ShopPlanDTO.Response>> getList() {
-//      List<ShopPlanDTO.Response> list = shopPlanService.findAllList();
-//      return ResponseEntity.ok(list);
   }
 
   /**

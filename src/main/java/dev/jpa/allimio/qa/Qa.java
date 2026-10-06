@@ -140,6 +140,13 @@ public class Qa {
   /**
    * 문의글 작성자가 수정할 때 호출
    */
+  /**
+   * 게시글 비밀번호 설정 — 반드시 암호화(BCrypt)된 값을 넘김 (QaService에서 pwEncoder.encode)
+   */
+  public void changePw(String encodedPw) {
+    this.pw = encodedPw;
+  }
+
   public void updateQuestion(String title, String content, String vmode, int type, String fileyn, String guestEmail) {
     this.title = title;
     this.content = content;
