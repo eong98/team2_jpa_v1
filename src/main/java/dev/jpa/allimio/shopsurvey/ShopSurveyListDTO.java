@@ -47,4 +47,7 @@ public class ShopSurveyListDTO {
 
   /** 응답 수 */
   private Long responseCount;
+  
+  /** AI생성여부 0:직접작성 / 1:AI관여 */
+  private Integer aiyn;
 }

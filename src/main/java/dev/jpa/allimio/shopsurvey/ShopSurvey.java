@@ -70,4 +70,7 @@ public class ShopSurvey {
   /** 임시저장 JSON */
   @Lob
   private String draft;
+  
+  /** AI생성여부 0:직접작성 / 1:AI관여 (한 번 1이 되면 0으로 돌아가지 않음) */
+  private Integer aiyn;
 }

@@ -58,7 +58,8 @@ public interface ShopSurveyRepository extends JpaRepository<ShopSurvey, Long> {
   @Query(value = "SELECT new dev.jpa.allimio.shopsurvey.ShopSurveyListDTO(" +
                  "  s.no, s.title, s.description, s.status, s.qrid, s.cdate, s.udate, " +
                  "  (SELECT COUNT(q) FROM ShopSurveyQuestion q JOIN q.survey qs WHERE qs.no = s.no), " +
-                 "  (SELECT COUNT(r) FROM ShopSurveyResponse r JOIN r.survey rs WHERE rs.no = s.no)) " +
+                 "  (SELECT COUNT(r) FROM ShopSurveyResponse r JOIN r.survey rs WHERE rs.no = s.no), " +
+                 "  s.aiyn) " +
                  "FROM ShopSurvey s " +
                  "JOIN s.shop sh " +
                  "WHERE sh.no = :sno AND sh.mno = :mno " +

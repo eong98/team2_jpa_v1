@@ -42,6 +42,7 @@ import lombok.RequiredArgsConstructor;
  *   GET    /shop_survey/{svno}/responses      응답 목록
  *   GET    /shop_survey/{svno}/stats          문항별 집계
  *   POST   /shop_survey/{svno}/summary        AI 요약 + 긍정/부정 점수
+ *   POST   /shop_survey/ai/generate           AI 설문 자동작성 (create / revise / trend)
  *   (responses / stats / summary 는 ?from=yyyy-MM-dd&to=yyyy-MM-dd 응답일 필터 지원)
  *
  * [고객, 비로그인] SecurityConfig에서 /shop_survey/public/** permitAll
@@ -189,6 +190,19 @@ public class ShopSurveyCont {
       @RequestParam(name = "from", required = false) String from,
       @RequestParam(name = "to", required = false) String to) {
     return ResponseEntity.ok(surveyService.summarize(ownerNo(authentication), svno, from, to));
+  }
+  
+  /**
+   * AI 설문 자동작성
+   * POST /shop_survey/ai/generate
+   *   body: { sno, mode: create|revise|trend, request, industry, refSvnos: [], currentForm }
+   *   → { industry, form, notes, articles, addedIndexes, message }
+   */
+  @PostMapping("/ai/generate")
+  public ResponseEntity<Map<String, Object>> generateWithAi(
+      Authentication authentication,
+      @RequestBody ShopSurveyAiDTO.Request request) {
+    return ResponseEntity.ok(surveyService.generateWithAi(ownerNo(authentication), request));
   }
 
   // =====================================================================
