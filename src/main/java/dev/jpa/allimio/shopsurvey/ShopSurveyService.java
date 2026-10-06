@@ -212,6 +212,7 @@ public class ShopSurveyService {
 
     survey.setTitle(form.getTitle().trim());
     survey.setDescription(form.getDescription());
+    survey.setAiyn(mergeAiyn(survey.getAiyn(), form.getAiyn()));
     survey.setStatus("OPEN");
     survey.setDraft(null);
     surveyRepository.save(survey);
