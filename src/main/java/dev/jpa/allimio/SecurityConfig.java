@@ -75,7 +75,8 @@ public class SecurityConfig {
                   "/chat_log/**",
                   "/api/chatbot/**",
                   "/shop_plan/list",
-                  "/shop_survey/public/**"
+                  "/shop_survey/public/**",
+                  "/v1/user/find/**"
               ).permitAll()
               
            // Swagger / OpenAPI 관련 경로 전체 허용
@@ -102,7 +103,6 @@ public class SecurityConfig {
               // 관리자 권한만 접근 가능
               .requestMatchers(
                   "/v1/dbms/**",                // 관리자 메뉴 전체
-                  "/v1/user/find",               // 전체 회원 목록
                   "/v1/user/update/manager/**",  // 관리자가 회원 수정
                   "/v1/user/ban/**",             // 강제 탈퇴
                   "/history/**"                  // 로그인/수정 이력

@@ -21,7 +21,7 @@ public class AttachDTO {
   /** 첨부파일 번호 (PK) */
   private Long no;
   /** 메뉴 / 카테고리 번호 */
-  private long tno;
+  private Long tno;
   /** 게시판 테이블명 / 폴더명 */
   private String tname = "";
   /** 게시글 번호 */
