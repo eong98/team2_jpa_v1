@@ -120,7 +120,7 @@ public class QaCont {
    * @param grade 회원 등급 (1 = 관리자)
    */
   @GetMapping("/{no}")
-  public ResponseEntity<QaDTO.QaResponse> getQaDetail(
+  public ResponseEntity<?> getQaDetail(
       @PathVariable("no") Long no,
       @RequestHeader(name = "accessNo", required = false) Long accessNo,
       @RequestHeader(name = "grade", required = false) Integer grade) {
@@ -131,9 +131,14 @@ public class QaCont {
 
     // pw는 항상 null로 호출 — 이 경로로는 비밀글(잠긴 글)을 열 수 없고,
     // 본인 글이 아닌 비밀글이면 서비스에서 예외가 발생합니다.
-    QaDTO.QaResponse response = qaService.getQaDetail(no, mno, ano, null);
-
-    return ResponseEntity.ok(response);
+    // 권한 없음·없는 글은 서버 오류(500)가 아니라 403/404 + 안내 문구로 응답 (화면이 문구를 그대로 표시)
+    try {
+      QaDTO.QaResponse response = qaService.getQaDetail(no, mno, ano, null);
+      return ResponseEntity.ok(response);
+    } catch (IllegalArgumentException e) {
+      int status = e.getMessage() != null && e.getMessage().contains("존재하지") ? 404 : 403;
+      return ResponseEntity.status(status).body(java.util.Map.of("success", false, "message", e.getMessage()));
+    }
   }
 
   /**
