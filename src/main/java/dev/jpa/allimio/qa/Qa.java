@@ -82,6 +82,12 @@ public class Qa {
   /** 조회수 */
   @Builder.Default
   private int vcnt = 0;
+
+  /** AI 자동 답변 내용 (QA.AI_ANSWER) — 관리자 답변(answer)과 별도, 매뉴얼로 답할 수 있을 때만 */
+  private String aiAnswer;
+
+  /** AI 자동 답변 등록 일시 (QA.AI_ADATE) */
+  private String aiAdate;
   
   
   
@@ -184,6 +190,14 @@ public class Qa {
     this.status = 2; // 답변 작성 시 상태값을 '답변완료(2)'로 자동 변경!
   }
   
+  /**
+   * AI 자동 답변 저장 — 관리자 답변(answer/ano/adate)과 답변 상태(status)는 건드리지 않음
+   */
+  public void updateAiAnswer(String aiAnswer, String aiAdate) {
+    this.aiAnswer = aiAnswer;
+    this.aiAdate = aiAdate;
+  }
+
   /**
    * 관리자가 회원 문의글을 확인하면 답변상태 확인중으로 변경
    * @param status
