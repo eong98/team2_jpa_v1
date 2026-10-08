@@ -104,6 +104,7 @@ public class NoticeDTO {
           .title(entity.getTitle()).content(entity.getContent()).cdate(entity.getCdate())
           .vcnt(entity.getVcnt()).fixyn(entity.getFixyn()).fileyn(entity.getFileyn())
           .vmode(entity.getVmode()).vseq(entity.getVseq()).isdel(entity.getIsdel())
+          .ddate(entity.getDdate())
           .prev(prev).next(next).build();
     }
   }

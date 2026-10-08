@@ -2,6 +2,7 @@ package dev.jpa.allimio.notice;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -63,13 +64,15 @@ public class NoticeService {
     notice.increaseVcnt();
 
     // 3. 이전글 / 다음글 조회 (공개글 & 미삭제만 대상)
+    //    목록에 보이는 순서 기준 — 이전글: 목록에서 바로 위 글, 다음글: 바로 아래 글
+    String fixyn = notice.getFixyn() == null ? "N" : notice.getFixyn();
     NoticeDTO.NoticeNav prev = noticeRepository
-        .findFirstByNoLessThanAndIsdelAndVmodeOrderByNoDesc(no, "N", "Y")
+        .findAboveInList(fixyn, notice.getType(), notice.getCdate(), no, PageRequest.of(0, 1)).stream().findFirst()
         .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
         .orElse(null);
 
     NoticeDTO.NoticeNav next = noticeRepository
-        .findFirstByNoGreaterThanAndIsdelAndVmodeOrderByNoAsc(no, "N", "Y")
+        .findBelowInList(fixyn, notice.getType(), notice.getCdate(), no, PageRequest.of(0, 1)).stream().findFirst()
         .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
         .orElse(null);
 
@@ -123,6 +126,31 @@ public class NoticeService {
         .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않거나 비밀번호가 일치하지 않습니다."));
 
     notice.delete(Tool.getDate());
+  }
+
+  /**
+   * [관리자] 삭제된(소프트 삭제) 공지사항 목록
+   */
+  public Page<NoticeDTO.NoticeResponse> getDeletedNotices(NoticeDTO.NoticeSearchRequest req, Pageable pageable) {
+    return noticeRepository.searchDeletedNotice(req.getWord(), req.getType(), pageable)
+        .map(NoticeDTO.NoticeResponse::fromEntity);
+  }
+
+  /**
+   * [관리자] 삭제된 공지사항 영구 삭제 (DB에서 실제 삭제)
+   * - 이미 삭제(ISDEL='Y')된 글만 가능
+   * - 첨부파일은 화면에서 삭제 성공 후 따로 지움 (DELETE /attach/delete_by_bno/{no}?tname=NOTICE)
+   * @return 삭제했으면 true, 삭제된 목록에 없는 글이면 false
+   */
+  @Transactional
+  public boolean purgeNotice(Long no) {
+    return noticeRepository.findById(no)
+        .filter(n -> "Y".equals(n.getIsdel()))
+        .map(n -> {
+          noticeRepository.delete(n);
+          return true;
+        })
+        .orElse(false);
   }
 
 }

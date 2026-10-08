@@ -48,6 +48,11 @@ public class QaDTO {
     /** 작성 시 입력한 이메일 */
     private String guestEmail; // join
 
+    /** 챗봇 상담에서 넘어온 경우 상담 번호 (CHAT_SESSION.NO) — 등록 후 상담에 문의글 번호 연결 */
+    private String sno;
+    /** 비회원 상담 본인 확인용 브라우저 식별값 (CHAT_SESSION.GNO) */
+    private String gno;
+
     public Qa toEntity() {
       return Qa.builder()
           .mno(this.mno != null ? this.mno : null)
@@ -171,6 +176,8 @@ public class QaDTO {
     private String answer;
     private String adate;
     private String isdel;
+    /** 삭제 일시 (삭제된 문의 목록에서 사용) */
+    private String ddate;
     private String vmode;
     private Integer vseq;
     private int vcnt;
@@ -196,6 +203,7 @@ public class QaDTO {
         .answer(entity.getAnswer())
         .adate(entity.getAdate())
         .isdel(entity.getIsdel())
+        .ddate(entity.getDdate())
         .vmode(entity.getVmode())
         .vseq(entity.getVseq())
         .isfaq(entity.getIsfaq())

@@ -26,6 +26,14 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
   /** 비회원(gno)의 가장 최근 활동 세션 — gno 만료 판단용 */
   Optional<ChatSession> findFirstByGnoOrderByUdateDesc(String gno);
 
+  /**
+   * 문의글 연결 해제 — 문의글을 영구 삭제하기 전에 호출 (CHAT_SESSION.QNO → QA.NO 외래키)
+   * 상담 기록은 그대로 두고 "상담 후 남긴 문의" 연결만 지움
+   */
+  @Modifying
+  @Query("UPDATE ChatSession c SET c.qno = null WHERE c.qno = :qno")
+  int clearQno(@Param("qno") Long qno);
+
   /** 방치 세션: 종료되지 않았고 마지막 활동(UDATE)이 기준 시각보다 이전 — 자동 종료 배치용 */
   List<ChatSession> findByCmodeNotAndUdateLessThan(Integer cmode, String udate);
 

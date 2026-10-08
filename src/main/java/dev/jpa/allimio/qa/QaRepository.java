@@ -16,16 +16,32 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
   // ⭐ 이전글 / 다음글 조회
   // ==========================================
   /**
-   * 이전글 (현재 글보다 날짜가 작은 것 중 가장 가까운 글 = 더 오래된 글)
-   * 공개(vmode=Y) & 미삭제(isdel=N) 조건만 대상
+   * 이전글 — 목록(등록일 최신순, 같으면 글번호 큰 순)에서 바로 위에 보이는 글 = 바로 다음에 올라온 글
+   * 1:1 문의(FAQ 제외)·미삭제만, PageRequest.of(0, 1)로 1건
    */
-  Optional<Qa> findFirstByNoLessThanAndIsdelAndIsfaqOrderByCdateDesc(
-      Long no, String isdel, String isfaq);
+  @Query("""
+      SELECT q FROM Qa q
+      WHERE q.isdel = 'N' AND q.isfaq = 'N'
+        AND (q.cdate > :cdate OR (q.cdate = :cdate AND q.no > :no))
+      ORDER BY q.cdate ASC, q.no ASC
+      """)
+  List<Qa> findAboveInList(@Param("cdate") String cdate, @Param("no") Long no, Pageable pageable);
+
+  /**
+   * 다음글 — 목록에서 바로 아래에 보이는 글 = 바로 전에 올라온 글
+   */
+  @Query("""
+      SELECT q FROM Qa q
+      WHERE q.isdel = 'N' AND q.isfaq = 'N'
+        AND (q.cdate < :cdate OR (q.cdate = :cdate AND q.no < :no))
+      ORDER BY q.cdate DESC, q.no DESC
+      """)
+  List<Qa> findBelowInList(@Param("cdate") String cdate, @Param("no") Long no, Pageable pageable);
 
   /**
    * 다음글 (현재 글보다 날짜가 큰 것 중 가장 가까운 글 = 더 최근 글)
    */
-  Optional<Qa> findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByCdateAsc(
+  Optional<Qa> findFirstByNoGreaterThanAndIsdelAndIsfaqOrderByNoAsc(
       Long no, String isdel, String isfaq);
 
   // ==========================================
@@ -117,6 +133,26 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
       """)
   Page<Qa> searchGuestList(
       @Param("word") String word,
+      Pageable pageable);
+
+  /**
+   * [관리자] 삭제된(소프트 삭제) 1:1 문의 목록 + 검색 — 삭제일 최신순
+   */
+  @Query("""
+      SELECT q, m.id
+      FROM Qa q
+      LEFT JOIN Member m ON q.mno = m.no
+      WHERE q.isdel = 'Y'
+        AND q.isfaq = 'N'
+        AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%)
+        AND (:type IS NULL OR q.type = :type)
+        AND (:mno IS NULL OR q.mno = :mno)
+      ORDER BY q.ddate DESC, q.no DESC
+      """)
+  Page<Object[]> searchDeletedQuestions(
+      @Param("word") String word,
+      @Param("type") Integer type,
+      @Param("mno") Long mno,
       Pageable pageable);
 
   /** 단건 상세 조회 — 작성자 아이디 포함 */
