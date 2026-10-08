@@ -42,6 +42,9 @@ public class QaService {
   @Autowired
   ChatSessionRepository chatSessionRepository;
 
+  @Autowired
+  QaAiAnswerService qaAiAnswerService;
+
   public QaService() {
     System.out.println("-> QaService created");
   }
@@ -241,6 +244,7 @@ public class QaService {
 
     Qa saved = qaRepository.save(qa);
     linkChatSession(saved.getNo(), dto.getSno(), loginMno, dto.getGno());
+    qaAiAnswerService.requestAfterCommit(saved.getNo()); // 매뉴얼로 답할 수 있으면 AI가 자동 답변 (백그라운드)
 
     return QaDTO.QaResponse.fromEntity(saved, null, null, id);
   }
@@ -506,6 +510,7 @@ public class QaService {
     if ("Y".equals(res.getVmode()) && !"Y".equals(res.getIsfaq())) {
       res.setContent(null);
       res.setAnswer(null);
+      res.setAiAnswer(null);
     }
     return res;
   }

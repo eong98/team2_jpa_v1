@@ -184,6 +184,11 @@ public class QaDTO {
     private String isfaq;
     private String fileyn;
     private String guestEmail;
+    /** AI 자동 답변 (관리자 답변 answer와 별도) */
+    private String aiAnswer;
+    private String aiAdate;
+    /** AI 답변 있음 여부 (Y/N) — 목록 표시용, 비밀글이라 내용(aiAnswer)을 가려도 그대로 내려감 */
+    private String aiyn;
 
     private QaNav prev;
     private QaNav next;
@@ -210,6 +215,9 @@ public class QaDTO {
         .fileyn(entity.getFileyn())
         .guestEmail(entity.getGuestEmail())
         .vcnt(entity.getVcnt())
+        .aiAnswer(entity.getAiAnswer())
+        .aiAdate(entity.getAiAdate())
+        .aiyn(entity.getAiAnswer() != null && !entity.getAiAnswer().isBlank() ? "Y" : "N")
         .build();
     }
 
