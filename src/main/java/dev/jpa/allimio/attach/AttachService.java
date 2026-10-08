@@ -1,7 +1,6 @@
 package dev.jpa.allimio.attach;
 
 import dev.jpa.allimio.tool.Tool;
-import dev.jpa.allimio.tool.Upload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -104,8 +104,8 @@ public class AttachService {
           purl = "/attach/storage/" + tname + "/images";
           createFolder(thumbDir);
 
-          sname = Upload.saveFileSpring(mf, imageDir);
-          checkSaved(imageDir, sname); // saveFileSpring은 실패해도 오류를 출력만 하므로 실제 파일 확인
+          sname = saveWithRandomName(mf, imageDir);
+          checkSaved(imageDir, sname);
 
           try {
             thumb = Tool.preview(imageDir, sname, 200, 150);
@@ -124,7 +124,7 @@ public class AttachService {
           purl = "/attach/storage/" + tname + "/files";
 
           createFolder(fileDir);
-          sname = Upload.saveFileSpring(mf, fileDir);
+          sname = saveWithRandomName(mf, fileDir);
           checkSaved(fileDir, sname);
         }
 
@@ -290,6 +290,32 @@ public class AttachService {
    * [내부 헬퍼 메서드: 폴더 자동 생성]
    */
   /** 저장된 파일이 실제로 있는지 확인 — 없으면 예외(트랜잭션 롤백 → DB에도 기록 안 됨) */
+  /**
+   * 무작위 파일명(UUID + 원래 확장자)으로 저장
+   * - 원본 이름(예: cat04.jpg)으로 저장하면 비밀글 첨부도 주소를 추측해 열 수 있어서
+   *   (/attach/storage/** 는 비회원 FAQ·공지 이미지 때문에 로그인 없이 열림)
+   * - 화면 표시·다운로드 이름은 ATTACH.NAME(원본명)을 그대로 씀
+   * - 같은 이름 파일이 덮어써지던 문제도 함께 없어짐
+   * @return 저장한 파일명 (실패하면 빈 문자열 → checkSaved에서 오류)
+   */
+  private String saveWithRandomName(MultipartFile mf, String dir) {
+    String original = mf.getOriginalFilename() == null ? "" : mf.getOriginalFilename();
+    int dot = original.lastIndexOf('.');
+    String ext = dot >= 0 ? original.substring(dot).toLowerCase() : "";
+    String sname = UUID.randomUUID().toString().replace("-", "") + ext;
+
+    try {
+      createFolder(dir);
+      try (var in = mf.getInputStream()) {
+        Files.copy(in, new File(dir, sname).toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+      return sname;
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "";
+    }
+  }
+
   private void checkSaved(String dir, String sname) {
     if (sname == null || sname.isBlank() || !new File(dir, sname).isFile()) {
       throw new AttachStorageException(STORAGE_UNAVAILABLE_MESSAGE);

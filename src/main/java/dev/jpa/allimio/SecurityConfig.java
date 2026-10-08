@@ -90,16 +90,27 @@ public class SecurityConfig {
                   "/error"
               ).permitAll()
 
+              // 삭제된 공지·문의 목록/영구 삭제는 관리자만 — 아래 GET /notice/{no} 비회원 허용보다 먼저 와야 함
+              .requestMatchers("/notice/deleted", "/notice/deleted/**", "/qa/deleted", "/qa/deleted/**").hasRole("MANAGER")
+
               // 비회원 고객센터(/board) — 문의 목록/상세/등록/수정/삭제, 첨부파일 보기
-              // (수정·삭제·비밀글 열람은 서버에서 게시글 비밀번호로 검증)
-              .requestMatchers(HttpMethod.GET, 
-                  "/qa/list", "/qa/guest/list", "/qa/faq", "/qa/{no}",
+              // (비회원 비밀글 열람·수정·삭제는 POST /qa/guest/{no}/verify로 받은 임시 토큰으로 서버에서 검증)
+              .requestMatchers(HttpMethod.GET,
+                  "/qa/list", "/qa/guest/list", "/qa/faq", "/qa/guest/{no}",
                   "/notice/list", "/notice/{no}",
-                  "/attach/read/{no}", "/attach/list/{bno}").permitAll()
-              .requestMatchers(HttpMethod.POST, "/qa", "/qa/{no}/verify", "/attach/create").permitAll()
-              .requestMatchers(HttpMethod.PUT, "/qa/{no}").permitAll()
-              .requestMatchers(HttpMethod.DELETE, "/qa", "/attach/delete_by_bno/{bno}", "/attach/delete/{no}").permitAll()
-              
+                  "/attach/read/{no}", "/attach/list/{bno}",
+                  // 첨부 이미지 파일 자체 (WebMvcConfiguration 정적 경로) — 비회원 FAQ·공지 이미지가 401로 안 보이던 문제
+                  "/attach/storage/**").permitAll()
+              .requestMatchers(HttpMethod.POST, "/qa", "/qa/guest/{no}/verify", "/attach/create").permitAll()
+              .requestMatchers(HttpMethod.PUT, "/qa/guest/{no}").permitAll()
+              .requestMatchers(HttpMethod.DELETE, "/qa/guest/{no}", "/attach/delete_by_bno/{bno}", "/attach/delete/{no}").permitAll()
+
+              // 문의 답변·FAQ 등록/수정·관리자 삭제(DELETE /qa)는 관리자만
+              // (회원 상세·수정·삭제 /qa/{no}, 내 문의 /qa/my/**는 아래 anyRequest().authenticated() + 컨트롤러에서 본인 확인)
+              .requestMatchers(HttpMethod.PUT, "/qa/reply/{no}", "/qa/faq/{no}").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.POST, "/qa/faq").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.DELETE, "/qa").hasRole("MANAGER")
+
               // 관리자 권한만 접근 가능
               .requestMatchers(
                   "/v1/dbms/**",                // 관리자 메뉴 전체

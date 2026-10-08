@@ -69,6 +69,30 @@ public class NoticeCont {
   }
 
   /**
+   * [관리자] 삭제된 공지사항 목록 (SecurityConfig에서 관리자만)
+   * GET /notice/deleted?word=&type=&page=0&size=10
+   */
+  @GetMapping(path="/deleted")
+  public ResponseEntity<PageResponse<NoticeDTO.NoticeResponse>> getDeletedNotices(
+      NoticeDTO.NoticeSearchRequest searchCondition,
+      @PageableDefault(size = 10) Pageable pageable) {
+    return ResponseEntity.ok(PageResponse.of(noticeService.getDeletedNotices(searchCondition, pageable)));
+  }
+
+  /**
+   * [관리자] 삭제된 공지사항 영구 삭제 (복구 불가)
+   * DELETE /notice/deleted/3
+   */
+  @DeleteMapping(path="/deleted/{no}")
+  public ResponseEntity<?> purgeNotice(@PathVariable("no") Long no) {
+    if (!noticeService.purgeNotice(no)) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(java.util.Map.of("success", false, "message", "삭제된 공지 목록에 없는 글입니다."));
+    }
+    return ResponseEntity.ok("영구 삭제되었습니다.");
+  }
+
+  /**
    * 단건 상세 조회
    * GET /notice/1
    */
