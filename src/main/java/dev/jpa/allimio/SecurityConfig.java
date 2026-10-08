@@ -99,6 +99,8 @@ public class SecurityConfig {
                   "/qa/list", "/qa/guest/list", "/qa/faq", "/qa/guest/{no}",
                   "/notice/list", "/notice/{no}",
                   "/attach/read/{no}", "/attach/list/{bno}",
+                  // 업로드 전 저장 경로 확인 — 막혀 있으면 비회원 문의 첨부 시 401 → 로그인 화면으로 튕김
+                  "/attach/check",
                   // 첨부 이미지 파일 자체 (WebMvcConfiguration 정적 경로) — 비회원 FAQ·공지 이미지가 401로 안 보이던 문제
                   "/attach/storage/**").permitAll()
               .requestMatchers(HttpMethod.POST, "/qa", "/qa/guest/{no}/verify", "/attach/create").permitAll()
