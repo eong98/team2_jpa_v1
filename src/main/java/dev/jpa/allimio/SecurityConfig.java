@@ -92,6 +92,8 @@ public class SecurityConfig {
 
               // 삭제된 공지·문의 목록/영구 삭제는 관리자만 — 아래 GET /notice/{no} 비회원 허용보다 먼저 와야 함
               .requestMatchers("/notice/deleted", "/notice/deleted/**", "/qa/deleted", "/qa/deleted/**").hasRole("MANAGER")
+              // 문의 메일 발송 내역·다시 보내기는 관리자만
+              .requestMatchers("/qa/mail/**").hasRole("MANAGER")
               // 관리자용 공지 목록(비공개 포함) — 예전엔 grade 헤더로 판단하던 것을 로그인 토큰 역할로
               .requestMatchers(HttpMethod.GET, "/notice/list/admin").hasRole("MANAGER")
 
@@ -110,7 +112,9 @@ public class SecurityConfig {
               .requestMatchers(request -> "GET".equals(request.getMethod())
                   && "/download".equals(request.getServletPath())
                   && "attach".equals(request.getParameter("dir"))).permitAll()
-              .requestMatchers(HttpMethod.POST, "/qa", "/qa/guest/{no}/verify", "/attach/create").permitAll()
+              .requestMatchers(HttpMethod.POST, "/qa", "/qa/guest/{no}/verify", "/attach/create",
+                  // 비회원 문의글 비밀번호 재설정 (이메일 인증번호)
+                  "/qa/guest/{no}/reset/request", "/qa/guest/{no}/reset/confirm").permitAll()
               .requestMatchers(HttpMethod.PUT, "/qa/guest/{no}").permitAll()
               .requestMatchers(HttpMethod.DELETE, "/qa/guest/{no}", "/attach/delete_by_bno/{bno}", "/attach/delete/{no}").permitAll()
 
