@@ -70,7 +70,7 @@ public class ChatStatsService {
   }
 
   /**
-   * AI 분석 결과 저장 (CHAT_STATS_AI) — 분석할 때마다 한 줄씩 쌓임
+   * AI 분석 결과 저장 (CHAT_STATS_AI) — 기간(7/30/90일)마다 한 줄, 다시 분석하면 덮어씀
    * @param ano 분석을 실행한 관리자 번호
    */
   @Transactional
@@ -82,21 +82,31 @@ public class ChatStatsService {
       weakPoints = "[]";
     }
     String reason = result.reason() == null ? "" : result.reason();
+    reason = reason.length() > 600 ? reason.substring(0, 600) : reason; // VARCHAR2(2000) — 한글 3바이트
+    double score = Math.round(Math.max(0, Math.min(10, result.score())) * 10) / 10.0; // NUMBER(3,1)
+    int period = normalizeDays(days);
+
+    ChatStatsAi saved = chatStatsAiRepository.findFirstByDaysOrderByNoDesc(period).orElse(null);
+    if (saved != null) {
+      saved.overwrite(result.from(), result.to(), result.answered(), score, result.summary(), reason,
+          weakPoints, ano, result.analyzedAt());
+      return;
+    }
     chatStatsAiRepository.save(ChatStatsAi.builder()
-        .days(normalizeDays(days))
+        .days(period)
         .fromDate(result.from())
         .toDate(result.to())
         .answered(result.answered())
-        .score(Math.round(Math.max(0, Math.min(10, result.score())) * 10) / 10.0) // NUMBER(3,1)
+        .score(score)
         .summary(result.summary())
-        .reason(reason.length() > 600 ? reason.substring(0, 600) : reason) // VARCHAR2(2000) — 한글 3바이트
+        .reason(reason)
         .weakPoints(weakPoints)
         .ano(ano)
         .rdate(result.analyzedAt())
         .build());
   }
 
-  /** 해당 기간의 가장 최근 AI 분석 결과 — 없으면 null */
+  /** 해당 기간의 저장된 AI 분석 결과 — 없으면 null */
   public AiSummary getLatestAiSummary(int days) {
     return chatStatsAiRepository.findFirstByDaysOrderByNoDesc(normalizeDays(days))
         .map(row -> {

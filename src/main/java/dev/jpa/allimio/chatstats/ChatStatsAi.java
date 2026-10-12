@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 챗봇 상담 만족도 AI 분석 결과 (CHAT_STATS_AI)
- * [AI 분석] 버튼을 누를 때마다 한 줄씩 쌓이고, 화면에는 기간별 가장 최근 결과를 보여 줍니다.
+ * 분석 기간(7/30/90일)마다 한 줄 — [AI 분석]을 다시 누르면 그 기간의 결과를 덮어씁니다.
  */
 @Entity
 @Table(name = "CHAT_STATS_AI")
@@ -65,4 +65,18 @@ public class ChatStatsAi {
 
   /** 분석 일시 yyyy-MM-dd HH:mm:ss */
   private String rdate;
+
+  /** 같은 기간을 다시 분석했을 때 결과 덮어쓰기 */
+  public void overwrite(String fromDate, String toDate, long answered, double score, String summary,
+      String reason, String weakPoints, Long ano, String rdate) {
+    this.fromDate = fromDate;
+    this.toDate = toDate;
+    this.answered = answered;
+    this.score = score;
+    this.summary = summary;
+    this.reason = reason;
+    this.weakPoints = weakPoints;
+    this.ano = ano;
+    this.rdate = rdate;
+  }
 }

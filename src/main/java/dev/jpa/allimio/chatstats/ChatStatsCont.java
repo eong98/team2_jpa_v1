@@ -1,6 +1,9 @@
 package dev.jpa.allimio.chatstats;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +27,8 @@ import dev.jpa.allimio.tool.Tool;
    관리자(ROLE_MANAGER)인지는 로그인 토큰으로 여기서 확인합니다. (PayStatsCont와 같은 방식)
 
    GET  /chat_stats/stats?days=30       → 만족도 통계 (days: 7 | 30 | 90)
-   GET  /chat_stats/ai-summary?days=30  → 저장된 가장 최근 AI 분석 결과 (없으면 204)
-   POST /chat_stats/ai-summary?days=30  → AI 감정분석 + 요약 (관리자가 버튼을 눌렀을 때만, LLM 호출 후 저장)
+   GET  /chat_stats/ai-summary?days=30  → 저장된 AI 분석 결과 (없으면 204)
+   POST /chat_stats/ai-summary?days=30  → AI 감정분석 + 요약 (관리자가 버튼을 눌렀을 때만, LLM 호출 후 그 기간 결과를 덮어씀)
 --------------------------------------------------------------------- */
 @RestController
 @RequestMapping("/chat_stats")
@@ -106,20 +109,44 @@ public class ChatStatsCont {
 
     try {
       // 1) 분석 자료는 DB에서 모으고(짧은 트랜잭션) 2) AI 호출은 DB 연결을 놓은 뒤에
-      AiRequest request = chatStatsService.buildAiRequest(days);
+      AiRequest request = loadAiRequest(days);
       AiSummary result = chatStatsAiClient.summarize(
           request.payload(), request.from(), request.to(), request.answered(), Tool.getDate());
 
       // 3) 결과 저장 — 저장에 실패해도 분석 결과는 화면에 보여 줌
       try {
         Long ano = authentication.getPrincipal() instanceof Long no ? no : null;
-        chatStatsService.saveAiSummary(days, result, ano);
+        runOffRequest(() -> { chatStatsService.saveAiSummary(days, result, ano); return null; });
       } catch (RuntimeException e) {
         System.out.println("⚠ 챗봇 만족도 AI 분석 결과 저장 실패: " + e.getMessage());
       }
       return ResponseEntity.ok(result);
     } catch (IllegalStateException e) {
       return ResponseEntity.status(409).body(Map.of("success", false, "message", e.getMessage()));
+    }
+  }
+
+  /** AI에 보낼 분석 자료 조회 — 요청 스레드 밖에서 (아래 runOffRequest 설명 참고) */
+  private AiRequest loadAiRequest(int days) {
+    return runOffRequest(() -> chatStatsService.buildAiRequest(days));
+  }
+
+  /**
+   * DB 작업을 요청 스레드 밖에서 실행하고 결과를 기다림.
+   *
+   * 요청 스레드에서 DB를 한 번이라도 조회하면 응답을 보낼 때까지 DB 연결을 계속 잡고 있습니다(open-in-view).
+   * AI 분석은 1분 넘게 걸려서, 분석 요청이 몇 개만 겹쳐도 연결 풀(5개)이 다 차 다른 요청이 전부 멈추고
+   * "Could not open JPA EntityManager for transaction" 오류가 났습니다.
+   * 별도 스레드에서 실행하면 트랜잭션이 끝나는 즉시 연결을 돌려줍니다.
+   */
+  private <T> T runOffRequest(Supplier<T> work) {
+    try {
+      return CompletableFuture.supplyAsync(work).join();
+    } catch (CompletionException e) {
+      if (e.getCause() instanceof RuntimeException cause) {
+        throw cause; // IllegalStateException(안내 문구) 등은 그대로 전달
+      }
+      throw e;
     }
   }
 }
