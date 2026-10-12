@@ -105,6 +105,11 @@ public class SecurityConfig {
                   "/attach/check",
                   // 첨부 이미지 파일 자체 (WebMvcConfiguration 정적 경로) — 비회원 FAQ·공지 이미지가 401로 안 보이던 문제
                   "/attach/storage/**").permitAll()
+              // 첨부파일 다운로드(dir=attach) — 비회원 문의 상세에서 내려받을 때 401 → 로그인 화면으로 튕기던 문제
+              // 같은 파일이 위 /attach/storage/** 로 이미 열려 있어 새로 노출되는 것은 없음. 다른 폴더(dir)는 로그인 필요 그대로
+              .requestMatchers(request -> "GET".equals(request.getMethod())
+                  && "/download".equals(request.getServletPath())
+                  && "attach".equals(request.getParameter("dir"))).permitAll()
               .requestMatchers(HttpMethod.POST, "/qa", "/qa/guest/{no}/verify", "/attach/create").permitAll()
               .requestMatchers(HttpMethod.PUT, "/qa/guest/{no}").permitAll()
               .requestMatchers(HttpMethod.DELETE, "/qa/guest/{no}", "/attach/delete_by_bno/{bno}", "/attach/delete/{no}").permitAll()

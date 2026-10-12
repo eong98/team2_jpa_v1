@@ -3,6 +3,8 @@ package dev.jpa.allimio.tool;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -37,7 +39,13 @@ public class Download {
     // C:/kd/deploy/resort/contents/storage
     
     File file = new File(Tool.getServerDir(dir) + downname);    
-    if(!file.exists()) {
+
+    // 저장 폴더 밖의 파일은 내려주지 않음 (dir·downname에 ../ 를 넣어 다른 경로를 읽는 것 차단)
+    if (!isInsideStorage(dir, file)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+    }
+
+    if(!file.isFile()) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
     } else {
       Resource resource = new FileSystemResource(file);
@@ -54,6 +62,16 @@ public class Download {
               .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedDownname)
               .body(resource);
     }
+  }
+
+  /** 요청한 파일이 저장 폴더(…/{dir}/storage/) 안에 있는지 — dir은 폴더명 하나만 허용 */
+  private boolean isInsideStorage(String dir, File file) {
+    if (dir == null || !dir.matches("[A-Za-z0-9_-]+")) {
+      return false;
+    }
+    Path base = Paths.get(Tool.getServerDir(dir)).toAbsolutePath().normalize();
+    Path target = file.toPath().toAbsolutePath().normalize();
+    return target.startsWith(base) && !target.equals(base);
   }
     
 }
