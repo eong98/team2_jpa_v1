@@ -13,6 +13,23 @@ import org.springframework.data.repository.query.Param;
 import dev.jpa.allimio.qa.QaDTO.QaResponse;
 
 public interface QaRepository extends JpaRepository<Qa, Long> {
+  // ==========================================
+  // ⭐ FAQ AI 추천용 조회 (qa.faq.QaFaqSuggestService)
+  // ==========================================
+  /** 관리자 답변이 달린 1:1 문의 — from(yyyy-MM-dd) 이후 등록, 최근 순 */
+  @Query("""
+      SELECT q FROM Qa q
+      WHERE q.isdel = 'N' AND q.isfaq = 'N'
+        AND q.answer IS NOT NULL
+        AND q.cdate >= :from
+      ORDER BY q.cdate DESC, q.no DESC
+      """)
+  List<Qa> findAnsweredQuestionsSince(@Param("from") String from, Pageable pageable);
+
+  /** 지금 등록된 FAQ — 같은 내용을 또 추천하지 않도록 비교용 */
+  @Query("SELECT q FROM Qa q WHERE q.isdel = 'N' AND q.isfaq = 'Y' ORDER BY q.no DESC")
+  List<Qa> findFaqsForCompare(Pageable pageable);
+
   /**
    * 조회수 +1 — DB에서 한 번에 올림
    * (엔티티 값을 읽어 +1 한 뒤 저장하면, 동시에 여러 명이 열 때 같은 값을 읽고 저장해 일부가 빠짐)

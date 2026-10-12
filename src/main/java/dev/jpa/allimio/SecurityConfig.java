@@ -136,7 +136,7 @@ public class SecurityConfig {
               // 문의 답변·FAQ 등록/수정·관리자 삭제(DELETE /qa)는 관리자만
               // (회원 상세·수정·삭제 /qa/{no}, 내 문의 /qa/my/**는 아래 anyRequest().authenticated() + 컨트롤러에서 본인 확인)
               .requestMatchers(HttpMethod.PUT, "/qa/reply/{no}", "/qa/faq/{no}").hasRole("MANAGER")
-              .requestMatchers(HttpMethod.POST, "/qa/faq").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.POST, "/qa/faq", "/qa/faq/suggest").hasRole("MANAGER")
               .requestMatchers(HttpMethod.DELETE, "/qa").hasRole("MANAGER")
 
               // 관리자 권한만 접근 가능
