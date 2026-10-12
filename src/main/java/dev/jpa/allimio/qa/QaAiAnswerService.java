@@ -1,7 +1,8 @@
 package dev.jpa.allimio.qa;
 
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,8 @@ import jakarta.annotation.PreDestroy;
    - 모르는 내용이면 아무것도 하지 않음 → 지금처럼 관리자 답변 대기
    - 그 사이 관리자가 먼저 답변했거나 글이 삭제됐으면 저장하지 않음
    - AI 서버가 꺼져 있거나 오류가 나도 문의 등록에는 영향 없음 (로그만 남김)
+   - 호출·저장이 실패하면(AI 서버 응답 없음, DB 연결 실패 등) 1분 뒤, 그다음 5분 뒤에 다시 시도
+     ("모르는 내용이라 답하지 않음"은 실패가 아니라서 다시 시도하지 않음)
 
    LLM 응답이 수십 초 걸려서 문의 등록 요청을 기다리게 하지 않도록 별도 스레드에서 처리하고,
    AI 서버에 한꺼번에 몰리지 않게 한 번에 하나씩 순서대로 처리합니다.
@@ -48,8 +51,11 @@ public class QaAiAnswerService {
   private static final int SAVE_ATTEMPTS = 4;
   private static final long SAVE_RETRY_WAIT_MS = 3000;
 
+  /** 실패했을 때 다시 시도하기까지 기다리는 시간(분) — 1분 뒤, 그래도 실패하면 5분 뒤 (총 3번 시도) */
+  private static final long[] RETRY_DELAY_MINUTES = { 1, 5 };
+
   /** 한 번에 하나씩 처리 (LLM 서버 과부하 방지) */
-  private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+  private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
     Thread t = new Thread(r, "qa-ai-answer");
     t.setDaemon(true);
     return t;
@@ -80,16 +86,19 @@ public class QaAiAnswerService {
       TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
         @Override
         public void afterCommit() {
-          executor.submit(() -> answer(qno));
+          executor.submit(() -> answer(qno, 0));
         }
       });
     } else {
-      executor.submit(() -> answer(qno));
+      executor.submit(() -> answer(qno, 0));
     }
   }
 
-  /** FastAPI에 답변 요청 → 답할 수 있을 때만 저장 */
-  private void answer(Long qno) {
+  /**
+   * FastAPI에 답변 요청 → 답할 수 있을 때만 저장
+   * @param retried 지금까지 다시 시도한 횟수 (처음은 0)
+   */
+  private void answer(Long qno, int retried) {
     try {
       Qa qa = qaRepository.findById(qno).orElse(null);
       if (!isWaiting(qa)) {
@@ -117,7 +126,17 @@ public class QaAiAnswerService {
       boolean saved = saveWithRetry(qno, answer);
       System.out.println("-> QA AI 자동 답변 " + (saved ? "등록" : "생략(이미 답변됨/삭제됨)") + "(no=" + qno + ")");
     } catch (Exception e) {
-      System.out.println("⚠ QA AI 자동 답변 실패(no=" + qno + "): " + e.getMessage());
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt(); // 서버 종료 중 — 다시 시도하지 않음
+        return;
+      }
+      if (retried < RETRY_DELAY_MINUTES.length && !executor.isShutdown()) {
+        long minutes = RETRY_DELAY_MINUTES[retried];
+        System.out.println("⚠ QA AI 자동 답변 실패(no=" + qno + "): " + e.getMessage() + " — " + minutes + "분 뒤 다시 시도");
+        executor.schedule(() -> answer(qno, retried + 1), minutes, TimeUnit.MINUTES);
+      } else {
+        System.out.println("⚠ QA AI 자동 답변 실패(no=" + qno + "): " + e.getMessage() + " — 더 시도하지 않음(관리자 답변 대기)");
+      }
     }
   }
 
