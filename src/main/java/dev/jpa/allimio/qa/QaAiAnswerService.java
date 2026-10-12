@@ -44,6 +44,10 @@ public class QaAiAnswerService {
   private final String aiServerUrl;
   private final RestClient restClient;
 
+  /** AI 답변 저장 시도 횟수 / 재시도 간격(시도할수록 길어짐: 3초, 6초, 9초) */
+  private static final int SAVE_ATTEMPTS = 4;
+  private static final long SAVE_RETRY_WAIT_MS = 3000;
+
   /** 한 번에 하나씩 처리 (LLM 서버 과부하 방지) */
   private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
     Thread t = new Thread(r, "qa-ai-answer");
@@ -110,17 +114,38 @@ public class QaAiAnswerService {
       }
 
       // 저장 직전에 다시 확인 — AI가 답을 만드는 동안 관리자가 답변했거나 글이 삭제됐을 수 있음
-      Boolean saved = transactionTemplate.execute(status -> {
-        Qa current = qaRepository.findById(qno).orElse(null);
-        if (!isWaiting(current)) {
-          return false;
-        }
-        current.updateAiAnswer(answer, Tool.getDate()); // 관리자 답변·상태와 별도 컬럼
-        return true;
-      });
-      System.out.println("-> QA AI 자동 답변 " + (Boolean.TRUE.equals(saved) ? "등록" : "생략(이미 답변됨/삭제됨)") + "(no=" + qno + ")");
+      boolean saved = saveWithRetry(qno, answer);
+      System.out.println("-> QA AI 자동 답변 " + (saved ? "등록" : "생략(이미 답변됨/삭제됨)") + "(no=" + qno + ")");
     } catch (Exception e) {
       System.out.println("⚠ QA AI 자동 답변 실패(no=" + qno + "): " + e.getMessage());
+    }
+  }
+
+  /**
+   * AI 답변 저장 — DB 연결을 잠깐 못 얻는 경우(연결 풀이 다 찼거나 끊김)에 대비해 몇 번 더 시도
+   * (1분 넘게 걸려 만든 답변이 "Could not open JPA EntityManager for transaction" 한 번에 버려지던 문제)
+   * @return 저장했으면 true, 그 사이 관리자가 답변했거나 글이 삭제됐으면 false
+   */
+  private boolean saveWithRetry(Long qno, String answer) throws InterruptedException {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        Boolean saved = transactionTemplate.execute(status -> {
+          Qa current = qaRepository.findById(qno).orElse(null);
+          if (!isWaiting(current)) {
+            return false;
+          }
+          current.updateAiAnswer(answer, Tool.getDate()); // 관리자 답변·상태와 별도 컬럼
+          return true;
+        });
+        return Boolean.TRUE.equals(saved);
+      } catch (RuntimeException e) {
+        if (attempt >= SAVE_ATTEMPTS) {
+          throw e;
+        }
+        System.out.println("-> QA AI 자동 답변 저장 재시도 " + attempt + "/" + (SAVE_ATTEMPTS - 1)
+            + "(no=" + qno + "): " + e.getMessage());
+        Thread.sleep(SAVE_RETRY_WAIT_MS * attempt);
+      }
     }
   }
 
