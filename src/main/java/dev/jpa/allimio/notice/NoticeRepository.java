@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -62,6 +63,14 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
       @Param("word") String word,
       @Param("type") Integer type,
       Pageable pageable);
+
+  /**
+   * 조회수 +1 — DB에서 한 번에 올림 (동시에 여러 명이 열어도 빠지지 않게)
+   * 실행 후에는 읽어 둔 엔티티를 비움(clear) → 다시 조회해야 최신 값
+   */
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("UPDATE Notice n SET n.vcnt = n.vcnt + 1 WHERE n.no = :no")
+  int increaseVcnt(@Param("no") Long no);
 
   // ==========================================
   // ⭐ 이전글 / 다음글 조회

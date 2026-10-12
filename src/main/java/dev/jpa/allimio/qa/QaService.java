@@ -116,7 +116,7 @@ public class QaService {
   @Transactional
   public QaDTO.QaResponse getAdminQaDetail(Long no) {
     Qa qa = findActive(no);
-    qa.increaseVcnt();
+    qa = increaseVcnt(qa);
 
     if ("N".equals(qa.getIsfaq()) && qa.getStatus() == 0) {
       qa.setStatus(1); // Dirty Checking으로 자동 update
@@ -136,11 +136,12 @@ public class QaService {
       // 남의 비밀글 — 오류 대신 '잠긴 글' 응답(내용 없음) → 화면이 잠금 안내를 보여줌 (비회원 상세와 같은 방식)
       return QaDTO.QaResponse.locked(qa);
     }
-    qa.increaseVcnt();
+    qa = increaseVcnt(qa);
 
     QaDTO.QaResponse res = toDetail(qa);
     if (!isOwner) {
       res.setGuestEmail(null); // 남의 글 이메일은 숨김
+      res.setId(maskId(res.getId())); // 남의 글 작성자 아이디는 뒷자리 가림
     }
     return res;
   }
@@ -161,12 +162,14 @@ public class QaService {
       // 화면은 locked=true면 비밀번호 입력 화면을 보여줌 (회원 비밀글이면 mno가 있어 로그인 안내)
       return QaDTO.QaResponse.locked(qa);
     }
-    qa.increaseVcnt();
+    qa = increaseVcnt(qa);
 
     QaDTO.QaResponse res = toDetail(qa);
     if (!isOwner) {
       res.setGuestEmail(null);
     }
+    // 비회원 화면에서는 회원 글 작성자 아이디를 항상 가림 (공개글은 로그인하지 않은 사람도 볼 수 있음)
+    res.setId(maskId(res.getId()));
     return res;
   }
 
@@ -488,6 +491,12 @@ public class QaService {
         dto.getType(), dto.getFileyn(), email);
   }
 
+  /** 조회수 +1 (DB에서 한 번에) 후, 올라간 값이 반영된 글을 다시 읽어 돌려줌 */
+  private Qa increaseVcnt(Qa qa) {
+    qaRepository.increaseVcnt(qa.getNo());
+    return findActive(qa.getNo());
+  }
+
   /** 상세 응답 — 문의글이면 이전글/다음글, 회원 글이면 작성자 아이디 포함 */
   private QaDTO.QaResponse toDetail(Qa qa) {
     QaDTO.QaNav prev = null;
@@ -506,6 +515,15 @@ public class QaService {
     String id = (qa.getMno() != null) ? memberRepository.findById(qa.getMno()).map(Member::getId).orElse(null) : null;
 
     return QaDTO.QaResponse.fromEntity(qa, prev, next, id);
+  }
+
+  /** 아이디 뒷자리 2글자를 **로 가림 — tmddus → tmdd** (2글자 이하면 첫 글자만 남김) */
+  private static String maskId(String id) {
+    if (id == null || id.isBlank()) {
+      return id;
+    }
+    int keep = id.length() > 2 ? id.length() - 2 : 1;
+    return id.substring(0, keep) + "**";
   }
 
   /** 목록용 — 본인 글이 아니면 이메일을 숨기고, 비밀글이면 내용·답변도 숨김 */

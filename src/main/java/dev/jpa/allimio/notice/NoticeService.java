@@ -56,13 +56,15 @@ public class NoticeService {
   @Transactional
   public NoticeDTO.NoticeResponse getNotice(Long no, boolean isManager) {
     // 1. 게시글 존재 및 미삭제 여부 확인 — 비공개 공지는 관리자만 (주소를 직접 입력해도 열리지 않게)
-    Notice notice = noticeRepository.findById(no)
+    noticeRepository.findById(no)
         .filter(n -> "N".equals(n.getIsdel()))
         .filter(n -> isManager || "Y".equals(n.getVmode()))
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
-    // 2. 조회수 증가
-    notice.increaseVcnt();
+    // 2. 조회수 증가 — DB에서 한 번에 올린 뒤, 올라간 값이 반영된 글을 다시 읽음
+    noticeRepository.increaseVcnt(no);
+    Notice notice = noticeRepository.findById(no)
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
     // 3. 이전글 / 다음글 조회 (미삭제만 — 관리자는 비공개 공지 포함, 그 외는 공개글만)
     //    목록에 보이는 순서 기준 — 이전글: 목록에서 바로 위 글, 다음글: 바로 아래 글

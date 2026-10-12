@@ -6,12 +6,22 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import dev.jpa.allimio.qa.QaDTO.QaResponse;
 
 public interface QaRepository extends JpaRepository<Qa, Long> {
+  /**
+   * 조회수 +1 — DB에서 한 번에 올림
+   * (엔티티 값을 읽어 +1 한 뒤 저장하면, 동시에 여러 명이 열 때 같은 값을 읽고 저장해 일부가 빠짐)
+   * 실행 전에 바뀐 내용을 먼저 반영하고(flush), 실행 후에는 읽어 둔 엔티티를 비움(clear) → 다시 조회해야 최신 값
+   */
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("UPDATE Qa q SET q.vcnt = q.vcnt + 1 WHERE q.no = :no")
+  int increaseVcnt(@Param("no") Long no);
+
   // ==========================================
   // ⭐ 이전글 / 다음글 조회
   // ==========================================
