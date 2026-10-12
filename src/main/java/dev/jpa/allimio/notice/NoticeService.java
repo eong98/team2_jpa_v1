@@ -87,10 +87,7 @@ public class NoticeService {
   public Long createNotice(NoticeDTO.NCRequest dto, Long ano) {
     Notice notice = dto.toEntity();
     notice.changeAno(ano); // 작성자는 로그인한 관리자 (body의 ano는 쓰지 않음)
-    // 게시글 비밀번호는 문의사항(QaService)과 같이 BCrypt로 암호화해서 저장
-    if (dto.getPw() != null && !dto.getPw().isBlank()) {
-      notice.changePw(pwEncoder.encode(dto.getPw()));
-    }
+    notice.changePw(null); // 공지는 게시글 비밀번호를 쓰지 않음 (관리자 로그인으로 권한 확인)
     Notice savedNotice = noticeRepository.save(notice);
     return savedNotice.getNo();
   }
@@ -104,12 +101,7 @@ public class NoticeService {
         .filter(n -> "N".equals(n.getIsdel()))
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
-    // 비밀번호 입력값이 있는 경우 검증
-    if (updateDto.getPw() != null && !updateDto.getPw().isBlank()) {
-      if (notice.getPw() == null || !pwEncoder.matches(updateDto.getPw(), notice.getPw())) {
-        throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
-      }
-    }
+    // 권한은 SecurityConfig에서 관리자만 — 게시글 비밀번호 확인 없음
     
     // NoticeDTO 내부 applyUpdateTo 호출로 엔티티 수정
     updateDto.applyUpdateTo(notice);
@@ -120,11 +112,10 @@ public class NoticeService {
    */
   @Transactional
   public void deleteNotice(NoticeDTO.DeleteRequest deleteDto) {
-    // 암호화된 비밀번호는 DB 조건(=)으로 비교할 수 없으므로 글을 찾은 뒤 pwEncoder.matches로 확인
+    // 권한은 SecurityConfig에서 관리자만 — 게시글 비밀번호 확인 없음
     Notice notice = noticeRepository.findById(deleteDto.getNo())
         .filter(n -> "N".equals(n.getIsdel()))
-        .filter(n -> deleteDto.getPw() != null && n.getPw() != null && pwEncoder.matches(deleteDto.getPw(), n.getPw()))
-        .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않거나 비밀번호가 일치하지 않습니다."));
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다."));
 
     notice.delete(Tool.getDate());
   }
