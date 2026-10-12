@@ -54,25 +54,26 @@ public class NoticeService {
    * 게시글 상세페이지 조회 (조회수 증가 + DTO 반환)
    */
   @Transactional
-  public NoticeDTO.NoticeResponse getNotice(Long no) {
-    // 1. 게시글 존재 및 미삭제 여부 확인
+  public NoticeDTO.NoticeResponse getNotice(Long no, boolean isManager) {
+    // 1. 게시글 존재 및 미삭제 여부 확인 — 비공개 공지는 관리자만 (주소를 직접 입력해도 열리지 않게)
     Notice notice = noticeRepository.findById(no)
         .filter(n -> "N".equals(n.getIsdel()))
+        .filter(n -> isManager || "Y".equals(n.getVmode()))
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. no=" + no));
 
     // 2. 조회수 증가
     notice.increaseVcnt();
 
-    // 3. 이전글 / 다음글 조회 (공개글 & 미삭제만 대상)
+    // 3. 이전글 / 다음글 조회 (미삭제만 — 관리자는 비공개 공지 포함, 그 외는 공개글만)
     //    목록에 보이는 순서 기준 — 이전글: 목록에서 바로 위 글, 다음글: 바로 아래 글
     String fixyn = notice.getFixyn() == null ? "N" : notice.getFixyn();
     NoticeDTO.NoticeNav prev = noticeRepository
-        .findAboveInList(fixyn, notice.getType(), notice.getCdate(), no, PageRequest.of(0, 1)).stream().findFirst()
+        .findAboveInList(fixyn, notice.getType(), notice.getCdate(), no, isManager, PageRequest.of(0, 1)).stream().findFirst()
         .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
         .orElse(null);
 
     NoticeDTO.NoticeNav next = noticeRepository
-        .findBelowInList(fixyn, notice.getType(), notice.getCdate(), no, PageRequest.of(0, 1)).stream().findFirst()
+        .findBelowInList(fixyn, notice.getType(), notice.getCdate(), no, isManager, PageRequest.of(0, 1)).stream().findFirst()
         .map(n -> new NoticeDTO.NoticeNav(n.getNo(), n.getTitle(), n.getFileyn(), n.getCdate()))
         .orElse(null);
 

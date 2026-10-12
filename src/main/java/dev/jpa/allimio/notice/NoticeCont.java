@@ -1,5 +1,7 @@
 package dev.jpa.allimio.notice;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -87,9 +90,11 @@ public class NoticeCont {
    * GET /notice/1
    */
   @GetMapping("/{no}")
-  public ResponseEntity<NoticeDTO.NoticeResponse> getNoticeDetail(@PathVariable("no") Long no) {
-    // Service에서 DTO로 변환된 결과를 바로 받아 응답
-    NoticeDTO.NoticeResponse response = noticeService.getNotice(no);
+  public ResponseEntity<NoticeDTO.NoticeResponse> getNoticeDetail(Authentication auth, @PathVariable("no") Long no) {
+    // 관리자 여부는 로그인 토큰으로 확인 — 관리자만 비공개 공지를 열고, 이전글/다음글에도 비공개 공지가 나옴
+    boolean isManager = auth != null && auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_MANAGER".equals(a.getAuthority()));
+    NoticeDTO.NoticeResponse response = noticeService.getNotice(no, isManager);
     return ResponseEntity.ok(response);
   }
 
@@ -129,4 +134,14 @@ public class NoticeCont {
     return ResponseEntity.ok("성공적으로 삭제되었습니다.");
   }
 
+
+  /**
+   * 없는 글·삭제된 글 → 404 + {success:false, message}
+   * (처리하지 않으면 500 서버 오류로 나가서, 화면이 "없는 글"과 진짜 서버 오류를 구분할 수 없음)
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, Object>> handleNotFound(IllegalArgumentException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("success", false, "code", "NOT_FOUND", "message", "존재하지 않거나 삭제된 게시글입니다."));
+  }
 }

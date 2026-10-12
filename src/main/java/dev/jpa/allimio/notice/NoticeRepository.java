@@ -68,24 +68,25 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
   // ==========================================
   /**
    * 이전글 — 목록(고정글 먼저 → 유형 → 등록일 최신순 → 글번호 큰 순)에서 바로 위에 보이는 글
-   * 공개(vmode=Y)·미삭제만 (사용자 목록과 같은 대상), PageRequest.of(0, 1)로 1건
+   * 미삭제만, PageRequest.of(0, 1)로 1건
+   * @param all true면 비공개 공지도 포함(관리자 목록과 같은 대상), false면 공개(vmode=Y)만(사용자 목록과 같은 대상)
    */
-  @Query("SELECT n FROM Notice n WHERE n.isdel = 'N' AND n.vmode = 'Y' " +
+  @Query("SELECT n FROM Notice n WHERE n.isdel = 'N' AND (:all = true OR n.vmode = 'Y') " +
       "AND (n.fixyn > :fixyn OR (n.fixyn = :fixyn AND (n.type < :type OR (n.type = :type " +
       "AND (n.cdate > :cdate OR (n.cdate = :cdate AND n.no > :no)))))) " +
       "ORDER BY n.fixyn ASC, n.type DESC, n.cdate ASC, n.no ASC")
   List<Notice> findAboveInList(@Param("fixyn") String fixyn, @Param("type") int type,
-      @Param("cdate") String cdate, @Param("no") Long no, Pageable pageable);
+      @Param("cdate") String cdate, @Param("no") Long no, @Param("all") boolean all, Pageable pageable);
 
   /**
    * 다음글 — 목록에서 바로 아래에 보이는 글
    */
-  @Query("SELECT n FROM Notice n WHERE n.isdel = 'N' AND n.vmode = 'Y' " +
+  @Query("SELECT n FROM Notice n WHERE n.isdel = 'N' AND (:all = true OR n.vmode = 'Y') " +
       "AND (n.fixyn < :fixyn OR (n.fixyn = :fixyn AND (n.type > :type OR (n.type = :type " +
       "AND (n.cdate < :cdate OR (n.cdate = :cdate AND n.no < :no)))))) " +
       "ORDER BY n.fixyn DESC, n.type ASC, n.cdate DESC, n.no DESC")
   List<Notice> findBelowInList(@Param("fixyn") String fixyn, @Param("type") int type,
-      @Param("cdate") String cdate, @Param("no") Long no, Pageable pageable);
+      @Param("cdate") String cdate, @Param("no") Long no, @Param("all") boolean all, Pageable pageable);
 
   /**
    * 다음글 (현재 글보다 번호가 큰 것 중 가장 가까운 글 = 더 최근 글)
