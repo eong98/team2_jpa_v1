@@ -12,7 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import dev.jpa.allimio.chatstats.ChatStatsDTO.AiRequest;
+import dev.jpa.allimio.chatstats.ChatStatsDTO.AiSummary;
 import dev.jpa.allimio.chatstats.ChatStatsDTO.DailyPoint;
 import dev.jpa.allimio.chatstats.ChatStatsDTO.GroupCount;
 import dev.jpa.allimio.chatstats.ChatStatsDTO.GroupSatisfy;
@@ -53,10 +58,64 @@ public class ChatStatsService {
   @Autowired
   private ChatStatsRepository chatStatsRepository;
 
-  public Stats getStats(int days) {
-    if (!ALLOWED_DAYS.contains(days)) {
-      days = 30;
+  @Autowired
+  private ChatStatsAiRepository chatStatsAiRepository;
+
+  @Autowired
+  private ObjectMapper objectMapper;
+
+  /** 조회기간 보정 — 7 | 30 | 90 외에는 30 */
+  public int normalizeDays(int days) {
+    return ALLOWED_DAYS.contains(days) ? days : 30;
+  }
+
+  /**
+   * AI 분석 결과 저장 (CHAT_STATS_AI) — 분석할 때마다 한 줄씩 쌓임
+   * @param ano 분석을 실행한 관리자 번호
+   */
+  @Transactional
+  public void saveAiSummary(int days, AiSummary result, Long ano) {
+    String weakPoints;
+    try {
+      weakPoints = objectMapper.writeValueAsString(result.weakPoints() == null ? List.of() : result.weakPoints());
+    } catch (JsonProcessingException e) {
+      weakPoints = "[]";
     }
+    String reason = result.reason() == null ? "" : result.reason();
+    chatStatsAiRepository.save(ChatStatsAi.builder()
+        .days(normalizeDays(days))
+        .fromDate(result.from())
+        .toDate(result.to())
+        .answered(result.answered())
+        .score(Math.round(Math.max(0, Math.min(10, result.score())) * 10) / 10.0) // NUMBER(3,1)
+        .summary(result.summary())
+        .reason(reason.length() > 600 ? reason.substring(0, 600) : reason) // VARCHAR2(2000) — 한글 3바이트
+        .weakPoints(weakPoints)
+        .ano(ano)
+        .rdate(result.analyzedAt())
+        .build());
+  }
+
+  /** 해당 기간의 가장 최근 AI 분석 결과 — 없으면 null */
+  public AiSummary getLatestAiSummary(int days) {
+    return chatStatsAiRepository.findFirstByDaysOrderByNoDesc(normalizeDays(days))
+        .map(row -> {
+          List<String> weakPoints;
+          try {
+            weakPoints = row.getWeakPoints() == null || row.getWeakPoints().isBlank()
+                ? List.of()
+                : objectMapper.readValue(row.getWeakPoints(), new TypeReference<List<String>>() {});
+          } catch (JsonProcessingException e) {
+            weakPoints = List.of();
+          }
+          return new AiSummary(row.getSummary(), row.getScore(), row.getReason() == null ? "" : row.getReason(),
+              weakPoints, row.getAnswered(), row.getFromDate(), row.getToDate(), row.getRdate());
+        })
+        .orElse(null);
+  }
+
+  public Stats getStats(int days) {
+    days = normalizeDays(days);
 
     // 기간: 오늘 포함 최근 N일 [from, to], 쿼리는 반열림 구간 [from, toNext)
     LocalDate today = LocalDate.now();
