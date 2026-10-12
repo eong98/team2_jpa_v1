@@ -17,6 +17,11 @@ import org.springframework.web.client.RestClient;
    지난 열린 세션을 찾아 자동 종료합니다(종료 사유 CREASON=2, 안내 메시지 남김).
    UDATE는 Spring·FastAPI 모두 대화가 오갈 때마다 갱신합니다.
 
+   자동 종료 5분 전(IDLE_WARN_BEFORE_MINUTES)에는 경고 문구와 함께 만족도 질문을 먼저 남깁니다.
+   챗봇 창이 열려 있으면 화면이 제때 요청하고(ChatRoom), 창을 닫아 둔 상담은 이 배치가 남기면서
+   안 읽음으로 표시 → 챗봇 버튼에 N 표시. 종료를 먼저 돌리고 경고를 남기므로, 배치가 경고한 상담은
+   다음 실행(5분 뒤)에 종료됩니다. 그때까지 답이 없으면 만족도 없이(NULL) 종료.
+
    종료 후에는 사용자가 [상담 종료]를 눌렀을 때(React ChatRoom.markConsultEnded)와 같이
    FastAPI에 채팅 목록 제목 AI 요약을 요청합니다 (POST /api/chatbot/{sno}/summarize-title).
    FastAPI는 바로 응답하고 요약은 백그라운드로 처리 → 끝나면 웹소켓으로 목록 갱신 알림.
@@ -50,9 +55,6 @@ public class ChatSessionScheduler {
   @Scheduled(initialDelay = 60_000, fixedDelay = 5 * 60_000)
   public void closeIdleSessions() {
     List<String> nos = chatSessionService.findIdleSessionNos();
-    if (nos.isEmpty()) {
-      return;
-    }
     int closed = 0;
     for (String no : nos) {
       try {
@@ -64,7 +66,21 @@ public class ChatSessionScheduler {
       }
       requestTitleSummary(no);
     }
-    System.out.println("-> 챗봇 방치 세션 자동 종료: " + closed + "건");
+    if (!nos.isEmpty()) {
+      System.out.println("-> 챗봇 방치 세션 자동 종료: " + closed + "건");
+    }
+    warnIdleSessions();
+  }
+
+  /** 곧 자동 종료될 상담에 경고 + 만족도 질문을 남김 (화면이 이미 남긴 상담은 건너뜀) */
+  private void warnIdleSessions() {
+    for (String no : chatSessionService.findIdleWarnSessionNos()) {
+      try {
+        chatSessionService.idleWarn(no, null, true);
+      } catch (Exception e) {
+        System.out.println("⚠ 챗봇 자동 종료 경고 실패(no=" + no + "): " + e.getMessage());
+      }
+    }
   }
 
   /** 채팅 목록 제목 AI 요약 요청 — 실패해도(AI 서버 꺼짐 등) 종료 처리에는 영향 없음 */

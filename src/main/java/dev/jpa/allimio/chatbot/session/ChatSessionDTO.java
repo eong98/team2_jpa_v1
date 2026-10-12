@@ -108,6 +108,8 @@ public class ChatSessionDTO {
     private boolean sessionEnded;
     /** AI 가 대답하지 못하는 질문인 경우 관리자 연결 판단 */
     private boolean needsAdmin;
+    /** 자동 종료 경고(idle-warn)에서만 — 아직 경고할 때가 아니면 다시 확인할 때까지 남은 시간(초) */
+    private Long retryAfterSeconds;
   }
  
   /** 세션 응답 */

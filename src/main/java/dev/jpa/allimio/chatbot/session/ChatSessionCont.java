@@ -143,5 +143,25 @@ public class ChatSessionCont {
     chatAccess.assertSessionAccess(no, auth);
     return ResponseEntity.ok(chatSessionService.step(no, request));
   }
+
+  /**
+   * 자동 종료 전 경고 — 화면이 한동안 반응이 없을 때 호출 (systemMessage: 남길 경고 문구)
+   * 때가 됐으면 경고 문구 + 만족도 질문 단계로 바꾸고, 아니면 retryAfterSeconds만 돌려줌
+   */
+  @PutMapping("/{no}/idle-warn")
+  public ResponseEntity<ChatSessionDTO.ActionResult> idleWarn(Authentication auth,
+      @PathVariable("no") String no, @RequestBody(required = false) ChatSessionDTO.StepRequest request) {
+    chatAccess.assertSessionAccess(no, auth);
+    return ResponseEntity.ok(chatSessionService.idleWarn(no, request == null ? null : request.getSystemMessage(), false));
+  }
+
+  /** 자동 종료 경고 뒤 [상담 계속하기] (label: 누른 버튼 글자, systemMessage: 이어서 보여 줄 안내 문구) */
+  @PutMapping("/{no}/idle-continue")
+  public ResponseEntity<ChatSessionDTO.ActionResult> idleContinue(Authentication auth,
+      @PathVariable("no") String no, @RequestBody(required = false) ChatSessionDTO.StepRequest request) {
+    chatAccess.assertSessionAccess(no, auth);
+    return ResponseEntity.ok(chatSessionService.idleContinue(no, request == null ? null : request.getLabel(),
+        request == null ? null : request.getSystemMessage()));
+  }
  
 }

@@ -44,6 +44,11 @@ public class ChatSessionService {
 
   /** 마지막 활동 후 이 시간(분) 동안 반응이 없으면 상담 자동 종료 */
   public static final int SESSION_IDLE_MINUTES = 30;
+  /** 자동 종료 이 시간(분) 전에 경고와 함께 만족도 질문을 먼저 띄움 (화면이 열려 있을 때) */
+  public static final int IDLE_WARN_BEFORE_MINUTES = 5;
+  /** 경고 문구 — React ChatBot.ts SYSTEM_MESSAGES(code 10)와 같은 글 (화면이 이 글로 경고 상태를 알아봄) */
+  private static final String IDLE_WARN_MESSAGE =
+      "응답이 없어 약 " + IDLE_WARN_BEFORE_MINUTES + "분 뒤 상담이 자동으로 종료됩니다.\n종료 전에 상담 만족도를 알려 주세요.";
   /** 비회원 gno를 이 기간(일) 동안 쓰지 않으면 만료 (React ChatGuest.ts와 같은 값) */
   private static final int GUEST_EXPIRE_DAYS = 30;
   /** CHAT_SESSION.UDATE 형식 (Tool.getDate()와 같음) — 문자열 비교로 기간 판단 */
@@ -429,6 +434,90 @@ public class ChatSessionService {
         .sno(no).sender(sender).mtype(mtype).content(content).cno(cno).build());
   }
  
+  /**
+   * 자동 종료 전 경고 — 화면(ChatRoom)이 한동안 반응이 없을 때 호출하고,
+   * 챗봇 창을 닫아 둔 상담은 배치(ChatSessionScheduler)가 호출합니다(markUnread=true).
+   * 마지막 활동 후 (SESSION_IDLE_MINUTES - IDLE_WARN_BEFORE_MINUTES)분이 지났으면 경고 문구를 남기고
+   * 만족도 질문 단계(ENDFLOW 0)로 바꿉니다. 이때 UDATE는 그대로 둬서, 답이 없으면 배치가 원래 시각에
+   * 만족도 없이(SATISFY NULL) 자동 종료합니다.
+   * 아직 때가 아니면 아무것도 하지 않고 다시 확인할 때까지 남은 시간(초)만 돌려줍니다.
+   *
+   * @param markUnread true면 경고를 남기면서 안 읽음으로 표시(READAT NULL) → 챗봇 버튼에 N 표시
+   */
+  @Transactional
+  public ChatSessionDTO.ActionResult idleWarn(String no, String message, boolean markUnread) {
+    ChatSession session = getSession(no);
+    List<ChatLogDTO.Response> logs = new ArrayList<>();
+    if (session.getCmode() != null && session.getCmode() == MODE_CLOSED) {
+      return ChatSessionDTO.ActionResult.builder().logs(logs).sessionEnded(true).build();
+    }
+    Integer endflow = session.getEndflow();
+    // AI 답변·요약을 기다리는 중이면 잠시 뒤 다시 확인
+    if (isOneOf(endflow, ENDFLOW_SUMMARIZING, ENDFLOW_AI_RESPONDING)) {
+      return ChatSessionDTO.ActionResult.builder().logs(logs).retryAfterSeconds(60L).build();
+    }
+    // 이미 만족도·불만족 사유를 묻는 중이면 그대로 둠
+    if (isOneOf(endflow, ENDFLOW_ASK_SATISFY, ENDFLOW_ASK_UNSATISFY_REASON, ENDFLOW_ASK_UNSATISFY_MEMO)) {
+      return ChatSessionDTO.ActionResult.builder().logs(logs).build();
+    }
+
+    long warnAfter = (SESSION_IDLE_MINUTES - IDLE_WARN_BEFORE_MINUTES) * 60L;
+    long idle = idleSeconds(session.getUdate());
+    if (idle < warnAfter) {
+      return ChatSessionDTO.ActionResult.builder().logs(logs).retryAfterSeconds(warnAfter - idle).build();
+    }
+
+    String udate = session.getUdate();
+    String text = (message == null || message.isBlank())
+        ? IDLE_WARN_MESSAGE
+        : message;
+    addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, text, null));
+    session.setUdate(udate); // 로그 저장이 UDATE를 갱신하므로 되돌림 — 경고는 활동이 아님 (자동 종료 시각 유지)
+    session.setEndflow(ENDFLOW_ASK_SATISFY);
+    if (markUnread) {
+      session.setReadat(null); // 사용자가 보고 있지 않은 상담 → 안 읽음 (창을 열면 다시 읽음 처리됨)
+    }
+    return ChatSessionDTO.ActionResult.builder().logs(logs).build();
+  }
+
+  /** 경고할 때가 된 열린 세션 번호 목록 (배치용) — 이미 종료 단계거나 AI 답변을 기다리는 상담은 제외 */
+  @Transactional(readOnly = true)
+  public List<String> findIdleWarnSessionNos() {
+    String cutoff = LocalDateTime.now().minusMinutes(SESSION_IDLE_MINUTES - IDLE_WARN_BEFORE_MINUTES).format(DATE_FMT);
+    return chatSessionRepository.findByCmodeNotAndUdateLessThan(MODE_CLOSED, cutoff).stream()
+        .filter(s -> s.getEndflow() == null
+            || isOneOf(s.getEndflow(), ENDFLOW_ASK_ESCALATE_CONFIRM, ENDFLOW_FAIL_AI_ANSWER))
+        .map(ChatSession::getNo)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * 자동 종료 경고 뒤 [상담 계속하기] — 만족도 질문을 거두고 상담을 이어감 (로그가 남으면서 UDATE 갱신)
+   * @param systemMessage 이어서 보여 줄 안내 문구 (없으면 남기지 않음)
+   */
+  @Transactional
+  public ChatSessionDTO.ActionResult idleContinue(String no, String label, String systemMessage) {
+    ChatSession session = getOpenSession(no);
+    requireEndflow(session, ENDFLOW_ASK_SATISFY);
+    List<ChatLogDTO.Response> logs = new ArrayList<>();
+    session.setReadat(Tool.getDate());
+    addIfPresent(logs, log(no, SENDER_USER, MTYPE_FREE_TEXT,
+        (label == null || label.isBlank()) ? "상담 계속하기" : label, null));
+    addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, systemMessage, null));
+    session.setEndflow(null);
+    return ChatSessionDTO.ActionResult.builder().logs(logs).build();
+  }
+
+  /** 마지막 활동(UDATE) 후 지난 시간(초) — 값이 없거나 형식이 다르면 0 */
+  private long idleSeconds(String udate) {
+    if (udate == null || udate.isBlank()) return 0;
+    try {
+      return java.time.Duration.between(LocalDateTime.parse(udate, DATE_FMT), LocalDateTime.now()).getSeconds();
+    } catch (java.time.format.DateTimeParseException e) {
+      return 0;
+    }
+  }
+
   /** 방치 세션 자동종료 (ChatSessionScheduler가 호출) — 종료 사유 2: 자동종료 */
   @Transactional
   public void autoClose(String no) {
