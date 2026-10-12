@@ -184,6 +184,14 @@ public class Notice {
   }
 
   /**
+   * 삭제 복원 (삭제 플래그·삭제 일시를 지움 — 고정 여부·공개 여부 등 나머지는 삭제 전 그대로)
+   */
+  public void restore() {
+    this.isdel = "N";
+    this.ddate = null;
+  }
+
+  /**
    * 비밀번호 일치 여부 검증 메서드
    * 
    * @param pw

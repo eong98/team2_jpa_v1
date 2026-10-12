@@ -73,6 +73,19 @@ public class NoticeCont {
   }
 
   /**
+   * [관리자] 삭제된 공지사항 복원 (SecurityConfig에서 관리자만 — /notice/deleted/**)
+   * PUT /notice/deleted/3/restore
+   */
+  @PutMapping(path="/deleted/{no}/restore")
+  public ResponseEntity<?> restoreNotice(@PathVariable("no") Long no) {
+    if (!noticeService.restoreNotice(no)) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(java.util.Map.of("success", false, "message", "삭제된 공지 목록에 없는 글입니다."));
+    }
+    return ResponseEntity.ok("복원되었습니다.");
+  }
+
+  /**
    * [관리자] 삭제된 공지사항 영구 삭제 (복구 불가)
    * DELETE /notice/deleted/3
    */

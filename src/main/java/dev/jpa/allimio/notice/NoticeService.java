@@ -132,6 +132,21 @@ public class NoticeService {
   }
 
   /**
+   * [관리자] 삭제된 공지사항 복원 — 삭제(ISDEL='Y')된 글만 가능
+   * @return 복원했으면 true, 삭제된 목록에 없는 글이면 false
+   */
+  @Transactional
+  public boolean restoreNotice(Long no) {
+    return noticeRepository.findById(no)
+        .filter(n -> "Y".equals(n.getIsdel()))
+        .map(n -> {
+          n.restore();
+          return true;
+        })
+        .orElse(false);
+  }
+
+  /**
    * [관리자] 삭제된 공지사항 영구 삭제 (DB에서 실제 삭제)
    * - 이미 삭제(ISDEL='Y')된 글만 가능
    * - 첨부파일은 화면에서 삭제 성공 후 따로 지움 (DELETE /attach/delete_by_bno/{no}?tname=NOTICE)
