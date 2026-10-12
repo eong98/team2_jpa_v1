@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.jpa.allimio.chatbot.session.ChatSessionRepository;
+import dev.jpa.allimio.qa.mail.QaMailService;
 import dev.jpa.allimio.member.Member;
 import dev.jpa.allimio.member.MemberRepository;
 import dev.jpa.allimio.tool.Tool;
@@ -44,6 +45,9 @@ public class QaService {
 
   @Autowired
   QaAiAnswerService qaAiAnswerService;
+
+  @Autowired
+  QaMailService qaMailService;
 
   public QaService() {
     System.out.println("-> QaService created");
@@ -211,7 +215,9 @@ public class QaService {
    */
   @Transactional
   public QaDTO.QaResponse createQuestion(QaDTO.QCRequest dto, Long loginMno) {
-    if (dto.getPw() == null || dto.getPw().isBlank()) {
+    // 게시글 비밀번호는 비회원 글에만 — 회원은 로그인으로 본인 확인을 하므로 받지 않음
+    boolean isGuest = loginMno == null;
+    if (isGuest && (dto.getPw() == null || dto.getPw().isBlank())) {
       throw new QaAccessException(400, "PW_REQUIRED", "게시글 비밀번호를 입력해 주세요.");
     }
 
@@ -234,7 +240,7 @@ public class QaService {
         .title(dto.getTitle())
         .content(dto.getContent())
         .cdate(Tool.getDate())
-        .pw(pwEncoder.encode(dto.getPw()))
+        .pw(isGuest ? pwEncoder.encode(dto.getPw()) : null) // 회원 글은 비밀번호 없음 (QA.PW NULL 허용)
         .vmode(dto.getVmode() != null ? dto.getVmode() : "N")
         .status(0) // 답변 대기
         .isdel("N")
@@ -327,7 +333,13 @@ public class QaService {
   @Transactional
   public void replyToQuestion(Long no, Long ano, QaDTO.QARequest replyDto) {
     Qa qa = findActiveQuestion(no);
+    boolean firstAnswer = qa.getAnswer() == null || qa.getAnswer().isBlank();
     qa.updateAnswer(ano, replyDto.getAnswer(), Tool.getDate()); // status=2(답변완료)
+
+    // 처음 답변을 등록할 때만 작성자에게 알림 메일 (답변 수정 때는 보내지 않음, 저장이 끝난 뒤 백그라운드 발송)
+    if (firstAnswer && replyDto.getAnswer() != null && !replyDto.getAnswer().isBlank()) {
+      qaMailService.sendReplyNoticeAfterCommit(no);
+    }
   }
 
   /**
@@ -353,10 +365,7 @@ public class QaService {
   public Long createFAQ(QaDTO.FaqCRequest dto, Long ano) {
     Qa qa = dto.toEntity();
     qa.changeAno(ano); // 작성자는 로그인한 관리자 (body의 ano는 쓰지 않음)
-    // 문의 등록과 같이 BCrypt로 암호화해서 저장 (예전엔 평문 저장 → 수정·삭제 때 matches 비교가 항상 실패)
-    if (dto.getPw() != null && !dto.getPw().isBlank()) {
-      qa.changePw(pwEncoder.encode(dto.getPw()));
-    }
+    qa.changePw(null); // FAQ는 게시글 비밀번호를 쓰지 않음 (관리자 로그인으로 권한 확인)
     Qa savedQa = qaRepository.save(qa);
     return savedQa.getNo();
   }
@@ -371,18 +380,13 @@ public class QaService {
     // 1. 수정할 게시글 조회(삭제되지 않은 글)
     Qa qa = findActive(no);
 
-    // 2. 비밀번호 검증
-    if (updateDto.getPw() == null || !pwEncoder.matches(updateDto.getPw(), qa.getPw())) {
-      throw new QaAccessException(400, "PW_MISMATCH", "비밀번호가 일치하지 않습니다.");
-    }
-
-    // 3. QaDTO 내부 applyUpdateTo 사용 -> 수정
+    // 2. QaDTO 내부 applyUpdateTo 사용 -> 수정 (권한은 SecurityConfig에서 관리자만 — 게시글 비밀번호 확인 없음)
     updateDto.applyUpdateTo(qa);
 
   }
 
   /**
-   * [관리자] FAQ 삭제 (실제 DB 삭제) — 게시글 비밀번호 확인
+   * [관리자] FAQ 삭제 (실제 DB 삭제) — 권한은 SecurityConfig에서 관리자만 (게시글 비밀번호 확인 없음)
    * 1:1 문의글은 작성자(회원/비회원)만 삭제 (관리자 화면에도 문의글 삭제 버튼 없음)
    * 첨부파일은 화면에서 삭제 성공 후 따로 지움 (DELETE /attach/delete_by_bno/{no}?tname=QA)
    *
@@ -394,10 +398,6 @@ public class QaService {
     Qa qa = qaRepository.findByNoAndIsdel(deleteDto.getNo(), "N")
         .filter(q -> "Y".equals(q.getIsfaq()))
         .orElseThrow(QaAccessException::notFound);
-
-    if (deleteDto.getPw() == null || !pwEncoder.matches(deleteDto.getPw(), qa.getPw())) {
-      throw new QaAccessException(400, "PW_MISMATCH", "비밀번호가 일치하지 않습니다.");
-    }
 
     // 2. 실제 삭제 (예전 코드는 문자열을 == 로 비교해서 FAQ도 소프트 삭제만 되던 버그)
     qaRepository.delete(qa);

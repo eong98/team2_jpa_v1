@@ -257,8 +257,8 @@ public class QaCont {
   }
 
   /**
-   * [관리자] FAQ 삭제 — 실제 DB 삭제 (게시글 비밀번호 확인)
-   * DELETE /qa  {no, pw}
+   * [관리자] FAQ 삭제 — 실제 DB 삭제
+   * DELETE /qa  {no}
    */
   @DeleteMapping
   public ResponseEntity<String> deleteQuestion(@RequestBody QaDTO.DeleteRequest deleteDto) {
