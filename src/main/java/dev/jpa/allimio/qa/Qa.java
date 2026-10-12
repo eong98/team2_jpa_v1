@@ -191,6 +191,13 @@ public class Qa {
   }
   
   /**
+   * FAQ 작성 관리자 지정 — 화면이 보낸 값이 아니라 로그인 토큰의 관리자번호를 넣음
+   */
+  public void changeAno(Long ano) {
+    this.ano = ano;
+  }
+
+  /**
    * AI 자동 답변 저장 — 관리자 답변(answer/ano/adate)과 답변 상태(status)는 건드리지 않음
    */
   public void updateAiAnswer(String aiAnswer, String aiAdate) {

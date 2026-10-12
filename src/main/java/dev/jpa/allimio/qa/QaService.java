@@ -121,7 +121,7 @@ public class QaService {
   }
 
   /**
-   * [회원] 문의글·FAQ 상세 — 비밀글은 본인 글만 (비회원 비밀글 포함 남의 비밀글은 403)
+   * [회원] 문의글·FAQ 상세 — 비밀글은 본인 글만 (비회원 비밀글 포함 남의 비밀글은 locked=true, 내용 없음)
    */
   @Transactional
   public QaDTO.QaResponse getMemberQaDetail(Long no, Long mno) {
@@ -129,7 +129,8 @@ public class QaService {
     boolean isOwner = isMemberOwner(qa, mno);
 
     if (isSecretQuestion(qa) && !isOwner) {
-      throw new QaAccessException(403, "FORBIDDEN", "비밀글은 작성자만 볼 수 있습니다.");
+      // 남의 비밀글 — 오류 대신 '잠긴 글' 응답(내용 없음) → 화면이 잠금 안내를 보여줌 (비회원 상세와 같은 방식)
+      return QaDTO.QaResponse.locked(qa);
     }
     qa.increaseVcnt();
 
@@ -142,6 +143,7 @@ public class QaService {
 
   /**
    * [비회원] 문의글·FAQ 상세 — 비회원 비밀글은 임시 토큰이 있어야 조회 (회원 비밀글은 불가)
+   * 열 수 없는 비밀글은 오류가 아니라 locked=true 응답 (내용 없음)
    *
    * @param token 비밀번호 확인 후 받은 임시 토큰 (없으면 null)
    */
@@ -151,10 +153,9 @@ public class QaService {
     boolean isOwner = isGuestPost(qa) && guestTokenProvider.isValid(token, no);
 
     if (isSecretQuestion(qa) && !isOwner) {
-      if (!isGuestPost(qa)) {
-        throw new QaAccessException(400, "FORBIDDEN", "회원 비밀글은 작성자만 볼 수 있습니다.");
-      }
-      throw new QaAccessException(400, "TOKEN_REQUIRED", "비밀번호 확인이 필요하거나 확인 시간(10분)이 지났습니다.");
+      // 토큰이 없거나 만료된 비밀글 — 오류 대신 '잠긴 글' 응답(내용 없음, 조회수 증가 없음)
+      // 화면은 locked=true면 비밀번호 입력 화면을 보여줌 (회원 비밀글이면 mno가 있어 로그인 안내)
+      return QaDTO.QaResponse.locked(qa);
     }
     qa.increaseVcnt();
 
@@ -345,11 +346,13 @@ public class QaService {
    * FAQ 작성 (등록)
    *
    * @param dto
+   * @param ano 로그인한 관리자 번호 (토큰에서 꺼낸 값)
    * @return FAQ pk(no) 반환
    */
   @Transactional
-  public Long createFAQ(QaDTO.FaqCRequest dto) {
+  public Long createFAQ(QaDTO.FaqCRequest dto, Long ano) {
     Qa qa = dto.toEntity();
+    qa.changeAno(ano); // 작성자는 로그인한 관리자 (body의 ano는 쓰지 않음)
     // 문의 등록과 같이 BCrypt로 암호화해서 저장 (예전엔 평문 저장 → 수정·삭제 때 matches 비교가 항상 실패)
     if (dto.getPw() != null && !dto.getPw().isBlank()) {
       qa.changePw(pwEncoder.encode(dto.getPw()));

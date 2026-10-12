@@ -189,6 +189,8 @@ public class QaDTO {
     private String aiAdate;
     /** AI 답변 있음 여부 (Y/N) — 목록 표시용, 비밀글이라 내용(aiAnswer)을 가려도 그대로 내려감 */
     private String aiyn;
+    /** 잠긴 비밀글 여부 — true면 내용 없이 목록 수준 정보만 담김 (비회원 상세에서 비밀번호 확인 전) */
+    private Boolean locked;
 
     private QaNav prev;
     private QaNav next;
@@ -218,6 +220,25 @@ public class QaDTO {
         .aiAnswer(entity.getAiAnswer())
         .aiAdate(entity.getAiAdate())
         .aiyn(entity.getAiAnswer() != null && !entity.getAiAnswer().isBlank() ? "Y" : "N")
+        .build();
+    }
+
+    /**
+     * 잠긴 비밀글 응답 — 내용·답변·이메일 없이 목록에 이미 보이는 정보(번호·제목·유형·상태·작성일)만
+     * 오류(400) 대신 정상 응답(200)으로 내려서, 화면이 비밀번호 입력 화면을 보여주게 함
+     * (오류로 응답하면 브라우저 콘솔에 실패한 요청이 찍히고 화면이 오류 화면부터 그리게 됨)
+     */
+    public static QaResponse locked(Qa entity) {
+      return QaResponse.builder()
+        .no(entity.getNo())
+        .mno(entity.getMno())
+        .type(entity.getType())
+        .title(entity.getTitle())
+        .cdate(entity.getCdate())
+        .status(entity.getStatus())
+        .vmode(entity.getVmode())
+        .isfaq(entity.getIsfaq())
+        .locked(true)
         .build();
     }
 

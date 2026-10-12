@@ -169,6 +169,13 @@ public class Notice {
   // ⭐ 소프트 삭제 메서드
   // ==========================================
   /**
+   * 작성 관리자 지정 — 화면이 보낸 값이 아니라 로그인 토큰의 관리자번호를 넣음
+   */
+  public void changeAno(Long ano) {
+    this.ano = ano;
+  }
+
+  /**
    * 소프트 삭제 (삭제 플래그 + 삭제 일시 기록)
    */
   public void delete(String ddate) {

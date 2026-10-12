@@ -92,6 +92,8 @@ public class SecurityConfig {
 
               // 삭제된 공지·문의 목록/영구 삭제는 관리자만 — 아래 GET /notice/{no} 비회원 허용보다 먼저 와야 함
               .requestMatchers("/notice/deleted", "/notice/deleted/**", "/qa/deleted", "/qa/deleted/**").hasRole("MANAGER")
+              // 관리자용 공지 목록(비공개 포함) — 예전엔 grade 헤더로 판단하던 것을 로그인 토큰 역할로
+              .requestMatchers(HttpMethod.GET, "/notice/list/admin").hasRole("MANAGER")
 
               // 비회원 고객센터(/board) — 문의 목록/상세/등록/수정/삭제, 첨부파일 보기
               // (비회원 비밀글 열람·수정·삭제는 POST /qa/guest/{no}/verify로 받은 임시 토큰으로 서버에서 검증)

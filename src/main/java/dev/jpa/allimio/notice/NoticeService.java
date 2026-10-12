@@ -84,8 +84,9 @@ public class NoticeService {
    * 공지사항 등록
    */
   @Transactional
-  public Long createNotice(NoticeDTO.NCRequest dto) {
+  public Long createNotice(NoticeDTO.NCRequest dto, Long ano) {
     Notice notice = dto.toEntity();
+    notice.changeAno(ano); // 작성자는 로그인한 관리자 (body의 ano는 쓰지 않음)
     // 게시글 비밀번호는 문의사항(QaService)과 같이 BCrypt로 암호화해서 저장
     if (dto.getPw() != null && !dto.getPw().isBlank()) {
       notice.changePw(pwEncoder.encode(dto.getPw()));

@@ -7,13 +7,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,24 +48,14 @@ public class NoticeCont {
    * GET /notice/list/admin?word=관제&page=0&size=10
    */
   @GetMapping(path="/list/admin")
-  public ResponseEntity<?> getAllNoticeAdmin(
+  public ResponseEntity<PageResponse<NoticeDTO.NoticeResponse>> getAllNoticeAdmin(
       NoticeDTO.NoticeSearchRequest searchCondition,
-      @RequestHeader(name = "accessNo", required = false) Long accessNo,
-      @RequestHeader(name = "grade", required = false) Integer grade,
       @PageableDefault(size = 10, sort = "no", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    // 1. 관리자 권한 체크 (grade 1 = 관리자)
-    boolean isAdmin = (grade != null && grade == 1);
-    
-    // 2. 관리자가 아니면 DB 조회 없이 즉시 403 Forbidden 반환
-    if (!isAdmin) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자 권한이 없습니다.");
-    }
-    
-
-    // 3. 관리자인 경우에만 DB 조회 실행
+    // 관리자 여부는 SecurityConfig가 로그인 토큰(ROLE_MANAGER)으로 확인
+    // (예전엔 화면이 보내는 grade 헤더가 1이면 관리자로 봐서, 헤더만 바꾸면 비공개 공지까지 볼 수 있었음)
     Page<NoticeDTO.NoticeResponse> pageResult = noticeService.getAllNoticesAdmin(searchCondition, pageable);
-    return ResponseEntity.ok(PageResponse.of(pageResult));      
+    return ResponseEntity.ok(PageResponse.of(pageResult));
   }
 
   /**
@@ -108,8 +98,9 @@ public class NoticeCont {
    * POST /notice
    */
   @PostMapping
-  public ResponseEntity<Long> createNotice(@RequestBody NoticeDTO.NCRequest dto) {
-    Long createdNo = noticeService.createNotice(dto);
+  public ResponseEntity<Long> createNotice(Authentication auth, @RequestBody NoticeDTO.NCRequest dto) {
+    // 작성자는 로그인 토큰의 관리자번호 (SecurityConfig에서 ROLE_MANAGER만 들어옴)
+    Long createdNo = noticeService.createNotice(dto, (Long) auth.getPrincipal());
     return ResponseEntity
         .status(HttpStatus.CREATED)
         .body(createdNo);

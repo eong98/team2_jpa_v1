@@ -90,11 +90,11 @@ public class QaCont {
   }
 
   /**
-   * 내 문의 내역 전체/검색 조회 (페이징) — 경로의 mno 대신 로그인 회원번호로 조회
-   * GET /qa/my/1?word=장비&page=0&size=10
-   * http://localhost:9102/qa/my/1
+   * 내 문의 내역 전체/검색 조회 (페이징) — 회원번호는 받지 않고 로그인 토큰에서 찾음
+   * GET /qa/my?word=장비&page=0&size=10
+   * (/qa/my/{mno}는 예전 화면 호환용 — 경로의 번호는 쓰지 않음)
    */
-  @GetMapping(path="/my/{mno}")
+  @GetMapping(path={"/my", "/my/{mno}"})
   public ResponseEntity<PageResponse<QaDTO.QaResponse>> getMyQuestions(
       Authentication auth,
       QaDTO.QaSearchRequest searchCondition,
@@ -237,8 +237,9 @@ public class QaCont {
    * POST /qa/faq
    */
   @PostMapping(path="/faq")
-  public ResponseEntity<Long> createFAQ(@RequestBody QaDTO.FaqCRequest dto) {
-    Long createdNo = qaService.createFAQ(dto);
+  public ResponseEntity<Long> createFAQ(Authentication auth, @RequestBody QaDTO.FaqCRequest dto) {
+    // 작성자는 로그인 토큰의 관리자번호 (SecurityConfig에서 ROLE_MANAGER만 들어옴)
+    Long createdNo = qaService.createFAQ(dto, (Long) auth.getPrincipal());
     return ResponseEntity.status(HttpStatus.CREATED).body(createdNo);
   }
 
