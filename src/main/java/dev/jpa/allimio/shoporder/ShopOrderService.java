@@ -168,10 +168,12 @@ public class ShopOrderService {
    * 구독권 등록 (매장 NULL, 상태 0)
    * 
    * @param request
+   * @param mno 로그인한 회원번호 (컨트롤러가 로그인 토큰에서 꺼낸 값)
    * @return
    */
-  public ShopOrderDTO.Response save(ShopOrderDTO.Request request) {
-    ShopOrder shopOrder = ShopOrder.builder().no(generateno()).pno(request.getPno()).mno(request.getMno()).sno(null)
+  public ShopOrderDTO.Response save(ShopOrderDTO.Request request, Long mno) {
+    // 구매 회원은 화면이 보낸 번호(request.mno)가 아니라 로그인 토큰의 회원번호 (다른 회원 이름으로 결제되는 것 방지)
+    ShopOrder shopOrder = ShopOrder.builder().no(generateno()).pno(request.getPno()).mno(mno).sno(null)
         .pmonth(request.getPmonth()).ccnt(request.getCcnt()).bprice(request.getBprice())
         .totalprice(request.getTotalprice()).status(STATUS_WAIT_SHOP).sdate(null).edate(null).cdate(Tool.getDate())
         .build();

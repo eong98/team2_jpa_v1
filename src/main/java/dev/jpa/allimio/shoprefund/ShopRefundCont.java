@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import dev.jpa.allimio.shoporder.ShopOrderAccess;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,6 +25,10 @@ public class ShopRefundCont {
   @Autowired
   ShopRefundService shopRefundService;
 
+  /** 로그인 토큰으로 회원번호·본인 여부 확인 */
+  @Autowired
+  ShopOrderAccess shopOrderAccess;
+
   public ShopRefundCont() {
     System.out.println("-> ShopRefundCont created");
   }
@@ -32,7 +38,8 @@ public class ShopRefundCont {
    * GET /shop_refund/1
    */
   @GetMapping("/{pno}")
-  public ResponseEntity<List<ShopRefundDTO.Response>> findByPno(@PathVariable("pno") Long pno) {
+  public ResponseEntity<List<ShopRefundDTO.Response>> findByPno(Authentication auth, @PathVariable("pno") Long pno) {
+    shopOrderAccess.assertPaymentOwner(auth, pno); // 본인 결제(또는 관리자)만
     List<ShopRefundDTO.Response> list = shopRefundService.findByPno(pno);
     return ResponseEntity.ok(list);
   }

@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import dev.jpa.allimio.shoporder.ShopOrderAccess;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +28,10 @@ import dev.jpa.allimio.tool.PageResponse;
 public class ShopOrderPendingCont {
   @Autowired
   ShopOrderPendingService shopOrderPendingService;
+
+  /** 로그인 토큰으로 회원번호·본인 여부 확인 */
+  @Autowired
+  ShopOrderAccess shopOrderAccess;
   
   public ShopOrderPendingCont() {
     System.out.println("-> ShopOrderPendingCont created");
@@ -40,7 +46,8 @@ public class ShopOrderPendingCont {
    * @return
    */
   @GetMapping("/{ono}")
-  public ResponseEntity<ShopOrderPendingDTO.Response> findByOno(@PathVariable("ono") String ono) {
+  public ResponseEntity<ShopOrderPendingDTO.Response> findByOno(Authentication auth, @PathVariable("ono") String ono) {
+    shopOrderAccess.assertOrderOwner(auth, ono); // 본인 주문(또는 관리자)만
     ShopOrderPendingDTO.Response res = shopOrderPendingService.findByOno(ono);
     if (res == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(res);
@@ -53,7 +60,9 @@ public class ShopOrderPendingCont {
    */
   @PostMapping
   public ResponseEntity<ShopOrderPendingDTO.ChangeResult> requestChange(
+      Authentication auth,
       @RequestBody ShopOrderPendingDTO.Request request) {
+    shopOrderAccess.assertOrderOwner(auth, request.getOno()); // 본인 주문(또는 관리자)만
     ShopOrderPendingDTO.ChangeResult result = shopOrderPendingService.save(request);
     return ResponseEntity.ok(result);
   }
@@ -64,7 +73,9 @@ public class ShopOrderPendingCont {
    */
   @PostMapping("/preview")
   public ResponseEntity<ShopOrderPendingDTO.ChangePreview> previewChange(
+      Authentication auth,
       @RequestBody ShopOrderPendingDTO.Request request) {
+    shopOrderAccess.assertOrderOwner(auth, request.getOno()); // 본인 주문(또는 관리자)만
     ShopOrderPendingDTO.ChangePreview preview = shopOrderPendingService.previewChange(request);
     return ResponseEntity.ok(preview);
   }
@@ -99,13 +110,13 @@ public class ShopOrderPendingCont {
    * 회원용 — 승인대기 목록
    * GET /shop_order_pending/list/1
    */
-  @GetMapping("/list/{mno}")
+  @GetMapping("/my")
   public ResponseEntity<PageResponse<ShopOrderPendingDTO.Response>> findMyList(
-      @PathVariable("mno") Long mno,
+      Authentication auth,
       ShopOrderPendingDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    searchCondition.setMno(mno); // 이 줄 추가
+    searchCondition.setMno(shopOrderAccess.requireMember(auth)); // 로그인 토큰의 회원번호
     Page<ShopOrderPendingDTO.Response> pageResult = shopOrderPendingService.searchMnoPending(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }

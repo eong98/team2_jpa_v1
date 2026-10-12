@@ -59,6 +59,21 @@ public class SecurityConfig {
           .authorizeHttpRequests(auth -> auth
               // 브라우저의 OPTIONS 프리플라이트 요청 전부 허용
               .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+              // 관리자 화면 전용 — 아래의 넓은 허용 규칙("/chat_menu/**", GET "/attach/list/{bno}")보다 먼저 와야 함
+              // (챗봇 메뉴 조회는 비회원 상담에 필요해서 열려 있지만, 등록·수정·삭제와 관리자용 트리는 관리자만)
+              .requestMatchers(HttpMethod.GET, "/chat_menu/tree/admin", "/attach/list/admin").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.POST, "/chat_menu", "/chat_menu/**").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.PUT, "/chat_menu/**").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.DELETE, "/chat_menu/**").hasRole("MANAGER")
+
+              // 구독·결제 — 관리자 화면 전용 (아래 {mno} 규칙, "/shop_plan/list" 허용보다 먼저 와야 함)
+              .requestMatchers(HttpMethod.GET,
+                  "/shop_plan/list/admin",
+                  "/shop_order/list/admin", "/shop_order_log/list/admin",
+                  "/shop_order_pending/list", "/shop_refund/list/admin").hasRole("MANAGER")
+              .requestMatchers(HttpMethod.PUT, "/shop_order_pending/{no}/approve", "/shop_refund/{no}/status").hasRole("MANAGER")
+              // 회원용 구독·결제 API는 주소에 회원번호를 넣지 않음 — 컨트롤러가 로그인 토큰으로 본인 확인 (ShopOrderAccess)
               
               // 로그인, 회원가입, 비밀번호 기/재설정, 토큰 재발급 등 인증 없이 접근할 URL
               .requestMatchers(
@@ -131,6 +146,8 @@ public class SecurityConfig {
                   "/v1/user/ban/**",             // 강제 탈퇴
                   "/history/**"                  // 로그인/수정 이력
                   ).hasRole("MANAGER")
+              // 구독권 단건 조회 — 관리자 등록·수정 화면에서만 사용 (공개 목록 "/shop_plan/list"는 위에서 이미 허용)
+              .requestMatchers(HttpMethod.GET, "/shop_plan/{no}").hasRole("MANAGER")
               
               // 각 메뉴들의 등록/수정/삭제는 관리자만  -> 임시로 넣어둠 추후 수정
               .requestMatchers(HttpMethod.POST,   "/notice/**", "/inmenu/**", "/shopmenu/**", "/cctv_issue_code/**", "/shop_plan/**").hasRole("MANAGER")
@@ -184,5 +201,4 @@ public class SecurityConfig {
       source.registerCorsConfiguration("/**", config);
       return source;
   }
-
 }

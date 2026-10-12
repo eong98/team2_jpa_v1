@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import dev.jpa.allimio.shoporder.ShopOrderAccess;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +23,10 @@ public class ShopOrderLogCont {
   @Autowired
   ShopOrderLogService shopOrderLogService;
 
+  /** 로그인 토큰으로 회원번호·본인 여부 확인 */
+  @Autowired
+  ShopOrderAccess shopOrderAccess;
+
   public ShopOrderLogCont() {
     System.out.println("-> ShopOrderLogCont created");
   }
@@ -30,7 +36,8 @@ public class ShopOrderLogCont {
    * GET /shop_order_log/order/ORD-20260819-000001
    */
   @GetMapping("/{ono}")
-  public ResponseEntity<List<ShopOrderLogDTO.Response>> findByOno(@PathVariable("ono") String ono) {
+  public ResponseEntity<List<ShopOrderLogDTO.Response>> findByOno(Authentication auth, @PathVariable("ono") String ono) {
+    shopOrderAccess.assertOrderOwner(auth, ono); // 본인 주문(또는 관리자)만
     return ResponseEntity.ok(shopOrderLogService.findByOno(ono));
   }
 
@@ -38,14 +45,14 @@ public class ShopOrderLogCont {
    * 회원 기준 변경 이력 검색 + 페이징 조회
    * GET /shop_order_log/mno/1/search?sno=&action=&dateFrom=&dateTo=&page=0&size=10
    */
-  @GetMapping("/list/{mno}/{ono}")
+  @GetMapping("/my/{ono}")
   public ResponseEntity<PageResponse<ShopOrderLogDTO.Response>> search(
-      @PathVariable("mno") Long mno,
+      Authentication auth,
       @PathVariable("ono") String ono,
       ShopOrderLogDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    searchCondition.setMno(mno);
+    searchCondition.setMno(shopOrderAccess.requireMember(auth)); // 로그인 토큰의 회원번호
     searchCondition.setOno(ono);
     Page<ShopOrderLogDTO.Response> pageResult = shopOrderLogService.search(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));

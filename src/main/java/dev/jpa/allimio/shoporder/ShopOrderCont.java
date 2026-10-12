@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,10 @@ public class ShopOrderCont {
   @Autowired
   ShopOrderService shopOrderService;
 
+  /** 로그인 토큰으로 회원번호·본인 여부 확인 */
+  @Autowired
+  ShopOrderAccess shopOrderAccess;
+
   public ShopOrderCont() {
     System.out.println("-> ShopOrderCont created");
   }
@@ -38,8 +43,14 @@ public class ShopOrderCont {
    * POST /shop_order
    */
   @PostMapping
-  public ResponseEntity<ShopOrderDTO.Response> save(@RequestBody ShopOrderDTO.Request request) {
-    ShopOrderDTO.Response response = shopOrderService.save(request);
+  public ResponseEntity<ShopOrderDTO.Response> save(Authentication auth, @RequestBody ShopOrderDTO.Request request) {
+    // 구매 회원은 로그인 토큰에서 — 회원 로그인이 아니면(관리자·비로그인) 구매할 수 없음
+    boolean isMember = auth != null && auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_MEMBER".equals(a.getAuthority()));
+    if (!isMember || !(auth.getPrincipal() instanceof Long mno)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+    ShopOrderDTO.Response response = shopOrderService.save(request, mno);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -48,8 +59,9 @@ public class ShopOrderCont {
    * @param mno
    * @return
    */
-  @GetMapping("/grade/{mno}")
-  public ResponseEntity<Integer> memberGrade(@PathVariable(name = "mno") Long mno) {
+  @GetMapping("/grade")
+  public ResponseEntity<Integer> memberGrade(Authentication auth) {
+    Long mno = shopOrderAccess.requireMember(auth); // 주소의 번호 대신 로그인 토큰의 회원번호
     if (mno == null) {
       return ResponseEntity.badRequest().build();
   }
@@ -63,13 +75,13 @@ public class ShopOrderCont {
    * 전체 구독내역 목록 
    * GET /shop_order/list/1
    */
-  @GetMapping("/list/{mno}")
+  @GetMapping("/my")
   public ResponseEntity<PageResponse<ShopOrderDTO.Response>> search(
-      @PathVariable("mno") Long mno,
+      Authentication auth,
       ShopOrderDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    searchCondition.setMno(mno);
+    searchCondition.setMno(shopOrderAccess.requireMember(auth)); // 로그인 토큰의 회원번호
     Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchOrders(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
@@ -78,14 +90,14 @@ public class ShopOrderCont {
    *  매장별 전체 구독내역 목록
    * GET /shop_order/list/1/1/...
    */
-  @GetMapping("/list/{mno}/{sno}")
+  @GetMapping("/my/shop/{sno}")
   public ResponseEntity<PageResponse<ShopOrderDTO.Response>> searchShopOrders(
-      @PathVariable("mno") Long mno,
+      Authentication auth,
       @PathVariable("sno") Long sno,
       ShopOrderDTO.SearchRequest searchCondition,
       @PageableDefault(size = 10, sort = "cdate", direction = Sort.Direction.DESC) Pageable pageable) {
     
-    searchCondition.setMno(mno);
+    searchCondition.setMno(shopOrderAccess.requireMember(auth)); // 로그인 토큰의 회원번호
     Page<ShopOrderDTO.Response> pageResult = shopOrderService.searchShopOrders(searchCondition, pageable);
     return ResponseEntity.ok(PageResponse.of(pageResult));
   }
@@ -97,12 +109,12 @@ public class ShopOrderCont {
    * @param status
    * @return
    */
-  @GetMapping(path="/top/{mno}/{sno}")
+  @GetMapping(path="/top/{sno}")
   public ResponseEntity<ShopOrderDTO.Response> findByShopTop(
-      @PathVariable(name="mno") Long mno,
+      Authentication auth,
       @PathVariable(name="sno") Long sno,
       @RequestParam(name="status", required = true) Integer status) {
-    ShopOrderDTO.Response response = shopOrderService.findByShopTop(mno, sno, status);
+    ShopOrderDTO.Response response = shopOrderService.findByShopTop(shopOrderAccess.requireMember(auth), sno, status);
     if (response == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(response);
   }
@@ -114,7 +126,8 @@ public class ShopOrderCont {
    * GET /shop_order/ORD-20260819-000001
    */
   @GetMapping("/{no}")
-  public ResponseEntity<ShopOrderDTO.Response> findById(@PathVariable("no") String no) {
+  public ResponseEntity<ShopOrderDTO.Response> findById(Authentication auth, @PathVariable("no") String no) {
+    shopOrderAccess.assertOrderOwner(auth, no); // 본인 주문(또는 관리자)만
     ShopOrderDTO.Response response = shopOrderService.findById(no);
     if (response == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(response);
@@ -127,7 +140,8 @@ public class ShopOrderCont {
    * GET /shop_order/set_cctv/ORD-20260819-000001
    */
   @GetMapping("/set_cctv/{no}")
-  public ResponseEntity<ShopOrderDTO.Response> setChangeInfo(@PathVariable("no") String no) {
+  public ResponseEntity<ShopOrderDTO.Response> setChangeInfo(Authentication auth, @PathVariable("no") String no) {
+    shopOrderAccess.assertOrderOwner(auth, no); // 본인 주문(또는 관리자)만
     ShopOrderDTO.Response response = shopOrderService.setChangeInfo(no);
     if (response == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok(response);
@@ -138,17 +152,17 @@ public class ShopOrderCont {
    * 구독 결제 완료 후 연결 가능한 매장 목록 (무구독 매장 + 만료/취소된 구독이 걸린 매장)
    * GET /shop_order/linkable-shops/1
    */
-  @GetMapping("/linkable-shops/{mno}")
-  public ResponseEntity<List<ShopWithCctvCount>> findLinkableShops(@PathVariable("mno") long mno) {
-    return ResponseEntity.ok(shopOrderService.findLinkableShops(mno));
+  @GetMapping("/linkable-shops")
+  public ResponseEntity<List<ShopWithCctvCount>> findLinkableShops(Authentication auth) {
+    return ResponseEntity.ok(shopOrderService.findLinkableShops(shopOrderAccess.requireMember(auth)));
   }
   /**
    * 특정 매장에 연결 가능한 구독권 목록 (매장 CCTV 대수와 일치하는 것만)
    * GET /shop_order/linkable-plans/{mno}/{sno}
    */
-  @GetMapping("/linkable-plans/{mno}/{sno}")
-  public ResponseEntity<List<ShopOrderDTO.Response>> findLinkableOrders(@PathVariable("mno") Long mno, @PathVariable("sno") Long sno) {
-    return ResponseEntity.ok(shopOrderService.findLinkableOrders(mno, sno));
+  @GetMapping("/linkable-plans/{sno}")
+  public ResponseEntity<List<ShopOrderDTO.Response>> findLinkableOrders(Authentication auth, @PathVariable("sno") Long sno) {
+    return ResponseEntity.ok(shopOrderService.findLinkableOrders(shopOrderAccess.requireMember(auth), sno));
   }
   
   /**
@@ -190,9 +204,11 @@ public class ShopOrderCont {
    */
   @PutMapping("/{no}/link-shop")
   public ResponseEntity<?> linkShop(
+      Authentication auth,
       @PathVariable("no") String no,
       @RequestBody ShopOrderDTO.LinkShopRequest request) {
     try {
+      shopOrderAccess.assertOrderOwner(auth, no); // 본인 주문(또는 관리자)만
       ShopOrderDTO.Response response = shopOrderService.linkShop(no, request);
       return ResponseEntity.ok(response);
     } catch (IllegalArgumentException e) {
@@ -211,10 +227,12 @@ public class ShopOrderCont {
    */
   @PutMapping("/{no}/renew")
   public ResponseEntity<ShopOrderDTO.RenewResult> renew(
+      Authentication auth,
       @PathVariable("no") String no,
       @RequestParam(name="newPmonth", required = false) Integer newPmonth,
       @RequestParam(name="pmethod", required = false) Integer pmethod
       ) {
+    shopOrderAccess.assertOrderOwner(auth, no); // 본인 주문(또는 관리자)만
     ShopOrderDTO.RenewResult result = shopOrderService.renew(no, newPmonth, pmethod);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
@@ -226,8 +244,10 @@ public class ShopOrderCont {
    */
   @PutMapping("/{no}/cancel")
   public ResponseEntity<ShopOrderDTO.CancelResult> cancel(
+      Authentication auth,
       @PathVariable("no") String no,
       @RequestBody(required = false) ShopOrderDTO.CancelRequest request) {
+    shopOrderAccess.assertOrderOwner(auth, no); // 본인 주문(또는 관리자)만
     ShopOrderDTO.CancelResult result = shopOrderService.cancel(no, request);
     if (result == null) return ResponseEntity.badRequest().build();
     return ResponseEntity.ok(result);
