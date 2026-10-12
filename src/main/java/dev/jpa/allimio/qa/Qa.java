@@ -6,12 +6,20 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
+import org.hibernate.annotations.DynamicUpdate;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+/*
+ * @DynamicUpdate — 바뀐 컬럼만 UPDATE 합니다.
+ * 기본 동작은 전체 컬럼 UPDATE라서, 상세 조회(조회수 +1)와 답변 저장이 동시에 일어나면
+ * 조회 쪽이 읽어 둔 예전 값(답변 없음)으로 방금 저장된 답변을 덮어써 답변이 사라졌습니다.
+ */
 @Entity
+@DynamicUpdate
 @Getter
 @ToString
 public class Qa {
