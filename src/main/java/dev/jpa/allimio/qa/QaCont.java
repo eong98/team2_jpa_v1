@@ -128,7 +128,13 @@ public class QaCont {
    */
   @PostMapping
   public ResponseEntity<QaDTO.QaResponse> createQuestion(Authentication auth, @RequestBody QaDTO.QCRequest dto) {
-    QaDTO.QaResponse response = qaService.createQuestion(dto, memberNoOrNull(auth));
+    Long loginMno = memberNoOrNull(auth);
+    QaDTO.QaResponse response = qaService.createQuestion(dto, loginMno);
+    if (loginMno == null && response.getNo() != null) {
+      // 비회원 글 — 등록 직후 첨부파일을 올릴 수 있도록 이 글 전용 임시 토큰을 같이 내려줌
+      response.setGuestToken(qaService.issueGuestToken(response.getNo()));
+      response.setGuestTokenExpiresIn(QaGuestTokenProvider.TOKEN_EXPIRE_MILLIS / 1000);
+    }
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 

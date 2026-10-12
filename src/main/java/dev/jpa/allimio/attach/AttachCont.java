@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +20,8 @@ import java.util.List;
 public class AttachCont {
 
   private final AttachService attachService;
+  /** 등록·삭제 권한 확인 (관리자 / 작성 회원 / 비회원 임시 토큰) */
+  private final AttachAccess attachAccess;
   private final Download download;
 
   /**
@@ -57,7 +60,11 @@ public class AttachCont {
    * POST /attach/create
    */
   @PostMapping(value = "/create")
-  public ResponseEntity<List<AttachDTO>> create(@ModelAttribute AttachDTO attachDTO) {
+  public ResponseEntity<List<AttachDTO>> create(
+      Authentication auth,
+      @RequestHeader(value = "X-Qa-Token", required = false) String qaToken,
+      @ModelAttribute AttachDTO attachDTO) {
+    attachAccess.assertCanManage(auth, qaToken, attachDTO.getTname(), attachDTO.getBno()); // 이 글의 주인만
     List<MultipartFile> files = attachDTO.getFiles();
 
     List<AttachDTO> savedList = this.attachService.saveAttachFiles(
@@ -106,7 +113,11 @@ public class AttachCont {
    * DELETE /attach/delete/1
    */
   @DeleteMapping(path = "/delete/{no}")
-  public ResponseEntity<Integer> delete(@PathVariable("no") Long no) {
+  public ResponseEntity<Integer> delete(
+      Authentication auth,
+      @RequestHeader(value = "X-Qa-Token", required = false) String qaToken,
+      @PathVariable("no") Long no) {
+    attachAccess.assertCanManage(auth, qaToken, no); // 그 첨부가 달린 글의 주인만
     int cnt = this.attachService.deleteAttachFile(no);
     return ResponseEntity.ok(cnt);
   }
@@ -117,8 +128,11 @@ public class AttachCont {
    */
   @DeleteMapping(path = "/delete_by_bno/{bno}")
   public ResponseEntity<Integer> deleteByBno(
+      Authentication auth,
+      @RequestHeader(value = "X-Qa-Token", required = false) String qaToken,
       @PathVariable("bno") Long bno,
       @RequestParam(name = "tname", required = false) String tname) { // 게시판 구분 (QA, NOTICE …)
+    attachAccess.assertCanManage(auth, qaToken, tname, bno); // 이 글의 주인만
     this.attachService.deleteByTnoAndBno(bno, tname);
     return ResponseEntity.ok(1);
   }

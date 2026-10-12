@@ -170,6 +170,11 @@ public class QaService {
     return res;
   }
 
+  /** 비회원 글 등록 직후 — 작성자 본인이 분명하므로 비밀번호 확인 없이 이 글 전용 임시 토큰 발급 */
+  public String issueGuestToken(Long no) {
+    return guestTokenProvider.issue(no);
+  }
+
   /**
    * [비회원] 게시글 비밀번호 확인 → 이 글 전용 임시 토큰(10분) 발급
    * 5회 연속 실패 시 10분 잠금

@@ -191,6 +191,10 @@ public class QaDTO {
     private String aiyn;
     /** 잠긴 비밀글 여부 — true면 내용 없이 목록 수준 정보만 담김 (비회원 상세에서 비밀번호 확인 전) */
     private Boolean locked;
+    /** 비회원 글을 방금 등록했을 때만 — 이 글 전용 임시 토큰 (등록 직후 첨부파일 업로드에 사용) */
+    private String guestToken;
+    /** guestToken 유효 시간(초) */
+    private Long guestTokenExpiresIn;
 
     private QaNav prev;
     private QaNav next;
