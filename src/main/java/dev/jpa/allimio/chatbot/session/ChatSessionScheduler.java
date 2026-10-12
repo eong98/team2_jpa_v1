@@ -29,6 +29,10 @@ public class ChatSessionScheduler {
   @Autowired
   private ChatSessionService chatSessionService;
 
+  /** FastAPI 호출에 붙일 서버 티켓 (비밀키가 없으면 붙이지 않음) */
+  @Autowired
+  private ChatTicketProvider chatTicketProvider;
+
   /** FastAPI 주소 (application.properties의 ai.server.url, 예: http://139.150.91.194:11200) — 없으면 요약 생략 */
   private final String aiServerUrl;
   private final RestClient restClient;
@@ -69,8 +73,10 @@ public class ChatSessionScheduler {
       return;
     }
     try {
+      String ticket = chatTicketProvider.issueForServer();
       restClient.post()
           .uri(aiServerUrl + "/api/chatbot/{sno}/summarize-title", no)
+          .headers(h -> { if (ticket != null) h.set(ChatTicketProvider.HEADER, ticket); })
           .retrieve()
           .toBodilessEntity();
     } catch (Exception e) {

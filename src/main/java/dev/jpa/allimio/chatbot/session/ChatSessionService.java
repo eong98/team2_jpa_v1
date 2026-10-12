@@ -113,14 +113,18 @@ public class ChatSessionService {
    * cmode=1(AI상담)로 생성하는 경우, greeting이 있으면 인사말까지 로그로 남깁니다.
    */
   @Transactional
-  public ChatSessionDTO.ActionResult create(ChatSessionDTO.CreateRequest req, 
+  public ChatSessionDTO.ActionResult create(ChatSessionDTO.CreateRequest req, Long memberNo,
       String greeting) {
+    // 상담 주인 — 회원이면 로그인 토큰의 회원번호(memberNo), 아니면 브라우저 식별값(gno)
+    if (memberNo == null && (req.getGno() == null || req.getGno().isBlank())) {
+      throw new IllegalArgumentException("상담을 시작할 수 없습니다. (식별값 없음)");
+    }
     String now = Tool.getDate();
  
     ChatSession session = ChatSession.builder()
         .no(UUID.randomUUID().toString())
-        .mno(req.getMno())
-        .gno(req.getGno())
+        .mno(memberNo)
+        .gno(memberNo != null ? null : req.getGno())
         .cno(req.getCno())
         .cmode(req.getCmode() != null ? req.getCmode() : MODE_OPTION)
         .channel(req.getChannel() != null ? req.getChannel() : 10)

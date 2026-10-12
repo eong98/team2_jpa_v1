@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
+import dev.jpa.allimio.chatbot.session.ChatTicketProvider;
 import dev.jpa.allimio.tool.Tool;
 import jakarta.annotation.PreDestroy;
 
@@ -36,6 +37,8 @@ public class QaAiAnswerService {
 
   private final QaRepository qaRepository;
   private final TransactionTemplate transactionTemplate;
+  /** FastAPI 호출에 붙일 서버 티켓 (비밀키가 없으면 붙이지 않음) */
+  private final ChatTicketProvider chatTicketProvider;
 
   /** FastAPI 주소 (application.properties의 ai.server.url) — 없으면 자동 답변 생략 */
   private final String aiServerUrl;
@@ -49,8 +52,10 @@ public class QaAiAnswerService {
   });
 
   public QaAiAnswerService(QaRepository qaRepository, PlatformTransactionManager transactionManager,
+      ChatTicketProvider chatTicketProvider,
       @Value("${ai.server.url:}") String aiServerUrl) {
     this.qaRepository = qaRepository;
+    this.chatTicketProvider = chatTicketProvider;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.aiServerUrl = aiServerUrl == null ? "" : aiServerUrl.replaceAll("/+$", "");
 
@@ -87,10 +92,12 @@ public class QaAiAnswerService {
         return;
       }
 
+      String ticket = chatTicketProvider.issueForServer();
       @SuppressWarnings("unchecked")
       Map<String, Object> res = restClient.post()
           .uri(aiServerUrl + "/api/qa/ai-answer")
           .contentType(MediaType.APPLICATION_JSON)
+          .headers(h -> { if (ticket != null) h.set(ChatTicketProvider.HEADER, ticket); })
           .body(Map.of("title", nvl(qa.getTitle()), "content", nvl(qa.getContent())))
           .retrieve()
           .body(Map.class);
