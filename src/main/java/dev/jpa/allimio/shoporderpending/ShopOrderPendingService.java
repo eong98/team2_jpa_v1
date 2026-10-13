@@ -271,10 +271,30 @@ public class ShopOrderPendingService {
       pending.setUdate(Tool.getDate());
       ShopOrderPending saved = shopOrderPendingRepository.save(pending);
 
+      // 대수를 늘리는 신청은 신청할 때 추가 금액을 먼저 결제받았으므로(save()의 즉시결제), 반려하면 그 금액을 돌려줍니다.
+      // 금액은 신청 때와 같은 식(신청일 ~ 종료일, 신청 단가, 늘어난 대수)으로 다시 계산합니다.
+      long rejectRefund = 0;
+      int requestedDiff = pending.getCcnt() - shopOrder.getCcnt();
+      if (requestedDiff > 0 && shopOrder.getEdate() != null) {
+        rejectRefund = ShopOrderCaculator.calcCcntIncreaseCharge(LocalDate.parse(pending.getCdate().substring(0, 10)),
+            LocalDate.parse(shopOrder.getEdate()), pending.getBprice(), requestedDiff);
+        if (rejectRefund > 0) {
+          ShopPaymentDTO.Response refundPayment = shopPaymentService.refund(shopOrder.getNo(), shopOrder.getMno(), rejectRefund);
+          try {
+            shopRefundService.updateAmountForOrder(shopOrder.getNo(), refundPayment.getNo(), rejectRefund);
+          } catch (IllegalStateException e) {
+            // 신청 때 환불 계좌를 받지 않은 예전 신청 — 결제 취소 기록만 남기고 반려는 그대로 진행
+            System.out.println("[변경 신청 반려] 환불 계좌 없음 (ono=" + shopOrder.getNo() + "): " + e.getMessage());
+          }
+        }
+      }
+
       // 반려는 SHOP_ORDER 값을 안 건드리므로, shopOrder.getCcnt()/getBprice()가 여전히 "현재(변경 전)" 값
-      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 6, shopOrder.getSno(), saved.getNo(), null, null, null,
-          String.format("구독권 변경 신청 반려 · %d대 → %d대(신청) · 사유: %s",
+      shopOrderLogService.log(shopOrder.getNo(), shopOrder.getMno(), 6, shopOrder.getSno(), saved.getNo(), null, null,
+          rejectRefund > 0 ? -rejectRefund : null,
+          String.format("구독권 변경 신청 반려 · %d대 → %d대(신청)%s · 사유: %s",
               shopOrder.getCcnt(), pending.getCcnt(),
+              rejectRefund > 0 ? String.format(" · 신청 시 결제액 %,d원 환불", rejectRefund) : "",
               request.getMemo() != null ? request.getMemo() : "-"),
           shopOrder.getCcnt(), shopOrder.getBprice());
 
@@ -299,8 +319,11 @@ public class ShopOrderPendingService {
 
     int diffCcnt = pending.getCcnt() - oldCcnt;
     long settlementAmount = 0;
+    // 대수를 늘릴 때 신청 시점에 이미 결제받은 금액 (save()의 즉시결제와 같은 식) — 총 결제금액에 더해야 함
+    long chargedAtRequest = 0;
 
     if (diffCcnt > 0) {
+      chargedAtRequest = ShopOrderCaculator.calcCcntIncreaseCharge(requestedDate, edate, pending.getBprice(), diffCcnt);
       long overCharged = ShopOrderCaculator.calcCcntIncreaseSettlement(requestedDate, today, pending.getBprice(),
           diffCcnt);
       settlementAmount = -overCharged;
@@ -313,7 +336,9 @@ public class ShopOrderPendingService {
     shopOrder.setPmonth(pending.getPmonth());
     shopOrder.setCcnt(pending.getCcnt());
     shopOrder.setBprice(pending.getBprice());
-    shopOrder.setTotalprice(Math.max(0, shopOrder.getTotalprice() + settlementAmount));
+    // 총 결제금액 = 기존 금액 + 신청 때 추가 결제한 금액 − 정산·환불액
+    // (추가 결제분을 더하지 않으면 3대로 늘어난 뒤에도 2대 금액으로 보임)
+    shopOrder.setTotalprice(Math.max(0, shopOrder.getTotalprice() + chargedAtRequest + settlementAmount));
     shopOrder.setUdate(Tool.getDate());
     ShopOrder savedOrder = shopOrderRepository.save(shopOrder);
 
@@ -324,8 +349,9 @@ public class ShopOrderPendingService {
 
     if (settlementAmount < 0) {
       long refundAmount = -settlementAmount;
-      shopPaymentService.refund(savedOrder.getNo(), savedOrder.getMno(), refundAmount);
-      shopRefundService.updateAmountForOrder(savedOrder.getNo(), refundAmount);
+      ShopPaymentDTO.Response refundPayment = shopPaymentService.refund(savedOrder.getNo(), savedOrder.getMno(), refundAmount);
+      // 환불 결제 기록과 연결해 둬야 회원 결제 내역에서 환불 계좌·상태를 볼 수 있음
+      shopRefundService.updateAmountForOrder(savedOrder.getNo(), refundPayment.getNo(), refundAmount);
     }
 
     String memo;

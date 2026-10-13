@@ -95,15 +95,17 @@ public class ShopRefundService {
   }
 
   /**
-   * 승인 시점에 확정된 환불 금액을 채웁니다. 신청 시점에 미리 만들어둔
-   * (amount=0인) 환불 건을 찾아서 금액만 업데이트합니다.
+   * 승인·반려 시점에 확정된 환불 금액을 채웁니다. 신청 시점에 미리 만들어둔
+   * (amount=0인) 환불 건을 찾아서 금액과, 환불 결제 기록 번호(pno)를 넣습니다.
+   * @param pno 환불 결제 기록 번호 (SHOP_PAYMENT.NO, PSTATUS=2) — 결제 내역 화면이 이 번호로 환불 계좌를 찾음
    */
-  public ShopRefundDTO.Response updateAmountForOrder(String ono, Long amount) {
+  public ShopRefundDTO.Response updateAmountForOrder(String ono, Long pno, Long amount) {
     ShopRefund refund = shopRefundRepository.findByOnoOrderByCdateDesc(ono).stream()
         .filter(r -> r.getAmount() == 0L && r.getStatus() == 0)
         .findFirst()
         .orElseThrow(() -> new IllegalStateException("신청 시점에 등록된 환불계좌를 찾을 수 없습니다."));
 
+    refund.setPno(pno);
     refund.setAmount(amount);
     refund.setUdate(Tool.getDate());
 

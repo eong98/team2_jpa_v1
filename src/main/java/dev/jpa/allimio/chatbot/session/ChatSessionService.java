@@ -48,7 +48,7 @@ public class ChatSessionService {
   public static final int IDLE_WARN_BEFORE_MINUTES = 5;
   /** 경고 문구 — React ChatBot.ts SYSTEM_MESSAGES(code 10)와 같은 글 (화면이 이 글로 경고 상태를 알아봄) */
   private static final String IDLE_WARN_MESSAGE =
-      "응답이 없어 약 " + IDLE_WARN_BEFORE_MINUTES + "분 뒤 상담이 자동으로 종료됩니다.\n종료 전에 상담 만족도를 알려 주세요.";
+      "한동안 응답이 없어 곧 상담이 자동으로 종료됩니다.\n종료 전에 상담 만족도를 알려 주세요.";
   /** 비회원 gno를 이 기간(일) 동안 쓰지 않으면 만료 (React ChatGuest.ts와 같은 값) */
   private static final int GUEST_EXPIRE_DAYS = 30;
   /** CHAT_SESSION.UDATE 형식 (Tool.getDate()와 같음) — 문자열 비교로 기간 판단 */
@@ -505,6 +505,11 @@ public class ChatSessionService {
         (label == null || label.isBlank()) ? "상담 계속하기" : label, null));
     addIfPresent(logs, log(no, SENDER_SYSTEM, MTYPE_SYSTEM_NOTICE, systemMessage, null));
     session.setEndflow(null);
+    // 메뉴 상담이었다면 머물던 메뉴를 비워 처음 선택지부터 다시 고르게 함
+    // ("무엇을 도와드릴까요?" 바로 아래에 최상위 옵션이 나오고, 새로고침해도 그대로). AI 상담은 입력창으로 이어감
+    if (session.getCmode() == null || session.getCmode() != 1) {
+      session.setCno(null);
+    }
     return ChatSessionDTO.ActionResult.builder().logs(logs).build();
   }
 

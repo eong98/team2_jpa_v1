@@ -75,9 +75,12 @@ public class PayStatsRepository {
         .getSingleResult();
   }
 
-  /** 처리 대기 중인 환불 건수 (현재) */
+  /**
+   * 처리 대기 중인 환불 건수 (현재)
+   * 금액이 0인 행은 변경 신청 때 환불 계좌만 미리 받아 둔 것이라(실제 환불이 생기지 않은 건) 세지 않습니다.
+   */
   public long countRefundPending() {
-    return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM SHOP_REFUND WHERE STATUS = 0")
+    return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM SHOP_REFUND WHERE STATUS = 0 AND AMOUNT > 0")
         .getSingleResult()).longValue();
   }
 
@@ -124,11 +127,14 @@ public class PayStatsRepository {
         .getResultList();
   }
 
-  /** 구독권별 순매출 [구독권번호, 구독권명, 금액, 결제완료 건수] - 금액 큰 순 */
+  /**
+   * 구독권별 순매출 [구독권번호, 구독권명, 금액, 결제완료 건수] - 금액 큰 순
+   * 구독권은 기간(6·12개월)마다 따로 등록돼 이름이 같으므로, 이름 뒤에 기간을 붙여 구분합니다 (예: 베이직 · 12개월)
+   */
   @SuppressWarnings("unchecked")
   public List<Object[]> byPlan(String from, String toNext) {
     return em.createNativeQuery("""
-        SELECT o.PNO, MAX(s.PNAME), NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
+        SELECT o.PNO, MAX(s.PNAME || ' · ' || s.PMONTH || '개월'), NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
         FROM SHOP_PAYMENT p
         JOIN SHOP_ORDER o ON o.NO = p.ONO
         LEFT JOIN SHOP_PLAN s ON s.NO = o.PNO

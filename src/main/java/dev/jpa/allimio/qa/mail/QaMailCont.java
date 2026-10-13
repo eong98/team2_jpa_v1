@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
    (SecurityConfig에서 /qa/mail/** 는 ROLE_MANAGER만)
 
    GET  /qa/mail/logs?word=&stype=&result=&page=0&size=10  → 발송 내역 목록 (최근 발송 순)
-   POST /qa/mail/logs/{no}/resend                           → 실패한 답변 알림 다시 보내기
 --------------------------------------------------------------------- */
 @RestController
 @RequestMapping("/qa/mail")
@@ -46,16 +45,6 @@ public class QaMailCont {
     int safePage = Math.max(0, page);
     int safeSize = Math.min(100, Math.max(1, size));
     return ResponseEntity.ok(sendLogQuery.search(word, stype, result, safePage, safeSize));
-  }
-
-  /**
-   * 실패한 답변 알림 다시 보내기 — 접수만 하고 바로 응답 (발송은 백그라운드, 결과는 목록에 새 줄로 추가됨)
-   * POST /qa/mail/logs/15/resend
-   */
-  @PostMapping("/logs/{no}/resend")
-  public ResponseEntity<Map<String, Object>> resend(@PathVariable("no") Long no) {
-    qaMailService.resend(no);
-    return ResponseEntity.ok(Map.of("success", true, "message", "다시 보내는 중입니다. 잠시 후 목록을 새로고침해 주세요."));
   }
 
   @ExceptionHandler(QaAccessException.class)

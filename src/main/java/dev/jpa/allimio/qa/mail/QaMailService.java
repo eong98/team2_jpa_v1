@@ -81,32 +81,6 @@ public class QaMailService {
     }
   }
 
-  /**
-   * [관리자] 실패한 답변 알림 다시 보내기 — 새 발송 이력이 한 줄 추가됨
-   *
-   * @param logNo 다시 보낼 발송 이력 번호
-   */
-  public void resend(Long logNo) {
-    QaSendLog log = sendLogRepository.findById(logNo)
-        .orElseThrow(() -> new QaAccessException(404, "NOT_FOUND", "발송 기록을 찾을 수 없습니다."));
-    if (log.getStype() != QaSendLog.STYPE_REPLY) {
-      throw new QaAccessException(400, "NOT_ALLOWED", "답변 알림 메일만 다시 보낼 수 있습니다.");
-    }
-    if ("Y".equals(log.getResult())) {
-      throw new QaAccessException(400, "NOT_ALLOWED", "이미 발송에 성공한 메일입니다.");
-    }
-    if (sendLogRepository.existsByQnoAndStypeAndResultAndNoGreaterThan(
-        log.getQno(), QaSendLog.STYPE_REPLY, "Y", log.getNo())) {
-      throw new QaAccessException(400, "NOT_ALLOWED", "이미 다시 보내서 발송에 성공했습니다.");
-    }
-    Qa qa = qaRepository.findByNoAndIsdel(log.getQno(), "N")
-        .orElseThrow(() -> new QaAccessException(400, "NOT_ALLOWED", "삭제된 게시글이라 다시 보낼 수 없습니다."));
-    if (qa.getAnswer() == null || qa.getAnswer().isBlank()) {
-      throw new QaAccessException(400, "NOT_ALLOWED", "답변이 등록되지 않은 문의입니다.");
-    }
-    executor.submit(() -> sendReplyNotice(log.getQno()));
-  }
-
   private void sendReplyNotice(Long qno) {
     try {
       Qa qa = qaRepository.findByNoAndIsdel(qno, "N").orElse(null);
