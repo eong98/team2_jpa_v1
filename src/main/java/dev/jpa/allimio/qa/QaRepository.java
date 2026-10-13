@@ -86,7 +86,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND q.isfaq = 'N' 
         AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) 
         AND (:type IS NULL OR q.type = :type) 
-        AND (:status IS NULL OR q.status = :status) 
+        AND (:status IS NULL OR q.status = :status OR (:status = -1 AND q.status IN (0, 1))) 
       ORDER BY q.cdate DESC 
       """)
   Page<Object[]> searchMyQuestions(
@@ -110,7 +110,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND q.isfaq = 'N' 
         AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) 
         AND (:type IS NULL OR q.type = :type) 
-        AND (:status IS NULL OR q.status = :status) 
+        AND (:status IS NULL OR q.status = :status OR (:status = -1 AND q.status IN (0, 1))) 
         AND (:mno IS NULL OR q.mno = :mno) 
       ORDER BY q.cdate DESC
       """)
@@ -130,7 +130,7 @@ public interface QaRepository extends JpaRepository<Qa, Long> {
         AND q.isfaq = 'Y' 
         AND (:word IS NULL OR :word = '' OR q.title LIKE %:word% OR q.content LIKE %:word%) 
         AND (:type IS NULL OR q.type = :type) 
-        AND (:status IS NULL OR q.status = :status) 
+        AND (:status IS NULL OR q.status = :status OR (:status = -1 AND q.status IN (0, 1))) 
       ORDER BY q.vseq ASC, q.cdate DESC
       """)
   Page<Qa> searchFaqsAll(

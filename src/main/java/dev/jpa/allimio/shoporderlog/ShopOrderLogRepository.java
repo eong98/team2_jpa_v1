@@ -74,6 +74,7 @@ public interface ShopOrderLogRepository extends JpaRepository<ShopOrderLog, Long
           OR s.title LIKE CONCAT('%', :word, '%') 
           OR m.id LIKE CONCAT('%', :word, '%') 
           OR CONCAT('', m.no) LIKE CONCAT('%', :word, '%')
+          OR log.ono LIKE CONCAT('%', :word, '%')
           OR log.memo LIKE CONCAT('%', :word, '%')) 
         AND (:action IS NULL OR log.action = :action)
         AND (:dateFrom IS NULL OR :dateFrom = '' OR SUBSTRING(log.cdate, 1, 10) >= :dateFrom)
