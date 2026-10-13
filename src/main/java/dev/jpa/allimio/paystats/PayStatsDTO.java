@@ -32,6 +32,8 @@ public class PayStatsDTO {
       long payCountPrev,      // 직전 동일 기간 결제완료 건수
       long failCount,         // 기간 내 결제실패 건수
       long cancelCount,       // 기간 내 결제취소 건수
+      long cancelAmount,      // 기간 내 결제취소 금액 (순매출 = payAmount - cancelAmount)
+      long cancelAmountPrev,  // 직전 동일 기간 결제취소 금액
       long refundAmount,      // 기간 내 환불 완료 금액
       long refundCount,       // 기간 내 환불 완료 건수
       long refundPending,     // 처리 대기 중인 환불 (기간 무관, 현재)

@@ -40,6 +40,19 @@ public class PayStatsRepository {
         .getSingleResult();
   }
 
+  /**
+   * 기간 내 결제취소 금액 합계.
+   * 구독을 취소하거나 변경으로 환불이 생기면 원래 결제 행은 그대로 두고 환불액을 결제취소(PSTATUS=2) 행으로
+   * 따로 남기므로(ShopPaymentService.refund), 순매출은 결제완료 합계에서 이 금액을 뺀 값입니다.
+   */
+  public long cancelAmount(String from, String toNext) {
+    return ((Number) em.createNativeQuery(
+        "SELECT NVL(SUM(p.PRICE), 0) FROM SHOP_PAYMENT p WHERE p.PSTATUS = 2 AND" + PERIOD)
+        .setParameter("from", from)
+        .setParameter("toNext", toNext)
+        .getSingleResult()).longValue();
+  }
+
   /** 기간 내 결제 상태별 건수 [PSTATUS, 건수] */
   @SuppressWarnings("unchecked")
   public List<Object[]> countByStatus(String from, String toNext) {
@@ -75,13 +88,19 @@ public class PayStatsRepository {
         .getResultList();
   }
 
-  /** 일별 결제완료 [yyyy-MM-dd, 금액, 건수] */
+  /*
+   * 아래 일별·구독권별·결제수단별·구독기간별 금액은 순매출(결제완료 − 결제취소)입니다.
+   * 결제취소(PSTATUS=2) 행은 돌려준 금액이라 빼고, 건수는 결제완료만 셉니다.
+   * 기간 안에 취소만 있으면 금액이 음수, 건수가 0일 수 있습니다.
+   */
+
+  /** 일별 순매출 [yyyy-MM-dd, 금액, 결제완료 건수] */
   @SuppressWarnings("unchecked")
   public List<Object[]> daily(String from, String toNext) {
     return em.createNativeQuery("""
-        SELECT SUBSTR(p.CDATE, 1, 10), NVL(SUM(p.PRICE), 0), COUNT(*)
+        SELECT SUBSTR(p.CDATE, 1, 10), NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
         FROM SHOP_PAYMENT p
-        WHERE p.PSTATUS = 0 AND p.CDATE >= :from AND p.CDATE < :toNext
+        WHERE p.PSTATUS IN (0, 2) AND p.CDATE >= :from AND p.CDATE < :toNext
         GROUP BY SUBSTR(p.CDATE, 1, 10)
         """)
         .setParameter("from", from)
@@ -105,15 +124,15 @@ public class PayStatsRepository {
         .getResultList();
   }
 
-  /** 구독권별 결제완료 [구독권번호, 구독권명, 금액, 건수] - 금액 큰 순 */
+  /** 구독권별 순매출 [구독권번호, 구독권명, 금액, 결제완료 건수] - 금액 큰 순 */
   @SuppressWarnings("unchecked")
   public List<Object[]> byPlan(String from, String toNext) {
     return em.createNativeQuery("""
-        SELECT o.PNO, MAX(s.PNAME), NVL(SUM(p.PRICE), 0), COUNT(*)
+        SELECT o.PNO, MAX(s.PNAME), NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
         FROM SHOP_PAYMENT p
         JOIN SHOP_ORDER o ON o.NO = p.ONO
         LEFT JOIN SHOP_PLAN s ON s.NO = o.PNO
-        WHERE p.PSTATUS = 0 AND p.CDATE >= :from AND p.CDATE < :toNext
+        WHERE p.PSTATUS IN (0, 2) AND p.CDATE >= :from AND p.CDATE < :toNext
         GROUP BY o.PNO
         ORDER BY 3 DESC
         """)
@@ -122,13 +141,13 @@ public class PayStatsRepository {
         .getResultList();
   }
 
-  /** 결제수단별 결제완료 [PMETHOD, 금액, 건수] */
+  /** 결제수단별 순매출 [PMETHOD, 금액, 결제완료 건수] */
   @SuppressWarnings("unchecked")
   public List<Object[]> byMethod(String from, String toNext) {
     return em.createNativeQuery("""
-        SELECT p.PMETHOD, NVL(SUM(p.PRICE), 0), COUNT(*)
+        SELECT p.PMETHOD, NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
         FROM SHOP_PAYMENT p
-        WHERE p.PSTATUS = 0 AND p.CDATE >= :from AND p.CDATE < :toNext
+        WHERE p.PSTATUS IN (0, 2) AND p.CDATE >= :from AND p.CDATE < :toNext
         GROUP BY p.PMETHOD
         ORDER BY 2 DESC
         """)
@@ -137,14 +156,14 @@ public class PayStatsRepository {
         .getResultList();
   }
 
-  /** 구독기간(6/12개월)별 결제완료 [PMONTH, 금액, 건수] */
+  /** 구독기간(6/12개월)별 순매출 [PMONTH, 금액, 결제완료 건수] */
   @SuppressWarnings("unchecked")
   public List<Object[]> byMonth(String from, String toNext) {
     return em.createNativeQuery("""
-        SELECT o.PMONTH, NVL(SUM(p.PRICE), 0), COUNT(*)
+        SELECT o.PMONTH, NVL(SUM(CASE WHEN p.PSTATUS = 0 THEN p.PRICE ELSE -p.PRICE END), 0), SUM(CASE WHEN p.PSTATUS = 0 THEN 1 ELSE 0 END)
         FROM SHOP_PAYMENT p
         JOIN SHOP_ORDER o ON o.NO = p.ONO
-        WHERE p.PSTATUS = 0 AND p.CDATE >= :from AND p.CDATE < :toNext
+        WHERE p.PSTATUS IN (0, 2) AND p.CDATE >= :from AND p.CDATE < :toNext
         GROUP BY o.PMONTH
         ORDER BY o.PMONTH
         """)

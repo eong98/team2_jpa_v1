@@ -63,6 +63,8 @@ public class PayStatsService {
         num(paidPrev[1]),
         payStatus.getOrDefault(1, 0L),
         payStatus.getOrDefault(2, 0L),
+        payStatsRepository.cancelAmount(from, toNext),
+        payStatsRepository.cancelAmount(prevFrom, from),
         num(refund[0]),
         num(refund[1]),
         payStatsRepository.countRefundPending(),
