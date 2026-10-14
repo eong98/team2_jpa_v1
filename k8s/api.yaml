@@ -1,9 +1,10 @@
 # =====================================================================
-# allimio Spring Boot API (k3s)
+# allimio Spring Boot API (minikube)
 #   - IMAGE_TAG는 GitHub Actions가 커밋 SHA로 바꿔서 apply 함
 #   - 환경변수: Secret allimio-env (서버의 ~/allimio/allimio.env로 생성)
-#   - 업로드 파일: 서버 /home/ubuntu/deploy/allimio 를 그대로 연결(Tool.getServerDir 고정 경로와 동일)
-#   - 외부 접속: http://1.201.122.5:9102 → Service(LoadBalancer 9102) → Pod(9102)
+#   - 업로드 파일: 서버 /home/ubuntu/deploy/allimio
+#       → (minikube mount, systemd allimio-mount) → minikube 노드 같은 경로 → Pod 같은 경로 (Tool.getServerDir 고정 경로)
+#   - 외부 접속: http://1.201.122.5:9102 → 서버 nginx(9102) → minikube NodePort 192.168.49.2:30902 → Pod(9102)
 # =====================================================================
 apiVersion: v1
 kind: Namespace
@@ -45,12 +46,15 @@ spec:
             # 컨테이너 메모리 제한(limits)의 75%까지 힙으로 사용 (기본값 25%는 너무 작음)
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:MaxRAMPercentage=75"
+            # nginx를 거쳐 들어오므로 X-Forwarded-For로 실제 접속자 IP를 복원 (로그인 이력의 getRemoteAddr)
+            - name: SERVER_FORWARD_HEADERS_STRATEGY
+              value: "native"
           resources:
             requests:
               cpu: 250m
-              memory: 768Mi
+              memory: 512Mi
             limits:
-              memory: 2Gi            # 넘으면 OOMKilled → 자동 재시작
+              memory: 1536Mi            # 넘으면 OOMKilled → 자동 재시작
           startupProbe:              # Spring 기동(최대 3분)까지 기다려 줌
             tcpSocket:
               port: 9102
@@ -72,7 +76,7 @@ spec:
         - name: storage
           hostPath:
             path: /home/ubuntu/deploy/allimio
-            type: DirectoryOrCreate
+            type: Directory          # minikube mount가 안 돼 있으면 Pod가 뜨지 않음(엉뚱한 곳에 저장되는 것 방지)
 ---
 apiVersion: v1
 kind: Service
@@ -80,10 +84,11 @@ metadata:
   name: allimio-api
   namespace: allimio
 spec:
-  type: LoadBalancer                 # k3s ServiceLB가 서버의 9102 포트를 이 서비스로 연결
+  type: NodePort                     # minikube 노드(192.168.49.2)의 30902 포트로 노출 → 서버 nginx가 9102에서 전달
   selector:
     app: allimio-api
   ports:
     - name: http
       port: 9102
       targetPort: 9102
+      nodePort: 30902
