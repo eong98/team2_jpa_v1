@@ -1,0 +1,89 @@
+# =====================================================================
+# allimio Spring Boot API (k3s)
+#   - IMAGE_TAG는 GitHub Actions가 커밋 SHA로 바꿔서 apply 함
+#   - 환경변수: Secret allimio-env (서버의 ~/allimio/allimio.env로 생성)
+#   - 업로드 파일: 서버 /home/ubuntu/deploy/allimio 를 그대로 연결(Tool.getServerDir 고정 경로와 동일)
+#   - 외부 접속: http://1.201.122.5:9102 → Service(LoadBalancer 9102) → Pod(9102)
+# =====================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: allimio
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: allimio-api
+  namespace: allimio
+spec:
+  replicas: 1                        # 업로드 폴더가 서버 1대의 hostPath라 1개로 운영
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1                    # 새 Pod가 완전히 뜬 뒤에
+      maxUnavailable: 0              # 기존 Pod를 내림 → 배포 중에도 서비스 유지
+  selector:
+    matchLabels:
+      app: allimio-api
+  template:
+    metadata:
+      labels:
+        app: allimio-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: api
+          image: ghcr.io/eong98/allimio-api:IMAGE_TAG
+          ports:
+            - containerPort: 9102
+          envFrom:
+            - secretRef:
+                name: allimio-env    # DB_USERNAME, DB_PASSWORD, MAIL_*, REDIS_*, SECRET_KEY ...
+          env:
+            # 컨테이너 메모리 제한(limits)의 75%까지 힙으로 사용 (기본값 25%는 너무 작음)
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              memory: 2Gi            # 넘으면 OOMKilled → 자동 재시작
+          startupProbe:              # Spring 기동(최대 3분)까지 기다려 줌
+            tcpSocket:
+              port: 9102
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:            # 9102가 열려야 트래픽을 보냄
+            tcpSocket:
+              port: 9102
+            periodSeconds: 10
+          livenessProbe:             # 응답이 없으면 재시작
+            tcpSocket:
+              port: 9102
+            periodSeconds: 20
+            failureThreshold: 3
+          volumeMounts:
+            - name: storage
+              mountPath: /home/ubuntu/deploy/allimio
+      volumes:
+        - name: storage
+          hostPath:
+            path: /home/ubuntu/deploy/allimio
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: allimio-api
+  namespace: allimio
+spec:
+  type: LoadBalancer                 # k3s ServiceLB가 서버의 9102 포트를 이 서비스로 연결
+  selector:
+    app: allimio-api
+  ports:
+    - name: http
+      port: 9102
+      targetPort: 9102

@@ -1,0 +1,20 @@
+# =====================================================================
+# systemd 서비스: /etc/systemd/system/allimio-mount.service
+#   서버 폴더 /home/ubuntu/deploy/allimio 를 minikube 노드 안의 같은 경로로 연결(minikube mount)
+#   → api.yaml의 hostPath가 실제 서버 폴더를 가리키게 됨
+#   minikube mount는 켜져 있는 동안만 연결되므로 systemd로 항상 실행 + 죽으면 자동 재시작
+# =====================================================================
+[Unit]
+Description=minikube mount for allimio upload storage
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+Environment=HOME=/home/ubuntu
+ExecStart=/usr/local/bin/minikube mount /home/ubuntu/deploy/allimio:/home/ubuntu/deploy/allimio
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

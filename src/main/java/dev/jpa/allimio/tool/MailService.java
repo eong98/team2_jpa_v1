@@ -3,6 +3,7 @@ package dev.jpa.allimio.tool;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+import org.springframework.beans.factory.annotation.Value; // ★ 추가
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 public class MailService {
   
   private final JavaMailSender mailSender;
+
+  // ★ 추가: 메일 속 링크에 쓸 프론트 주소 — 환경변수 APP_FRONT_URL로 바꿀 수 있고, 없으면 배포 서버 주소 사용
+  //   (final이 아니므로 @RequiredArgsConstructor 생성자에는 포함되지 않고, 생성 후 @Value로 주입됨)
+  @Value("${app.front-url:http://1.201.122.5:5174}")
+  private String frontendUrl;
   
   public void sendPasswordResetMail(String toEmail, String token) {
     String subject = "[all-im-io] 비밀번호 재설정 안내";
-    String frontendUrl = "http://10.1.205.120:5174";   // 배포시 프론트 주소로 변경
+    // ★ 수정: 하드코딩(http://10.1.205.120:5174) 제거 → 위 frontendUrl 필드 사용
     
     // token에 특수문자가 섞였을때 깨지지않게 인코딩
     String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
